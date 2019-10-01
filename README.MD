@@ -1,5 +1,5 @@
 
-IMAP for SIL
+IMAP for D / SIL
 
 Status - usable alpha
 

@@ -10,6 +10,15 @@ needs to be integrated.
 
 Heavily inspired by imapfilter.
 
+
+Features to add:
+
+- MIME
+- pipeFrom
+- pipeTo
+- more IMAP extensions
+
+
 ```
 import imap;
 

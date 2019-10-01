@@ -295,17 +295,14 @@ auto examine(ref Session session, Mailbox mbox)
 auto status(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
-	if (session.imapProtocol == ImapProtocol.imap4Rev1)
-	{
-		auto request = format!`STATUS "%s" (MESSAGES RECENT UNSEEN UIDNEXT)`(mbox.toString());
-		auto id = session.sendRequest(request);
-		return session.responseStatus(id);
-	}
-
-	auto request = format!`EXAMINE "%s"`(mbox);
+	import std.exception : enforce;
+	enforce(session.imapProtocol == ImapProtocol.imap4Rev1, "status only implemented for Imap4Rev1 - try using examine");
+	auto mailbox = mbox.toString();
+	auto request = format!`STATUS "%s" (MESSAGES RECENT UNSEEN UIDNEXT)`(mailbox);
 	auto id = session.sendRequest(request);
-	return session.responseExamine(id);
+	return session.responseStatus(id,mailbox);
 }
+
 
 ///	Open mailbox in read-write mode.
 ImapResult select(ref Session session, Mailbox mailbox)

@@ -96,7 +96,7 @@ void registerImap(ref Handlers handlers)
 		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
-				Status, FlagResult,SearchResult,Status,
+				Status, FlagResult,SearchResult,Status,StatusResult,
 		))
 			handlers.registerType!T;
 

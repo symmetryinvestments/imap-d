@@ -362,14 +362,74 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 	return r;
 }
 
-
-///	Process the data that server sent due to IMAP STATUS client request.
-ImapResult responseStatus(ref Session session, int tag)
+struct StatusResult
 {
+	ImapStatus status;
+	string value;
+	int messages;
+	int recent;
+	int uidNext;
+	int unseen;
+}
+///	Process the data that server sent due to IMAP STATUS client request.
+StatusResult responseStatus(ref Session session, int tag, string mailboxName)
+{
+	import std.exception : enforce;
+	import std.algorithm : map, filter;
+	import std.array : array;
+	import std.string : splitLines, split,strip,toUpper,indexOf, startsWith, isNumeric;
+	import std.range : front;
+	import std.conv : to;
+
+	enum StatusToken = "* STATUS ";
+	StatusResult ret;
+
 	auto r = session.responseGeneric(tag);
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-		return ImapResult(r.status,r.value);
-	return r;
+		return StatusResult(r.status,r.value);
+
+	auto lines = r.value.splitLines
+					.map!(line => line.strip)
+					.filter!(line => line.startsWith(StatusToken) && 
+									line.length > StatusToken.length + mailboxName.length+2)
+					.map!(line => line[StatusToken.length .. $].strip)
+					.filter!(line => line.split.front == mailboxName.strip);
+
+	foreach(line;lines)
+	{
+		auto i = line.indexOf(" ");
+		if (i < mailboxName.length +1)
+			continue;
+		auto cols= line[i+1 ..$].stripBrackets.split;
+		foreach(j; 0 .. cols.length / 2)
+		{
+			auto key = cols[j*2];
+			auto val = cols[j*2 +1];
+			if (!val.isNumeric)
+				continue;
+			auto n = val.to!int;
+			switch(key.toUpper)
+			{
+				case "MESSAGES":
+					ret.messages = n;
+					break;
+				case "RECENT":
+					ret.recent = n;
+					break;
+				case "UIDNEXT":
+					ret.uidNext = n;
+					break;
+				case "UNSEEN":
+					ret.unseen = n;
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	ret.status = r.status;
+	ret.value = r.value;
+	return ret;
 }
 
 

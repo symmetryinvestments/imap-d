@@ -85,56 +85,59 @@ void registerImap(ref Handlers handlers)
 	import deimos.openssl.evp;
 	import std.stdio : File;
 
-	handlers.openModule("imap");
-	scope(exit) handlers.closeModule();
-	handlers.registerGrammar();
-
-	static foreach(T; AliasSeq!( Session, AddressInfo, Socket,termios,ProtocolSSL,ImapServer,ImapLogin))
-		handlers.registerType!T;
-
-	handlers.registerType!(Set!Capability)("Capabilities");
-	handlers.registerHandler!(add!Capability)("addCapability");
-	handlers.registerHandler!(remove!Capability)("removeCapability");
-
-	static foreach(F; AliasSeq!(openConnection,closeConnection,socketRead,socketWrite,
-					getTerminalAttributes,setTerminalAttributes,enableEcho,disableEcho,
-					socketSecureRead,socketSecureWrite,closeSecureConnection,openSecureConnection,
-	))
-		handlers.registerHandler!F;
-
-	// static int tag = 0x1000;
-
-	static foreach(F; AliasSeq!(isLoginRequest, sendRequest, sendContinuation,noop,login,logout))
-		handlers.registerHandler!F;
-
-	static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
-				Status, FlagResult,SearchResult,
-	))
-		handlers.registerType!T;
-
-	static foreach(F; AliasSeq!(status,examine,select,close,expunge,list,lsub,search,fetchFast,fetchFlags,fetchDate,fetchSize,
-				fetchStructure, fetchHeader,fetchText,fetchFields,fetchPart,logout,store,copy,create,
-				delete_,rename,subscribe,unsubscribe, idle,))
-		handlers.registerHandler!F;
-
-	version(None) // remaining types and functions to register
 	{
-		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList))
+		handlers.openModule("imap");
+		scope(exit) handlers.closeModule();
+		handlers.registerGrammar();
+
+		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
+				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
+				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
+				Status, FlagResult,SearchResult,Status,
+		))
 			handlers.registerType!T;
 
-		static foreach(F; AliasSeq!(append))
+		handlers.registerType!(Set!Capability)("Capabilities");
+
+		// FIXME - finish and add append	
+		static foreach(F; AliasSeq!(noop,login,logout,status,examine,select,close,expunge,list,lsub,
+					search,fetchFast,fetchFlags,fetchDate,fetchSize, fetchStructure, fetchHeader,
+					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
+					unsubscribe, idle, openConnection, closeConnection,
+		))
+			handlers.registerHandler!F;
+	}
+	{
+		handlers.openModule("imap.impl");
+		scope(exit) handlers.closeModule();
+		static foreach(T; AliasSeq!( AddressInfo, Socket,termios,ImapServer,ImapLogin,File
+		))
+			handlers.registerType!T;
+		handlers.registerHandler!(add!Capability)("addCapability");
+		handlers.registerHandler!(remove!Capability)("removeCapability");
+
+		static foreach(F; AliasSeq!(socketRead,socketWrite,
+						getTerminalAttributes,setTerminalAttributes,enableEcho,disableEcho,
+						socketSecureRead,socketSecureWrite,closeSecureConnection,openSecureConnection,
+						isLoginRequest, sendRequest, sendContinuation
+		))
 			handlers.registerHandler!F;
 	}
 
-	handlers.closeModule();
+	// FIXME - add current tag as SIL vairable - static int tag = 0x1000;
 
-	handlers.openModule("ssl");
-	static foreach(F; AliasSeq!(getPeerCertificate, getCert, checkCert, readX509,
-				getDigest,getIssuerName,getSubject,asHex,printCert,getSerial,storeCert,
-				getFilePath,
-	))
+
+	version(None) // need to fix certificates etc
+	{
+		handlers.openModule("ssl");
+		scope(exit) handlers.closeModule();
+		static foreach(F; AliasSeq!(getPeerCertificate, getCert, checkCert, readX509,
+					getDigest,getIssuerName,getSubject,asHex,printCert,getSerial,storeCert,
+					getFilePath,
+		))
 		handlers.registerHandler!F;
-		static foreach(T; AliasSeq!(Status, File,EVP_MD,X509,SSL_))
+		static foreach(T; AliasSeq!(EVP_MD,X509,SSL_))
 			handlers.registerType!T;
+	}
 }
 

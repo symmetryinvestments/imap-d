@@ -306,7 +306,7 @@ Result!string socketSecureRead(ref Session session)
 	import std.exception : enforce;
 	import std.conv : to;
 	import std.format : format;
-	import std.stdio: writefln,stderr;
+	version(Trace) import std.stdio: writefln,stderr;
 	int res;
 	auto buf = new char[16384*1024];
 	scope(failure)
@@ -317,8 +317,8 @@ Result!string socketSecureRead(ref Session session)
 		enforce(!session.isSSLReadError(res), session.sslReadErrorMessage(res));
 	} while(session.isTryAgain(res));
 	enforce(res >0, format!"SSL_read returned %s and expecting a positive number of bytes"(res));
-	tracef("socketSecureRead: %s / %s",session.socket,buf[0..res]);
-	stderr.writefln("socketSecureRead: %s / %s",session.socket,buf[0..res]);
+	version(Trace) tracef("socketSecureRead: %s / %s",session.socket,buf[0..res]);
+	version(Trace) stderr.writefln("socketSecureRead: %s / %s",session.socket,buf[0..res]);
 	return result(Status.success,buf[0..res].idup);
 }
 

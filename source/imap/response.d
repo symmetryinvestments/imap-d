@@ -67,10 +67,10 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 	import std.stdio;
 	import std.range : front;
 
-	stderr.writefln("checking for tag %s in buf: %s",tag,buf);
+	version(Trace) stderr.writefln("checking for tag %s in buf: %s",tag,buf);
 	auto r = ImapStatus.none;
 	auto t = format!"D%04X"(tag);
-	stderr.writefln("checking for tag %s in buf: %s",t,buf);
+	version(Trace) stderr.writefln("checking for tag %s in buf: %s",t,buf);
 	auto lines = buf.splitLines.map!(line => line.strip).array;
 	auto relevantLines = lines
 							.filter!(line => line.startsWith(t))
@@ -97,7 +97,7 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 		}
 	}
 	
-	stderr.writefln("tag result is status %s for lines: %s",r,relevantLines);
+	version(Trace) stderr.writefln("tag result is status %s for lines: %s",r,relevantLines);
 
 	if (r != ImapStatus.none)
 		tracef("S (%s): %s / %s", session.socket, buf,relevantLines);
@@ -321,9 +321,12 @@ ImapResult responseCapability(ref Session session, Tag tag)
 
 	session.capabilities = capabilities;
 	session.imapProtocol = protocol;
-	import std.stdio;
-	stderr.writefln("session capabilities: %s",session.capabilities.values);
-	stderr.writefln("session protocol: %s",session.imapProtocol);
+	version(Trace)
+	{
+		import std.stdio;
+		stderr.writefln("session capabilities: %s",session.capabilities.values);
+		stderr.writefln("session protocol: %s",session.imapProtocol);
+	}
 	return res;
 }
 

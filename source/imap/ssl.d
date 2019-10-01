@@ -1,3 +1,4 @@
+///
 module imap.ssl;
 import std.stdio;
 import std.string;
@@ -12,8 +13,10 @@ import imap.defines;
 import imap.socket;
 import imap.session;
 
+///
 enum STDIN_FILENO = 0;
 
+///
 X509* getPeerCertificate(ref SSL context)
 {
 	import std.exception : enforce;
@@ -49,6 +52,7 @@ Status getCert(ref Session session)
 	return Status.success;
 }
 
+///
 enum Status
 {
 	success,
@@ -117,6 +121,7 @@ string getDigest(ref X509 cert,const(EVP_MD)* type)
 
 	
 
+///
 string getIssuerName(ref X509 cert)
 {
 	import core.memory : pureFree;
@@ -126,6 +131,7 @@ string getIssuerName(ref X509 cert)
 	return s.fromStringz.idup;
 }
 
+///
 string getSubject(ref X509 cert)
 {
 	import core.memory : pureFree;
@@ -135,6 +141,7 @@ string getSubject(ref X509 cert)
 	return s.fromStringz.idup;
 }
 
+///
 string asHex(string s)
 {
 	import std.algorithm : map;
@@ -145,7 +152,7 @@ string asHex(string s)
 }
 
 	
-//	Print information about the SSL/TLS certificate.
+///	Print information about the SSL/TLS certificate.
 void printCert(ref X509 cert, string fingerprint)
 {
 	writefln("Server certificate subject: %s",cert.getSubject);
@@ -155,7 +162,7 @@ void printCert(ref X509 cert, string fingerprint)
 }
 
 
-//	Extract certificate serial number as a string.
+///	Extract certificate serial number as a string.
 string getSerial(ref X509 cert)
 {
 	import std.string : fromStringz;
@@ -183,7 +190,7 @@ string getSerial(ref X509 cert)
 }
 
 
-//	Store the SSL/TLS certificate after asking the user to accept/reject it.
+///	Store the SSL/TLS certificate after asking the user to accept/reject it.
 void storeCert(ref X509 cert)
 {
 	import std.string : toLower;
@@ -219,6 +226,7 @@ void storeCert(ref X509 cert)
 	file.writefln("");
 }
 
+///
 string getFilePath(string subDir)
 {
 	import std.path : expandTilde, dirSeparator;

@@ -1,8 +1,10 @@
+///
 module imap.grammar;
 version(SIL):
 import pegged.grammar;
 
 
+///
 public PT tee(PT)(PT p)
 {
 	import std.stdio;

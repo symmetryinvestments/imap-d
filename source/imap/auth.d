@@ -1,3 +1,4 @@
+///
 module imap.auth;
 import std.string;
 import std.stdio;
@@ -7,6 +8,7 @@ import deimos.openssl.evp;
 import imap.defines;
 
 
+///
 string authCramMD5(string user, string pass,string challenge)
 {
 	import std.conv : to;

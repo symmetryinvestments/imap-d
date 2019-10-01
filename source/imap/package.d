@@ -1,3 +1,4 @@
+///
 module imap.imap;
 public import imap.auth;
 public import imap.ssl;

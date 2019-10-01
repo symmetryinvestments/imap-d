@@ -1,3 +1,4 @@
+///
 module imap.defines;
 import std.stdio;
 import deimos.openssl.ssl;
@@ -9,17 +10,8 @@ static if (is(size_t==uint))
 else 
     alias ssize_t=long;
 
-/* Fatal error exit codes. */
-enum Error
-{
-    signal = 1,
-    config = 2,
-    memAlloc = 3,
-    pathname = 4,
-    certificate = 5,
-}
 
-/* IMAP protocol supported by the server. */
+/// IMAP protocol supported by the server
 enum ImapProtocol
 {
     none = 0,
@@ -27,7 +19,7 @@ enum ImapProtocol
     imap4 = 2,
 }
 
-/* Capabilities of mail server. */
+/// Capabilities of mail server
 enum Capability
 {
     none = 0x00,
@@ -194,7 +186,7 @@ enum Capability
 	xMove,
 }
 
-/* Status responses and response codes. */
+/// Status responses and response codes
 enum ImapStatus
 {
     none = 0,
@@ -211,7 +203,7 @@ enum ImapStatus
 	unknown = -1,
 }
 
-
+///
 enum ImapFlag
 {
 	@(`\Seen`)

@@ -1,20 +1,23 @@
+///
 module imap.namespace;
 immutable base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
 
 
+///
 struct Mailbox
 {
 	string mailbox;
 	string prefix;
 	char delim;
 
+	///
 	string toString()
 	{
 		return applyNamespace();
 	}
 
-	// Convert the names of personal mailboxes, using the namespace specified 
-	// by the mail server, from internal to mail server format.
+	/// Convert the names of personal mailboxes, using the namespace specified 
+	/// by the mail server, from internal to mail server format.
 	string applyNamespace()
 	{
 		import std.experimental.logger : infof;
@@ -33,8 +36,8 @@ struct Mailbox
 }
 
 
-	// Convert the names of personal mailboxes, using the namespace specified by
-	// the mail server, from mail server format to internal format.
+//// Convert the names of personal mailboxes, using the namespace specified by
+//// the mail server, from mail server format to internal format.
 string reverseNamespace(string mbox, string prefix, char delim)
 {
 	return mbox;
@@ -71,7 +74,7 @@ const(char*)  reverse_namespace(const(char*) mbox, char *prefix, char delim)
 }
 +/
 
-// Convert a mailbox name to the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
+/// Convert a mailbox name to the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
 string applyConversion(string mbox)
 {
 	return mbox;
@@ -208,9 +211,9 @@ string applyConversion(string mbox)
 }
 +/
 
+/// Convert a mailbox name from the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
 string reverseConversion(string mbox) { return mbox; }
 /+
-// Convert a mailbox name from the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
 string reverseConversion(string mbox)
 {
 	char* c, out_;

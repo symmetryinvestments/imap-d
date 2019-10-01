@@ -1,3 +1,4 @@
+///
 module imap.system;
 
 import core.sys.linux.termios;
@@ -5,6 +6,7 @@ import core.stdc.stdio;
 import core.stdc.string;
 import core.stdc.errno;
 
+///
 termios getTerminalAttributes()
 {
 	import std.exception : enforce;
@@ -15,6 +17,7 @@ termios getTerminalAttributes()
 	return t;
 }
 
+///
 void setTerminalAttributes(termios terminalAttributes, int optionalActions = TCSAFLUSH)
 {
 	import std.exception : enforce;
@@ -24,7 +27,7 @@ void setTerminalAttributes(termios terminalAttributes, int optionalActions = TCS
 			format!"setting term attributes; %s\n"(strerror(errno).fromStringz));
 }
 
-// Enable character echoing.
+/// Enable character echoing.
 void enableEcho()
 {
 	termios t = getTerminalAttributes();
@@ -33,7 +36,7 @@ void enableEcho()
 	t.setTerminalAttributes(TCSAFLUSH);
 }
 
-// Enable character echoing.
+/// Enable character echoing.
 void disableEcho()
 {
 	termios t = getTerminalAttributes();

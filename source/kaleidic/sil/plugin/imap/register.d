@@ -1,3 +1,4 @@
+///
 module kaleidic.sil.std.extra.imap.register;
 
 version(SIL):
@@ -26,6 +27,7 @@ import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.sha;
 
+///
 void registerGrammar(ref Handlers handlers)
 {
 	import pegged.grammar;
@@ -68,6 +70,7 @@ auto parse(string arg)
 }
 
 
+///
 void registerImap(ref Handlers handlers)
 {
 	import imap.session;

@@ -1,3 +1,4 @@
+///
 module imap.request;
 
 import imap.socket;
@@ -10,6 +11,7 @@ import imap.response;
 /// Every IMAP command is preceded with a unique string
 static int tag = 0x1000;
 
+///
 auto imapTry(alias F,Args...)(ref Session session, Args args)
 {
 	import std.traits : isInstanceOf;
@@ -68,7 +70,7 @@ bool isLoginRequest(string value)
 	return value.strip.toUpper.startsWith("LOGIN");
 }
 
-//	Sends to server data; a command.
+///	Sends to server data; a command.
 int sendRequest(ref Session session, string value)
 {
 	import std.format : format;
@@ -105,7 +107,7 @@ int sendRequest(ref Session session, string value)
 	return t;
 }
 
-//	Sends a response to a command continuation request.
+///	Sends a response to a command continuation request.
 int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
@@ -116,13 +118,14 @@ int sendContinuation(ref Session session, string data)
 }
 
 
-//	Reset any inactivity autologout timer on the server.
+///	Reset any inactivity autologout timer on the server.
 void noop(ref Session session)
 {
 	auto t = session.sendRequest("NOOP");
 	session.check!responseGeneric(t);
 }
 
+///
 auto check(alias F, Args...)(ref Session session, Args args)
 {
 	import std.exception : enforce;
@@ -153,8 +156,8 @@ auto check(alias F, Args...)(ref Session session, Args args)
 }
 
 
-// Connect to the server, login to the IMAP server, get it's capabilities, get the namespace of the mailboxes.
-ref Session login(ref Session session) // , string server, string port, string ssl, string user, string pass)
+// Connect to the server, login to the IMAP server, get its capabilities, get the namespace of the mailboxes.
+ref Session login(ref Session session)
 {
 	import std.format : format;
 	import std.exception : enforce;
@@ -255,7 +258,7 @@ ref Session login(ref Session session) // , string server, string port, string s
 }
 
 
-//	Logout from the IMAP server and disconnect from the server.
+///	Logout from the IMAP server and disconnect
 int logout(ref Session session)
 {
 
@@ -268,6 +271,7 @@ int logout(ref Session session)
 	return ImapStatus.ok;
 }
 
+///
 struct MailboxImapStatus
 {
 	uint exists;
@@ -276,6 +280,7 @@ struct MailboxImapStatus
 	uint uidnext;
 }
 
+///
 auto examine(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
@@ -284,8 +289,9 @@ auto examine(ref Session session, Mailbox mbox)
 	return session.responseExamine(id);
 }
 
-// Get mailbox's status
 // MailboxImapStatus
+
+/// Get mailbox status
 auto status(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
@@ -301,7 +307,7 @@ auto status(ref Session session, Mailbox mbox)
 	return session.responseExamine(id);
 }
 
-//	Open mailbox in read-write mode.
+///	Open mailbox in read-write mode.
 ImapResult select(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -314,7 +320,7 @@ ImapResult select(ref Session session, Mailbox mailbox)
 }
 
 
-//	Close examined/selected mailbox.
+///	Close examined/selected mailbox.
 ImapResult close(ref Session session)
 {
 	enum request = "CLOSE";
@@ -328,7 +334,7 @@ ImapResult close(ref Session session)
 	return response;
 }
 
-//	Remove all messages marked for deletion from selected mailbox.
+///	Remove all messages marked for deletion from selected mailbox.
 ImapResult expunge(ref Session session)
 {
 	enum request = "EXPUNGE";
@@ -336,14 +342,14 @@ ImapResult expunge(ref Session session)
 	return session.responseGeneric(id);
 }
 
+///
 struct MailboxList
 {
 	string[] mailboxes;
 	string[] folders;
 }
 
-//	List available mailboxes
-// MailboxList
+///	List available mailboxes
 auto list(ref Session session, string refer, string name)
 {
 	import std.format: format;
@@ -353,9 +359,8 @@ auto list(ref Session session, string refer, string name)
 }
 
 
-//	List subscribed mailboxes.
+///	List subscribed mailboxes.
 auto lsub(ref Session session, string refer, string name)
-	//  char **mboxs, char **folders)
 {
 	import std.format : format;
 	auto request = format!`LIST "%s" "%s"`(refer,name);
@@ -363,7 +368,7 @@ auto lsub(ref Session session, string refer, string name)
 	return session.responseList(id);
 }
 
-//	Search selected mailbox according to the supplied search criteria.
+///	Search selected mailbox according to the supplied search criteria.
 auto search(ref Session session, string criteria, string charset = null)
 {
 	import std.format : format;
@@ -377,7 +382,7 @@ auto search(ref Session session, string criteria, string charset = null)
 	return r;
 }
 
-//	Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages.
+///	Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages
 auto fetchFast(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -386,7 +391,7 @@ auto fetchFast(ref Session session, string mesg)
 	return r;
 }
 
-//	Fetch the FLAGS of the messages.
+///	Fetch the FLAGS of the messages
 auto fetchFlags(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -394,7 +399,7 @@ auto fetchFlags(ref Session session, string mesg)
 	return session.responseFetchFlags(t);
 }
 
-//	Fetch the INTERNALDATE of the messages.
+///	Fetch the INTERNALDATE of the messages
 auto fetchDate(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -403,7 +408,7 @@ auto fetchDate(ref Session session, string mesg)
 	return session.responseFetchDate(id);
 }
 
-//	Fetch the RFC822.SIZE of the messages.
+///	Fetch the RFC822.SIZE of the messages
 auto fetchSize(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -412,7 +417,7 @@ auto fetchSize(ref Session session, string mesg)
 	return session.responseFetchSize(id);
 }
 
-//	Fetch the body structure, ie. BODYSTRUCTURE, of the messages.
+///	Fetch the BODYSTRUCTURE of the messages
 auto fetchStructure(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -422,7 +427,7 @@ auto fetchStructure(ref Session session, string mesg)
 }
 
 
-//	Fetch the header, ie. BODY[HEADER], of the messages.
+///	Fetch the BODY[HEADER] of the messages
 auto fetchHeader(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -433,7 +438,7 @@ auto fetchHeader(ref Session session, string mesg)
 }
 
 
-//	Fetch the text, ie. BODY[TEXT], of the messages.
+///	Fetch the text, ie. BODY[TEXT], of the messages
 auto fetchText(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -444,7 +449,7 @@ auto fetchText(ref Session session, string mesg)
 }
 
 
-//	Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.
+///	Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.
 auto fetchFields(ref Session session, string mesg, string headerFields)
 {
 	import std.format : format;
@@ -455,7 +460,7 @@ auto fetchFields(ref Session session, string mesg, string headerFields)
 }
 
 
-//	Fetch the specified message part, ie. BODY[<part>], of the messages.
+///	Fetch the specified message part, ie. BODY[<part>], of the messages.
 auto fetchPart(ref Session session, string mesg, string part)
 {
 	import std.format : format;
@@ -465,7 +470,7 @@ auto fetchPart(ref Session session, string mesg, string part)
 	return r;
 }
 
-//	Add, remove or replace the specified flags of the messages.
+///	Add, remove or replace the specified flags of the messages.
 auto store(ref Session session, string mesg, string mode, string flags)
 {
 	import std.format : format;
@@ -489,7 +494,7 @@ auto store(ref Session session, string mesg, string mode, string flags)
 }
 
 
-//	Copy the specified messages to another mailbox.
+///	Copy the specified messages to another mailbox.
 auto copy(ref Session session, string mesg, Mailbox mailbox)
 {
 	import std.format : format;
@@ -512,7 +517,7 @@ auto copy(ref Session session, string mesg, Mailbox mailbox)
 }
 
 /+
-//	Append supplied message to the specified mailbox.
+///	Append supplied message to the specified mailbox.
 auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, string flags, string date)
 {
 	auto request = format!`CREATE "%s"`(mailbox);
@@ -552,7 +557,7 @@ auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, stri
 }
 +/
 
-//	Create the specified mailbox.
+///	Create the specified mailbox.
 auto create(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -562,7 +567,7 @@ auto create(ref Session session, Mailbox mailbox)
 }
 
 
-//	Delete the specified mailbox.
+///	Delete the specified mailbox.
 auto delete_(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -571,7 +576,7 @@ auto delete_(ref Session session, Mailbox mailbox)
 	return session.responseGeneric(id);
 }
 
-//	Rename a mailbox.
+///	Rename a mailbox.
 auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 {
 	import std.format : format;
@@ -580,7 +585,7 @@ auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 	return session.responseGeneric(id);
 }
 
-//	Subscribe the specified mailbox.
+///	Subscribe to the specified mailbox.
 auto subscribe(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -590,7 +595,7 @@ auto subscribe(ref Session session, Mailbox mailbox)
 }
 
 
-//	Unsubscribe the specified mailbox.
+///	Unsubscribe from the specified mailbox.
 auto unsubscribe(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -599,6 +604,7 @@ auto unsubscribe(ref Session session, Mailbox mailbox)
 	return session.responseGeneric(id);
 }
 
+///
 auto idle(ref Session session)
 {
 	import std.stdio;

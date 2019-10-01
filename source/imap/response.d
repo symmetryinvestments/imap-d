@@ -1,3 +1,4 @@
+///
 module imap.response;
 import imap.defines;
 import imap.socket;
@@ -5,9 +6,11 @@ import imap.session;
 import std.typecons : tuple;
 import core.time : Duration;
 
+///
 alias Tag = int;
 
-enum ImapResponse 		//	Server data responses to be parsed; regular expressions index.
+///
+enum ImapResponse
 {
 	tagged,
 	untagged,
@@ -31,11 +34,8 @@ enum ImapResponse 		//	Server data responses to be parsed; regular expressions i
 	fetchBody,
 }
 
-string[ImapResponse] responses;
 
-
-
-//	Read data the server sent.
+///	Read data the server sent.
 auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool timeoutFail = false)
 {
 	timeout = (timeout == Duration.init) ? session.options.timeout : timeout;
@@ -55,7 +55,7 @@ auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool
 }
 
 
-//	Search for tagged response in the data that the server sent.
+///	Search for tagged response in the data that the server sent.
 ImapStatus checkTag(ref Session session, string buf, Tag tag)
 {
 	import std.algorithm : all, map, filter;
@@ -109,7 +109,7 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 }
 
 
-//	Check if server sent a BYE response (connection is closed immediately).
+///	Check if server sent a BYE response (connection is closed immediately).
 bool checkBye(string buf)
 {
 	import std.string : toUpper;
@@ -119,7 +119,7 @@ bool checkBye(string buf)
 }
 
 
-//	Check if server sent a PREAUTH response (connection already authenticated by external means).
+///	Check if server sent a PREAUTH response (connection already authenticated by external means).
 int checkPreAuth(string buf)
 {
 	import std.string : toUpper;
@@ -136,7 +136,7 @@ bool checkContinuation(string buf)
 }
 
 
-//	Check if the server sent a TRYCREATE response.
+///	Check if the server sent a TRYCREATE response.
 int checkTryCreate(string buf)
 {
 	import std.string : toUpper;
@@ -144,13 +144,14 @@ int checkTryCreate(string buf)
 	return buf.toUpper.canFind("[TRYCREATE]");
 }
 
+///
 struct ImapResult
 {
 	ImapStatus status;
 	string value;
 }
 
-//	Get server data and make sure there is a tagged response inside them.
+///	Get server data and make sure there is a tagged response inside them.
 ImapResult responseGeneric(ref Session session, Tag tag)
 {
 	import std.typecons: Tuple;
@@ -182,7 +183,7 @@ ImapResult responseGeneric(ref Session session, Tag tag)
 }
 
 
-//	Get server data and make sure there is a continuation response inside them.
+///	Get server data and make sure there is a continuation response inside them.
 ImapResult responseContinuation(ref Session session, Tag tag)
 {
 	import std.algorithm : any;
@@ -216,7 +217,7 @@ ImapResult responseContinuation(ref Session session, Tag tag)
 }
 
 
-//	Process the greeting that server sends during connection.
+///	Process the greeting that server sends during connection.
 ImapResult responseGreeting(ref Session session)
 {
 	import std.experimental.logger : tracef;
@@ -237,7 +238,7 @@ ImapResult responseGreeting(ref Session session)
 }
 
 
-//	Process the data that server sent due to IMAP CAPABILITY client request.
+///	Process the data that server sent due to IMAP CAPABILITY client request.
 ImapResult responseCapability(ref Session session, Tag tag)
 {
 	import std.experimental.logger : infof;
@@ -331,7 +332,7 @@ ImapResult responseCapability(ref Session session, Tag tag)
 }
 
 
-//	Process the data that server sent due to IMAP AUTHENTICATE client request.
+///	Process the data that server sent due to IMAP AUTHENTICATE client request.
 ImapResult responseAuthenticate(ref Session session, Tag tag)
 {
 	import std.string : splitLines, join, strip, startsWith;
@@ -352,7 +353,7 @@ ImapResult responseAuthenticate(ref Session session, Tag tag)
 		return ImapResult(ImapStatus.none,res.value);
 }
 
-//	Process the data that server sent due to IMAP NAMESPACE client request.
+///	Process the data that server sent due to IMAP NAMESPACE client request.
 ImapResult responseNamespace(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -362,7 +363,7 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 }
 
 
-//	Process the data that server sent due to IMAP STATUS client request.
+///	Process the data that server sent due to IMAP STATUS client request.
 ImapResult responseStatus(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -373,7 +374,7 @@ ImapResult responseStatus(ref Session session, int tag)
 
 
 
-//	Process the data that server sent due to IMAP EXAMINE client request.
+///	Process the data that server sent due to IMAP EXAMINE client request.
 ImapResult responseExamine(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -383,7 +384,7 @@ ImapResult responseExamine(ref Session session, int tag)
 }
 
 
-//	Process the data that server sent due to IMAP SELECT client request.
+///	Process the data that server sent due to IMAP SELECT client request.
 ImapResult responseSelect(ref Session session, int tag)
 {
 	import std.string : toUpper;
@@ -397,6 +398,7 @@ ImapResult responseSelect(ref Session session, int tag)
 		return r;
 }
 
+///
 enum ListNameAttribute
 {
 	@(`\NoInferiors`)
@@ -413,6 +415,7 @@ enum ListNameAttribute
 }
 
 
+///
 string stripQuotes(string s)
 {
 	import std.range : front, back;
@@ -423,6 +426,7 @@ string stripQuotes(string s)
 	return s;
 }
 
+///
 string stripBrackets(string s)
 {
 	import std.range : front, back;
@@ -433,6 +437,7 @@ string stripBrackets(string s)
 	return s;
 }
 
+///
 struct ListEntry
 {
 	ListNameAttribute[] attributes;
@@ -440,6 +445,7 @@ struct ListEntry
 	string path;
 }
 
+///
 struct ListResponse
 {
 	ImapStatus status;
@@ -447,7 +453,7 @@ struct ListResponse
 	ListEntry[] entries;
 }
 
-//	Process the data that server sent due to IMAP LIST or IMAP LSUB client request.
+///	Process the data that server sent due to IMAP LIST or IMAP LSUB client request.
 ListResponse responseList(ref Session session, Tag tag)
 {
 //			list:			"\\* (LIST|LSUB) \\(([[:print:]]*)\\) (\"[[:print:]]\"|NIL) " ~
@@ -498,6 +504,7 @@ ListResponse responseList(ref Session session, Tag tag)
 	return ListResponse(ImapStatus.ok,result.value,listEntries);
 }
 
+///
 struct SearchResult
 {
 	ImapStatus status;
@@ -505,7 +512,7 @@ struct SearchResult
 	long[] ids;
 }
 
-//	Process the data that server sent due to IMAP SEARCH client request.
+///	Process the data that server sent due to IMAP SEARCH client request.
 SearchResult responseSearch(ref Session session, int tag)
 {
 	import std.algorithm : filter, map, each;
@@ -532,7 +539,7 @@ SearchResult responseSearch(ref Session session, int tag)
 	return SearchResult(r.status,r.value,ids.data);
 }
 
-//	Process the data that server sent due to IMAP FETCH FAST client request.
+///	Process the data that server sent due to IMAP FETCH FAST client request.
 ImapResult responseFetchFast(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -541,6 +548,8 @@ ImapResult responseFetchFast(ref Session session, int tag)
 	return r;
 }
 
+
+///
 struct FlagResult
 {
 	ImapStatus status;
@@ -549,7 +558,7 @@ struct FlagResult
 	ImapFlag[] flags;
 }
 
-//	Process the data that server sent due to IMAP FETCH FLAGS client request.
+///	Process the data that server sent due to IMAP FETCH FLAGS client request.
 FlagResult responseFetchFlags(ref Session session, Tag tag)
 {
 	import std.experimental.logger : infof;
@@ -611,7 +620,7 @@ FlagResult responseFetchFlags(ref Session session, Tag tag)
 	return FlagResult(ImapStatus.ok, r.value,ids,flags);
 }
 
-
+///
 ImapResult responseFetchDate(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -620,6 +629,7 @@ ImapResult responseFetchDate(ref Session session, Tag tag)
 	return r;
 }
 
+///
 struct ResponseSize
 {
 	ImapStatus status;
@@ -627,7 +637,7 @@ struct ResponseSize
 }
 
 
-//	Process the data that server sent due to IMAP FETCH RFC822.SIZE client request.
+///	Process the data that server sent due to IMAP FETCH RFC822.SIZE client request.
 ImapResult responseFetchSize(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -637,7 +647,7 @@ ImapResult responseFetchSize(ref Session session, Tag tag)
 }
 
 
-//	Process the data that server sent due to IMAP FETCH BODYSTRUCTURE client request.
+///	Process the data that server sent due to IMAP FETCH BODYSTRUCTURE client request.
 ImapResult responseFetchStructure(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -646,11 +656,13 @@ ImapResult responseFetchStructure(ref Session session, int tag)
 	return r;
 }
 
+///
 struct BodyResponse
 {
 	string value;
 }
 
+///
 ImapResult responseFetchBody(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -687,12 +699,13 @@ ImapResult fetchBody(ref Session session, Tag tag)
 +/
 
 
+///
 bool isTagged(ImapStatus status)
 {
 	return (status == ImapStatus.ok) || (status == ImapStatus.bad) || (status == ImapStatus.no);
 }
 
-//	Process the data that server sent due to IMAP IDLE client request.
+///	Process the data that server sent due to IMAP IDLE client request.
 ImapResult responseIdle(ref Session session, Tag tag)
 {
 	import std.experimental.logger : tracef;

@@ -1,3 +1,4 @@
+///
 module imap.session;
 import imap.defines;
 import imap.socket;
@@ -19,6 +20,7 @@ struct SSL_
 	alias handle this;
 }
 
+///
 struct Set(T)
 {
 	bool[T] values_;
@@ -39,6 +41,7 @@ struct Set(T)
 	}
 }
 
+///
 Set!T add(T)(Set!T set, T value)
 {
 	import std.algorithm : each;
@@ -48,6 +51,7 @@ Set!T add(T)(Set!T set, T value)
 	return ret;
 }
 
+///
 Set!T remove(T)(Set!T set, T value)
 {
 	import std.algorithm : each;
@@ -57,18 +61,21 @@ Set!T remove(T)(Set!T set, T value)
 	return ret;
 }
 
+///
 struct ImapServer
 {
 	string server = "imap.fastmail.com"; // localhost";
 	string port = "993";
 }
 
+///
 struct  ImapLogin
 {
 	string username = "laeeth@kaleidic.io";
 	string password;
 }
 
+///
 struct Options
 {
 	import core.time : Duration, seconds, minutes;
@@ -94,6 +101,7 @@ struct Options
 	Duration timeout = 20.seconds;
 }
 
+///
 struct Session
 {
 	import imap.defines : ImapStatus;

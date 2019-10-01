@@ -284,14 +284,14 @@ auto examine(ref Session session, Mailbox mbox)
 	return session.responseExamine(id);
 }
 
-// Get mailbox's status.
+// Get mailbox's status
 // MailboxImapStatus
 auto status(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
 	if (session.imapProtocol == ImapProtocol.imap4Rev1)
 	{
-		auto request = format!`STATUS "%s" (MESSAGES RECENT UNSEEN UIDNET)`(mbox.toString());
+		auto request = format!`STATUS "%s" (MESSAGES RECENT UNSEEN UIDNEXT)`(mbox.toString());
 		auto id = session.sendRequest(request);
 		return session.responseStatus(id);
 	}

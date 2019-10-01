@@ -11,9 +11,13 @@ print(session)
 //print(imap.socketSecureWrite(session,"HELLO"))
 //print(imap.socketSecureRead(session))
 
+INBOX =imap.Mailbox("INBOX/kaleidic","/",'/')
+
+// Run status on INBOX before we open it
+status_result = imap.status(session,INBOX)
+print(status_result)
 
 // Select Inbox
-INBOX =imap.Mailbox("INBOX/kaleidic","/",'/')
 result = imap.select(session,INBOX)
 print(result)
 

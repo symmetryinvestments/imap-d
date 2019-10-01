@@ -126,8 +126,6 @@ void registerImap(ref Handlers handlers)
 
 	// FIXME - add current tag as SIL vairable - static int tag = 0x1000;
 
-
-	version(None) // need to fix certificates etc
 	{
 		handlers.openModule("ssl");
 		scope(exit) handlers.closeModule();

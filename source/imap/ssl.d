@@ -12,9 +12,6 @@ import imap.defines;
 import imap.socket;
 import imap.session;
 
-Status getCert(ref Session session) { return Status.success; }
-version(None):
-//extern Environment env;
 enum STDIN_FILENO = 0;
 
 X509* getPeerCertificate(ref SSL context)

@@ -1,6 +1,6 @@
 module imap.imap;
 public import imap.auth;
-// public import imap.ssl;
+public import imap.ssl;
 public import imap.defines;
 public import imap.namespace;
 public import imap.request;

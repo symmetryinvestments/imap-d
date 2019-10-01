@@ -5,7 +5,7 @@ Status - usable alpha
 
 Most functions are implemented but parsing responses needs to be done.
 Further to that, MIME parsing functionality from another library
-needs to be integrated.  Certificate checking temporarily broken.
+needs to be integrated.
 
 
 Heavily inspired by imapfilter.

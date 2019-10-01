@@ -5,44 +5,68 @@ Status - usable alpha
 
 Most functions are implemented but parsing responses needs to be done.
 Further to that, MIME parsing functionality from another library
-needs to be integrated.
+needs to be integrated.  Certificate checking temporarily broken.
+
 
 Heavily inspired by imapfilter.
 
 ```
-// PASSWORD is set in IMAP_PASS environmental variable
-login = imap.ImapLogin("laeeth@kaleidic.io","")
-server = imap.ImapServer("imap.fastmail.com","993")
+import imap;
 
-session = imap.Session(server,login)
-session=imap.openConnection(session)
-print(session.socket)
-session = imap.login(session);
+int main(string[] args)
+{
+	import std.conv : to;
+	import std.stdio : writeln;
+	import std.range : back;
 
-print(session)
-//print(imap.socketSecureWrite(session,"HELLO"))
-//print(imap.socketSecureRead(session))
+	if (args.length < 6)
+	{
+		import std.stdio: stderr;
+		stderr.writeln("imap-example <user> <pass> <server> <port> <mailbox>");
+		return -1;
+	}
+
+	auto user = args[1];
+	auto pass = args[2];
+	auto server = args[3];
+	auto port = args[4];
+	auto mailbox = args[5];
+
+	// PASSWORD is set in IMAP_PASS environmental variable if none set here
+	auto login = ImapLogin(user,pass);
+	auto imapServer = ImapServer(server,port);
+
+	auto session = Session(imapServer,login);
+	session = session.openConnection;
+	writeln(session.socket);
+
+	session = session.login;
+	writeln(session);
+	//writeln(socketSecureWrite(session,"HELLO"));
+	//writeln(socketSecureRead(session));
 
 
-// Select Inbox
-INBOX =imap.Mailbox("INBOX/kaleidic","/",'/')
-result = imap.select(session,INBOX)
-print(result)
+	// Select Inbox
+	auto INBOX =Mailbox(mailbox,"/",'/');
+	auto result = session.select(INBOX);
+	writeln(result);
 
-// search all messages since 29 Jan 2019 and get UIDs
-result=imap.search(session,"SINCE 29-Jan-2019")
-print(result.value)
+	// search all messages since 29 Jan 2019 and get UIDs
+	auto searchResult = session.search("SINCE 29-Jan-2019");
+	writeln(searchResult.value);
+	writeln(searchResult.ids);
 
-// search all messages since 29 Jan 2019 and get UIDs
-result=imap.search(session,"SINCE 29-Jan-2019 FROM \"John Colvin\"")
-print(result.value)
+	// search all messages from GitHub since 29 Jan 2019 and get UIDs
+	searchResult = session.search(`SINCE 29-Jan-2019 FROM "GitHub"`);
+	writeln(searchResult.value);
 
-// search all messages from GitHub since 29 Jan 2019 and get UIDs
-result=imap.search(session,"SINCE 29-Jan-2012 FROM \"Github\"")
-print(result.value)
+	// fetch one of the messages from above
+	auto messageResult = session.fetchText(searchResult.ids.back.to!string);
+	writeln(messageResult.value);
 
-// fetch one of the messages from above
-message_result = imap.fetchText(session,"70290")
-print(message_result.value)
-
+	// just fetch the fields we care about
+	auto fieldsResult = session.fetchFields(searchResult.ids.back.to!string,"FROM TO");
+	writeln(fieldsResult.value);
+	return 0;
+}
 ```

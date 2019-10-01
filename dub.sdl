@@ -1,4 +1,5 @@
 name "symmetry-imap"
+description "IMAP client library"
 dependency "openssl" version="~master"
 license "MIT"
 

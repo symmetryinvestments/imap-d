@@ -1,5 +1,4 @@
 module imap.ssl;
-//version(SSL):
 import std.stdio;
 import std.string;
 import core.sys.posix.unistd : isatty;
@@ -9,15 +8,12 @@ import deimos.openssl.x509;
 import deimos.openssl.pem;
 import deimos.openssl.evp;
 
-//<openssl/x509.h>
-// <openssl/ssl.h>
-// <openssl/pem.h>
-// <openssl/evp.h>
-
 import imap.defines;
 import imap.socket;
+import imap.session;
 
-
+Status getCert(ref Session session) { return Status.success; }
+version(None):
 //extern Environment env;
 enum STDIN_FILENO = 0;
 

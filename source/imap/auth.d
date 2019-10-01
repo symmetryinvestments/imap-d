@@ -7,10 +7,6 @@ import deimos.openssl.evp;
 import imap.defines;
 
 
-// Authenticate to the server with the Challenge-Response Authentication
-// Mechanism (CRAM).  The authentication type associated with CRAM is
-// "CRAM-MD5".
-
 string authCramMD5(string user, string pass,string challenge)
 {
 	import std.conv : to;

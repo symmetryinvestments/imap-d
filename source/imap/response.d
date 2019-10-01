@@ -1,27 +1,11 @@
 module imap.response;
 import imap.defines;
 import imap.socket;
+import imap.session;
 import std.typecons : tuple;
 import core.time : Duration;
 
 alias Tag = int;
-/+
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <ctype.h>
-#include <regex.h>
-
-#include "imapfilter.h"
-#include "session.h"
-#include "buffer.h"
-#include "regexp.h"
-+/
-
-//extern options opts;
-
-//buffer ibuf;			//	Input buffer.
 
 enum ImapResponse 		//	Server data responses to be parsed; regular expressions index.
 {
@@ -49,38 +33,6 @@ enum ImapResponse 		//	Server data responses to be parsed; regular expressions i
 
 string[ImapResponse] responses;
 
-shared static this()
-{
-	with(ImapResponse)
-	{
-		responses = [
-			tagged: 		"([[:xdigit:]]{4,4}) (OK|NO|BAD) [^[:cntrl:]]*\r+\n+",
-			untagged: 		"\\* [[:digit:]]+ ([[:graph:]]*)[^[:cntrl:]]*\r+\n+",
-			capability:		"\\* CAPABILITY ([[:print:]]*)\r+\n+",
-			authenticate:	"\\+ ([[:graph:]]*)\r+\n+",
-			namespace:		"\\* NAMESPACE (NIL|\\(\\(\"([[:graph:]]*)\" \"([[:print:]])\"\\)" ~
-							"[[:print:]]*\\)) (NIL|\\([[:print:]]*\\)) (NIL|\\([[:print:]]*\\)) *" ~
-					  		"\r+\n+",
-			status:			"\\* STATUS [[:print:]]* \\(([[:alnum:] ]*)\\) *\r+\n+",
-			statusMessages:	"MESSAGES ([[:digit:]]+)",
-			statusRecent:	"RECENT ([[:digit:]]+)",
-			statusUnseen:	"UNSEEN ([[:digit:]]+)",
-			statusUidNext:	"UIDNEXT ([[:digit:]]+)",
-			exists:			"\\* ([[:digit:]]+) EXISTS *\r+\n+",
-			recent:			"\\* ([[:digit:]]+) RECENT *\r+\n+",
-			list:			"\\* (LIST|LSUB) \\(([[:print:]]*)\\) (\"[[:print:]]\"|NIL) " ~
-							  "(\"([[:print:]]+)\"|([[:print:]]+)|\\{([[:digit:]]+)\\} *\r+\n+([[:print:]]*))\r+\n+",
-			search:			"\\* SEARCH ?([[:digit:] ]*)\r+\n+",
-			fetch:			"\\* [[:digit:]]+ FETCH \\(([[:print:]]*)\\) *\r+\n+",
-			fetchFlags: 		"FLAGS \\(([[:print:]]*)\\)",
-			fetchDate: 			"INTERNALDATE \"([[:print:]]*)\"",
-			fetchSize: 			"RFC822.SIZE ([[:digit:]]+)",
-			fetchStructure:		"BODYSTRUCTURE (\\([[:print:]]+\\))",
-			fetchBody: 			"\\* [[:digit:]]+ FETCH \\([[:print:]]*BODY\\[[[:print:]]*\\] " ~
-								"(\\{([[:digit:]]+)\\} *\r+\n+|\"([[:print:]]*)\")",
-		];
-	}
-}
 
 
 //	Read data the server sent.
@@ -409,7 +361,6 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 
 //	Process the data that server sent due to IMAP STATUS client request.
 ImapResult responseStatus(ref Session session, int tag)
-//	, uint *exist, uint *recent, uint *unseen, uint *uidnext)
 {
 	auto r = session.responseGeneric(tag);
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
@@ -729,58 +680,6 @@ ImapResult fetchBody(ref Session session, Tag tag)
 					.array
 					.map!(line => line[CapabilityToken.length ..$].strip.split
 								.map!(token => token.strip.stripBrackets.split)
-int r, match;
-uint offset;
-ssize_t n;
-regexp *re;
-
-if (tag == -1)
-	return -1;
-
-buffer_reset(&ibuf);
-
-match = -1;
-offset = 0;
-
-re = responses[ImapResponse.fetchBody];
-
-do {
-	buffer_check(&ibuf, ibuf.len + INPUT_BUF);
-	if ((n = receiveResponse(ssn, ibuf.data + ibuf.len, 0, 1)) ==
-		-1)
-		return -1;
-	ibuf.len += n;
-
-	if (match != 0) {
-		match = regexec(re.preg, ibuf.data, re.nmatch,
-			re.pmatch, 0);
-		
-		if (match == 0 && re.pmatch[2].rm_so != -1 && re.pmatch[2].rm_eo != -1)
-		{
-			*len = strtoul(ibuf.data + re.pmatch[2].rm_so, null, 10);
-			offset = re.pmatch[0].rm_eo + *len;
-		}
-	}
-
-	if (offset != 0 && ibuf.len >= offset) {
-		if (checkByte(ibuf.data + offset))
-			return ImapStatus.bye;
-	}
-} while (ibuf.len < offset || (r = check_tag(ibuf.data + offset, ssn,
-	tag)) == ImapStatus.none);
-
-if (match == 0) {
-	if (re.pmatch[2].rm_so != -1 &&
-		re.pmatch[2].rm_eo != -1) {
-		*body = ibuf.data + re.pmatch[0].rm_eo;
-	} else {
-		*body = ibuf.data + re.pmatch[3].rm_so;
-		*len = re.pmatch[3].rm_eo - re.pmatch[3].rm_so;
-	}
-}
-
-return r;
-return ImapResult.init;
 }
 +/
 

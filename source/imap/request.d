@@ -1,55 +1,14 @@
 module imap.request;
-/+
-
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <strings.h>
-#include <stdarg.h>
-
-#include "imapfilter.h"
-#include "session.h"
-#include "buffer.h"
-
-
-#define CHECK(F)							       \
-	switch ((F)) {							       \
-	case -1:							       \
-		goto fail;						       \
-	case STATUS_BYE:						       \
-		goto abort;						       \
-	}
-
-#define TRY(F)								       \
-	switch ((F)) {							       \
-	case -1:							       \
-		if ((!strcasecmp(get_option_string("recover"), "all") ||       \
-		    !strcasecmp(get_option_string("recover"), "errors")) &&    \
-		    request_login(&session, null, null, null, null, null) != -1)   \
-			return STATUS_NONE;				       \
-		return -1;						       \
-	case STATUS_BYE:						       \
-		close_connection(session);					       \
-		if (!strcasecmp(get_option_string("recover"), "all")) {	       \
-			if (request_login(&session, null, null, null, null,	       \
-			    null) != -1)				       \
-				return STATUS_NONE;			       \
-		} else							       \
-			session_destroy(session);				       \
-		return -1;						       \
-	}
-
-+/
 
 import imap.socket;
+import imap.session;
 import imap.namespace;
 import imap.defines;
 import imap.auth;
 import imap.response;
 
-///
-static int tag = 0x1000;	/* Every IMAP command is prefixed with a
-				 * unique [:alnum:] string. */
+/// Every IMAP command is preceded with a unique string
+static int tag = 0x1000;
 
 auto imapTry(alias F,Args...)(ref Session session, Args args)
 {
@@ -316,7 +275,15 @@ struct MailboxImapStatus
 	uint unseen;
 	uint uidnext;
 }
-/+
+
+auto examine(ref Session session, Mailbox mbox)
+{
+	import std.format : format;
+	auto request = format!`EXAMINE "%s"`(mbox);
+	auto id = session.sendRequest(request);
+	return session.responseExamine(id);
+}
+
 // Get mailbox's status.
 // MailboxImapStatus
 auto status(ref Session session, Mailbox mbox)
@@ -334,7 +301,6 @@ auto status(ref Session session, Mailbox mbox)
 	return session.responseExamine(id);
 }
 
-+/
 //	Open mailbox in read-write mode.
 ImapResult select(ref Session session, Mailbox mailbox)
 {

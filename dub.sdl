@@ -1,5 +1,6 @@
 name "symmetry-imap"
 dependency "openssl" version="~master"
+license "MIT"
 
 versions "SSL"
 libs "ssl" "crypto" 

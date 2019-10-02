@@ -70,6 +70,12 @@ auto parse(string arg)
 }
 
 
+void writeBinary(string file, string data)
+{
+	import std.file;
+	write(file,data);
+}
+
 ///
 void registerImap(ref Handlers handlers)
 {
@@ -87,6 +93,7 @@ void registerImap(ref Handlers handlers)
 	import deimos.openssl.pem;
 	import deimos.openssl.evp;
 	import std.stdio : File;
+	import arsd.email : IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer;
 
 	{
 		handlers.openModule("imap");
@@ -96,7 +103,9 @@ void registerImap(ref Handlers handlers)
 		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
-				Status, FlagResult,SearchResult,Status,StatusResult,
+				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,
+				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer,MimePart,
+				MimeAttachment, // proxy from imap not arsd
 		))
 			handlers.registerType!T;
 
@@ -106,7 +115,7 @@ void registerImap(ref Handlers handlers)
 		static foreach(F; AliasSeq!(noop,login,logout,status,examine,select,close,expunge,list,lsub,
 					search,fetchFast,fetchFlags,fetchDate,fetchSize, fetchStructure, fetchHeader,
 					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
-					unsubscribe, idle, openConnection, closeConnection,
+					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinary,
 		))
 			handlers.registerHandler!F;
 	}
@@ -122,7 +131,7 @@ void registerImap(ref Handlers handlers)
 		static foreach(F; AliasSeq!(socketRead,socketWrite,
 						getTerminalAttributes,setTerminalAttributes,enableEcho,disableEcho,
 						socketSecureRead,socketSecureWrite,closeSecureConnection,openSecureConnection,
-						isLoginRequest, sendRequest, sendContinuation
+						isLoginRequest, sendRequest, sendContinuation, 
 		))
 			handlers.registerHandler!F;
 	}

@@ -719,16 +719,36 @@ ImapResult responseFetchStructure(ref Session session, int tag)
 ///
 struct BodyResponse
 {
+	import arsd.email : MimePart, IncomingEmailMessage;
 	ImapStatus status;
 	string value;
+	string[] lines;
 	IncomingEmailMessage message;
+}
+
+struct MimeAttachment
+{
+	string type;
+	string filename;
+	string content;
+	string id;
+}
+
+// SIL cannot handle void[], so ...
+MimeAttachment[] attachments(IncomingEmailMessage message)
+{
+	import std.algorithm : map;
+	import std.array : array;
+	return message.attachments.map!(a => MimeAttachment(a.type,a.filename,cast(string)a.content.idup,a.id)).array;
 }
 
 ///
 BodyResponse responseFetchBody(ref Session session, Tag tag)
 {
-	import std.string : splitLines;
+	import arsd.email : MimePart, IncomingEmailMessage;
+	import std.string : splitLines, join;
 	import std.exception : enforce;
+	import std.range : front;
 	auto r = session.responseGeneric(tag);
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
 		return BodyResponse(r.status,r.value);
@@ -736,7 +756,11 @@ BodyResponse responseFetchBody(ref Session session, Tag tag)
 	enforce(parsed[1].length <2);
 	auto bodyText = (parsed[1].length==0) ? r.value: parsed[1][0];
 	auto bodyLines = bodyText.splitLines;
-	return BodyResponse(r.status,r.value,new IncomingEmailMessage(bodyLines));
+	if (bodyLines.length > 0 && bodyLines.front.length ==0)
+		bodyLines = bodyLines[1..$];
+	//return BodyResponse(r.status,r.value,new IncomingEmailMessage(bodyLines));
+	auto bodyLinesEmail = cast(immutable(ubyte)[][]) bodyLines.idup;
+	return BodyResponse(r.status,r.value,bodyLines,new IncomingEmailMessage(bodyLinesEmail,false));
 }
 /+
 //	Process the data that server sent due to IMAP FETCH BODY[] client request,
@@ -856,7 +880,7 @@ LiteralInfo findLiteral(string buf)
 		i = buf[j..$].indexOf("{");
 		i = (i == -1) ? i : i+j;
 		j = ((i == -1) || (i+1 == buf.length)) ? -1 : buf[i + 1 .. $].indexOf("}");
-		j = (j == -1) ? j : (i + 1);
+		j = (j == -1) ? j : (i + 1) + j;
 		hasLength = (i !=-1 && j != -1) && buf[i+1 .. j].isNumeric;
 		len = hasLength ? buf[i+1 .. j].to!ptrdiff_t : -1;
 		stderr.writefln("i=%s,j=%s,len=%s",i,j,len);

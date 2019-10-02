@@ -4,8 +4,8 @@ IMAP for D / SIL
 Status - usable alpha
 
 Most functions are implemented but parsing responses needs to be done.
-Further to that, MIME parsing functionality from another library
-needs to be integrated.
+Uses arsd.email to parse emails including MIME - works currently only if you
+ask for the whole message - fetchRFC822
 
 
 Heavily inspired by imapfilter.
@@ -13,10 +13,19 @@ Heavily inspired by imapfilter.
 
 Features to add:
 
-- MIME
 - pipeFrom
 - pipeTo
 - more IMAP extensions
+
+Present, but needs refining:
+
+- currently IMAP literals are only parsed for returns of type responseBody
+- only fetchRFC822 works for parsing results (works if you want whole email including
+  attachments)
+- mailbox UTF7 conversion code is horrible and needs improving
+- more abstraction and better design needed for parsing
+
+Probably many bugs - please file issues.  PRs welcomed.
 
 
 ```
@@ -76,6 +85,8 @@ int main(string[] args)
 	// just fetch the fields we care about
 	auto fieldsResult = session.fetchFields(searchResult.ids.back.to!string,"FROM TO");
 	writeln(fieldsResult.value);
+
+	// see example in SIL directory for how to fetch a whole message including attachments
 	return 0;
 }
 ```

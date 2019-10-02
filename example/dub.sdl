@@ -1,0 +1,7 @@
+name "imap-example"
+description "IMAP D example"
+authors "Laeeth Isharc"
+copyright "Copyright © 2019, Laeeth Isharc"
+license "proprietary"
+dependency "symmetry-imap" path=".."
+targetType "executable"

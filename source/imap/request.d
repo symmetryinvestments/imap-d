@@ -318,6 +318,19 @@ ImapResult select(ref Session session, Mailbox mailbox)
 
 
 ///	Close examined/selected mailbox.
+ImapResult raw(ref Session session, string command)
+{
+	auto id = sendRequest(session,command);
+	auto response = responseGeneric(session,id);
+	if (response.status == ImapStatus.ok && session.socket.isAlive)
+	{
+		session.close();
+		session.selected = Mailbox.init;
+	}
+	return response;
+}
+
+///	Close examined/selected mailbox.
 ImapResult close(ref Session session)
 {
 	enum request = "CLOSE";
@@ -434,6 +447,16 @@ auto fetchHeader(ref Session session, string mesg)
 	return r;
 }
 
+
+///	Fetch the text, ie. BODY[TEXT], of the messages
+auto fetchRFC822(ref Session session, string mesg)
+{
+	import std.format : format;
+
+	auto id  = session.imapTry!sendRequest(format!`UID FETCH %s RFC822`(mesg));
+	auto r = session.responseFetchBody(id);
+	return r;
+}
 
 ///	Fetch the text, ie. BODY[TEXT], of the messages
 auto fetchText(ref Session session, string mesg)

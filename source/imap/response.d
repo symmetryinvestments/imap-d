@@ -853,7 +853,8 @@ LiteralInfo findLiteral(string buf)
 	import std.stdio;
 	do
 	{
-		i = buf.indexOf("{");
+		i = buf[j..$].indexOf("{");
+		i = (i == -1) ? i : i+j;
 		j = ((i == -1) || (i+1 == buf.length)) ? -1 : buf[i + 1 .. $].indexOf("}");
 		j = (j == -1) ? j : (i + 1);
 		hasLength = (i !=-1 && j != -1) && buf[i+1 .. j].isNumeric;

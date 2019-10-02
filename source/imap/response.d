@@ -5,7 +5,7 @@ import imap.socket;
 import imap.session;
 import std.typecons : tuple;
 import core.time : Duration;
-
+import arsd.email : IncomingEmailMessage;
 ///
 alias Tag = int;
 
@@ -719,16 +719,24 @@ ImapResult responseFetchStructure(ref Session session, int tag)
 ///
 struct BodyResponse
 {
+	ImapStatus status;
 	string value;
+	IncomingEmailMessage message;
 }
 
 ///
-ImapResult responseFetchBody(ref Session session, Tag tag)
+BodyResponse responseFetchBody(ref Session session, Tag tag)
 {
+	import std.string : splitLines;
+	import std.exception : enforce;
 	auto r = session.responseGeneric(tag);
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-		return ImapResult(r.status,r.value);
-	return r;
+		return BodyResponse(r.status,r.value);
+	auto parsed = r.value.extractLiterals;
+	enforce(parsed[1].length <2);
+	auto bodyText = (parsed[1].length==0) ? r.value: parsed[1][0];
+	auto bodyLines = bodyText.splitLines;
+	return BodyResponse(r.status,r.value,new IncomingEmailMessage(bodyLines));
 }
 /+
 //	Process the data that server sent due to IMAP FETCH BODY[] client request,
@@ -807,3 +815,85 @@ ImapResult responseIdle(ref Session session, Tag tag)
 
 	return ImapResult(ImapStatus.untagged,result[1]);
 }
+
+bool isControlChar(char c)
+{
+	return(c >=1 && c < 32);
+}
+
+bool isSpecialChar(char c)
+{
+	import std.algorithm : canFind;
+	return " ()%[".canFind(c);
+}
+
+bool isWhiteSpace(char c)
+{
+	return (c == '\t') || (c =='\r') || (c =='\n');
+}
+
+enum Backslash = '\\';
+enum LSquare = '[';
+enum RSquare = ']';
+enum DoubleQuote = '"';
+
+struct LiteralInfo
+{
+	ptrdiff_t i;
+	ptrdiff_t j;
+	ptrdiff_t length;
+}
+
+LiteralInfo findLiteral(string buf)
+{
+	import std.string : indexOf, isNumeric;
+	import std.conv : to;
+	ptrdiff_t i,j, len;
+	bool hasLength;
+	import std.stdio;
+	do
+	{
+		i = buf.indexOf("{");
+		j = ((i == -1) || (i+1 == buf.length)) ? -1 : buf[i + 1 .. $].indexOf("}");
+		j = (j == -1) ? j : (i + 1);
+		hasLength = (i !=-1 && j != -1) && buf[i+1 .. j].isNumeric;
+		len = hasLength ? buf[i+1 .. j].to!ptrdiff_t : -1;
+		stderr.writefln("i=%s,j=%s,len=%s",i,j,len);
+	} while (i != -1 && j !=-1 && !hasLength);
+	return LiteralInfo(i,j,len);
+}
+
+auto extractLiterals(string buf)
+{
+	import std.array : Appender;
+	import std.typecons : tuple;
+	import std.stdio;
+
+	Appender!(string[]) nonLiterals;
+	Appender!(string[]) literals;
+	LiteralInfo literalInfo;
+	do
+	{
+		literalInfo= findLiteral(buf);
+		stderr.writefln("literalInfo=%s,buf=%s",literalInfo,buf.length);
+		if(literalInfo.length > 0)
+		{
+			string literal = buf[literalInfo.j+1.. literalInfo.j+1 + literalInfo.length];
+			literals.put(literal);
+			nonLiterals.put(buf[0 .. literalInfo.i]);
+			buf = buf[literalInfo.j+2 + literalInfo.length .. $];
+		}
+		else
+		{
+			nonLiterals.put(buf);
+			buf.length = 0;
+		}
+	} while (buf.length > 0 && literalInfo.length > 0);
+	return tuple(nonLiterals.data,literals.data);
+}
+/+
+"* 51045 FETCH (UID 70290 BODY[TEXT] {67265}
+
+)
+D1009 OK Completed (0.002 sec)
++/

@@ -1,6 +1,355 @@
 ///
 module imap.namespace;
-immutable base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
+import std.conv : to;
+
+enum UNICODE_REPLACEMENT_CHAR= to!int("fffd",16);
+
+// Characters >= base require surrogates
+enum UTF16_SURROGATE_BASE = to!int("10000",16);
+
+enum UTF16_SURROGATE_SHIFT = 10;
+enum UTF16_SURROGATE_MASK = to!int("03ff",16);
+enum UTF16_SURROGATE_HIGH_FIRST = to!int("d800",16);
+enum UTF16_SURROGATE_HIGH_LAST = to!int("dbff",16);
+enum UTF16_SURROGATE_HIGH_MAX = to!int("dfff",16);
+enum UTF16_SURROGATE_LOW_FIRST = to!int("dc00",16);
+enum UTF16_SURROGATE_LOW_LAST = to!int("dfff",16);
+
+auto UTF16_SURROGATE_HIGH(T:int)(T chr)
+{
+	return (UTF16_SURROGATE_HIGH_FIRST + 
+		 	 (((chr) - UTF16_SURROGATE_BASE) >> UTF16_SURROGATE_SHIFT));
+}
+
+auto UTF16_SURROGATE_LOW(T:int)(T chr)
+{
+	return (UTF16_SURROGATE_LOW_FIRST + 
+		 	 (((chr) - UTF16_SURROGATE_BASE) & UTF16_SURROGATE_MASK));
+}
+
+enum UTF8_REPLACEMENT_CHAR_LEN = 3;
+
+char Hex(string s)()
+{
+	import std.range : front;
+	import std.conv : to;
+	return s.to!int(16).to!char;
+	// static assert(ret.length == 1, "cannot convert " ~ s ~ "to a single character");
+	// return ret; // .front; // .to!char;
+}
+
+immutable Base64EncodeTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
+immutable Base64DecodeTable = parseBase64DecodeTable(`
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,62, 63,XX,XX,XX,
+	52,53,54,55, 56,57,58,59, 60,61,XX,XX, XX,XX,XX,XX,
+	XX, 0, 1, 2,  3, 4, 5, 6,  7, 8, 9,10, 11,12,13,14,
+	15,16,17,18, 19,20,21,22, 23,24,25,XX, XX,XX,XX,XX,
+	XX,26,27,28, 29,30,31,32, 33,34,35,36, 37,38,39,40,
+	41,42,43,44, 45,46,47,48, 49,50,51,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
+	XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX
+`);
+
+string parseBase64DecodeTable(string s)
+{
+	import std.string : replace, split, strip;
+	import std.conv : to;
+	import std.algorithm : map;
+	import std.array : array;
+
+	return
+		s.replace("XX","FF")
+			.split(',')
+			.map!(tok => tok.strip.to!int(16).to!char)
+			.array
+			.to!string;
+}
+
+
+private char lookup(alias Table,Number:int)(Number c)
+// if (is(Number == int) || is(Number == char))
+{
+	import std.conv : to;
+	import std.exception : enforce;
+	enforce(c >=0 && c < Table.length, "index error in lookup in " ~ Table.stringof ~ " for char: " ~ c.to!int.to!string);
+	return Table[c].to!char;
+}
+
+
+
+string modifiedBase64Encode(string src)
+{
+	import std.array : Appender;
+	import std.conv : to;
+	Appender!string ret;
+	ret.put('&');
+	while(src.length >= 3)
+	{
+		ret.put(lookup!Base64EncodeTable(src[0] >> 2));
+		ret.put(lookup!Base64EncodeTable( ((src[0] &3) << 4) | (src[1] >> 4)).to!char);
+		ret.put(lookup!Base64EncodeTable( ((src[1] &Hex!"0f") << 2) | ((src[2] & Hex!"c0") >> 6)).to!char);
+		ret.put(lookup!Base64EncodeTable(src[2] & Hex!"3f"));
+		src = src[3..$];
+	}
+	if (src.length > 0)
+	{
+		ret.put(lookup!Base64EncodeTable(src[0] >> 2));
+		if (src.length == 1)
+		{
+			ret.put(lookup!Base64EncodeTable((src[0] & Hex!"03") <<4));
+		}
+		else
+		{
+			ret.put(lookup!Base64EncodeTable(((src[0] & Hex!"03") <<4) | (src[1] >> 4)));
+			ret.put(lookup!Base64EncodeTable((src[1] & Hex!"0f") <<2));
+		}
+	}
+	ret.put('-');
+	return ret.data;
+}
+
+string imapUtf8FirstEncodeSubstring(string s)
+{
+	string ret;
+	foreach(i,c;s)
+	{
+		if (c == '&' || (c < Hex!"020") || (c > Hex!"07f"))
+			return s[i .. $];
+	}
+	return null;
+}
+
+/// Convert a unicode mailbox name to the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
+string utf8ToUtf7(string src)
+{
+	import std.array : Appender;
+	import std.conv : to;
+
+	Appender!string ret;
+	auto p = imapUtf8FirstEncodeSubstring(src);
+	if (p.length == 0) // no characters to be encoded
+		return src;
+
+	// at least one encoded character
+	ret.put(src[src.length - p .length]);
+	size_t i = 0;
+	while( i < src.length)
+	{
+		auto c = src[i];
+		if (c == '&')
+		{
+			ret.put("&-");
+			continue;
+		}
+		if (c >= Hex!"020" && c < Hex!"07f")
+		{
+			ret.put(c);
+			continue;
+		}
+
+		Appender!string u;
+		while( i < src.length && src[i] < Hex!"20" && src[i] >= Hex!"7f")
+		{
+			auto chr = utf8GetChar(src[i..$]);
+			if (chr < UTF16_SURROGATE_BASE)
+			{
+				u.put((chr >> 8).to!char);
+				u.put((chr & Hex!"ff").to!char);
+			}
+			else
+			{
+				auto u16 = UTF16_SURROGATE_HIGH(chr);
+				u.put((u16 >> 8).to!char);
+				u.put((u16 & Hex!"ff").to!char);
+				u16 = UTF16_SURROGATE_LOW(chr);
+				u.put((u16 >> 8).to!char);
+				u.put((u16 & Hex!"ff").to!char);
+			}
+			i += utf8CharBytes(src[c]);
+		}
+		ret.put(modifiedBase64Encode(u.data));
+	}
+	return ret.data;
+}
+
+bool isValidUtf7(dchar c)
+{
+	return (c >= Hex!"020" && c < Hex!"7f");
+}
+
+string utf16BufToUtf8(char[] output, uint pos_)
+{
+	import std.exception :enforce;
+	uint pos = pos_;
+	ushort high,low;
+	char chr;
+/+
+	enforce(output.length <=4, "utf16BufToUtf8 requires input <= 4 chars, not " ~ output.length.to!string);
+	if (output.length % 2 != 0)
+		return null;
+
+	high = (output[pos %4] << 8) | output[(pos+1) % 4];
+	if (high < UTF16_SURROGATE_HIGH_FIRST || high > UTF16_SURROGATE_HIGH_MAX)
+	{
+		// single byte
+		size_t oldlen = ret.length;
+		uni_ucs4_to_utf8_c(high,dest);
+		if (dest.length - oldlen == 1)
+		{
+			char last = 
+				+/
+	return "";
+}
+
+string modifiedBase64DecodeToUtf8(string src)
+{
+	import std.conv : to;
+	import std.array : Appender;
+	Appender!string ret;
+	char[4] input, output;
+	uint outstart, outpos;
+
+	size_t i =0;
+	while((src.length > i) && src[i] != '-')
+	{
+		input[0] = lookup!Base64DecodeTable(src[i]);
+		if (input[0] == Hex!"ff")
+			return null;
+		input[0] = lookup!Base64DecodeTable(src[i+1]);
+		if (input[1] == Hex!"ff")
+			return null;
+
+		output[outpos % 4] = ((input[0] << 2) | (input[1] >> 4)).to!char;
+		if (++outpos % 4 == outstart)
+		{
+			auto result = utf16BufToUtf8(output, outstart);
+			if (result is null)
+				return null;
+			else ret.put(result);
+		}
+
+		input[2] = lookup!Base64DecodeTable(src[i+2]);
+		if (input[2] == Hex!"ff")
+		{
+			if (src[i+2] != '-')
+				return null;
+			i += 2;
+			break;
+		}
+		output[outpos % 4] = ((input[1] << 4) | (input[2] >> 2)).to!char;
+		if (++outpos %4 == outstart)
+		{
+			auto result = utf16BufToUtf8(output, outstart);
+			if (result is null)
+				return null;
+			else
+				ret.put(result);
+		}
+
+		input[3] = lookup!Base64DecodeTable(src[i+3]);
+		if (input[3] == Hex!"ff")
+		{
+			if (src[i+3] != '-')
+				return null;
+			i +=3;
+			break;
+		}
+
+		output[outpos % 4] = (((input[2]) << 6) & Hex!"c0") | input[3];
+		if (++outpos % 4 == outstart)
+		{
+			auto result = utf16BufToUtf8(output,outstart);
+			if (result is null)
+				return null;
+			else
+				ret.put(result);
+		}
+		i += 4;
+	}
+	if (outstart != outpos % 4)
+	{
+		auto len  = (4 + outpos - outstart) % 4;
+		auto result = utf16BufToUtf8(output[0..len],outstart);
+		if (result is null)
+			return null;
+		else ret.put(result);
+	}
+	return ret.data;
+}
+	
+/// Convert a mailbox name from the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
+string utf7ToUtf8(string src)
+{
+	import std.array : Appender;
+	import std.algorithm : all, any;
+	import std.string : indexOf;
+	Appender!string ret;
+
+	bool isValid = src.all!(c => c.isValidUtf7);
+	if (!isValid)
+		return null;
+
+	auto j = src.indexOf('&');
+	if (j == -1) // no encoded characters
+		return src;
+
+	if (j > 0) ret.put(src[0 .. j-1]);
+
+	size_t i = 0;
+	while(i < src.length)
+	{
+		auto c = src[i];
+		if (c != '&')
+		{
+			ret.put(src[i++]);
+		}
+		else
+		{
+			if (src[++i] == '-')
+			{
+				ret.put('&');
+				++i;
+			}
+			else
+			{
+				auto result = modifiedBase64DecodeToUtf8(src[i..$]);
+				if (result is null)
+					return null;
+				else
+					ret.put(result);
+				if (src[i] == '&' && src[i+1] != '-')
+					return null;
+			}
+		}
+	}
+	return ret.data;
+}
+	// at least one encoded character
+private bool utf7IsValid(string src)
+{
+	foreach(i,c;src)
+	{
+		if (c < Hex!"020" || c > Hex!"07f")
+			return false;
+		if (c == '&')
+		{
+			// slow scan
+			auto ret = utf7ToUtf8(src[i..$]);
+			if (ret is null)
+				return false;
+		}
+	}
+	return true;
+}
+
 
 
 ///
@@ -26,338 +375,172 @@ struct Mailbox
 
 		if (mailbox.toUpper != "INBOX")
 			return mailbox;
-		auto mbox = applyConversion(mailbox);
+		auto mbox = utf8ToUtf7(mailbox);
 		if ((prefix.length ==0) && ((delim=='\0') || delim=='/'))
 			return mbox;
 		auto ret = format!"%s%s"(prefix,mbox).replace("/",[delim]);
 		infof("namespace: '%s' -> '%s'\n", mbox, ret);
 		return ret;
 	}
+	//// Convert the names of personal mailboxes, using the namespace specified by
+	//// the mail server, from mail server format to internal format.
+	static Mailbox fromServerFormat(string mbox, string prefix, char delim)
+	{
+		Mailbox ret = {	mailbox: mbox.reverseNamespace(prefix,delim),
+						prefix: prefix,
+						delim : delim,
+		};
+		return ret;
+
+	}
 }
 
-
-//// Convert the names of personal mailboxes, using the namespace specified by
-//// the mail server, from mail server format to internal format.
 string reverseNamespace(string mbox, string prefix, char delim)
 {
-	return mbox;
-}
-/+
-const(char*)  reverse_namespace(const(char*) mbox, char *prefix, char delim)
-{
-	int n, o;
+	import std.string : toUpper, replace;
+	int n;
 	char *c;
+	auto o = prefix.length;
+	auto mboxU = mbox.toUpper;
+	auto prefixU = prefix.toUpper;
 
-	if (!strcasecmp(mbox, "INBOX")) 
+	if (mboxU == "INBOX")
 		return mbox;
 
-	if ((prefix == NULL && delim == '\0') ||
-	    (prefix == NULL && delim == '/'))
-		return reverse_conversion(mbox);
+	if ((o == 0 && delim == '\0') ||
+	    (o == 0 && delim == '/'))
+		return utf7ToUtf8(mbox);
 
-	buffer_reset(&nbuf);
-
-	o = strlen(prefix ? prefix : "");
-	if (strncasecmp(mbox, (prefix ? prefix : ""), o))
+	if (mbox.length >= prefix.length && mboxU[0..prefix.length] == prefixU)
 		o = 0;
 
-	n = snprintf(nbuf.data, nbuf.size + 1, "%s", mbox + o);
-	if (n > cast(int)nbuf.size) {
-		buffer_check(&nbuf, n);
-		snprintf(nbuf.data, nbuf.size + 1, "%s", mbox + o);
-	}
-	for (c = nbuf.data; (c = strchr(c, delim)) != NULL; *(c++) = '/') {}
-
-	infof("namespace: '%s' <- '%s'\n", mbox, nbuf.data);
-
-	return reverse_conversion(nbuf.data);
+	return mbox[o..$]
+			.replace(delim,'/')
+			.utf7ToUtf8;
 }
-+/
 
-/// Convert a mailbox name to the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
-string applyConversion(string mbox)
+
+alias unichar_t = int;
+private int utf8GetChar(string src_) // , char chr_r)
 {
-	return mbox;
-}
-/+
-	char* c, out_;
-	ubyte[4] uc;
-	ubyte ucplast, ucptemp;
-	int padding, shift;
+	import std.exception : enforce;
+	import std.range : front;
 
-	buffer_check(&nbuf, strlen(mbox)); 
-	buffer_reset(&nbuf);
-	xstrncpy(nbuf.data, mbox, nbuf.size);
-	nbuf.len = strlen(nbuf.data);
-	buffer_check(&cbuf, nbuf.len * 4);
-	buffer_reset(&cbuf);
+	enum lowest_valid_chr_table = [ 0, 
+									0,
+									to!int("80",16),
+									to!int("800",16),
+									to!int("10000",16),
+									to!int("200000",16),
+								    to!int("4000000",16),
+  	];
 
-	c = cast(char* )nbuf.data;
-	out_ = cast(char* )cbuf.data;
+	string input = src_;
+	unichar_t lowest_valid_chr;
+	size_t i;
+	int ret;
+	enum max_len = cast(size_t) -1L;
 
-	memset(cast(void *)ucp, 0, ucp.sizeof);
-	ucplast = ucptemp = 0;
-	padding = shift = 0;
-
-	while (*c != '\0' || shift > 0) {
-		if (shift > 0 && *c <= 0x7F) {
-			/* Last character so do Base64 padding. */
-			if (padding == 2) {
-				*out_++ = base64[ucplast << 2 & 0x3C];
-			} else if (padding == 4) {
-				*out_++ = base64[ucplast << 4 & 0x30];
-			}
-			*out_++ = '-';
-			padding = 0;
-			shift = 0;
-			continue;
-		}
-
-		/* Escape shift character for modified UTF-7. */
-		if (*c == '&') {
-			*out_++ = '&';
-			*out_++ = '-';
-			c++;
-			continue;
-
-		/* Copy all ASCII printable characters. */
-		} else if ((*c >= 0x20 && *c <= 0x7e)) {
-			*out_++ = *c;
-			c++;
-			continue;
-		}
-
-		/* Non-ASCII UTF-8 characters follow. */
-		if (shift == 0)
-			*out_++ = '&';
-		/* Convert UTF-8 characters to Unicode code point. */
-		if ((*c & 0xE0) == 0xC0) {
-			shift = 2;
-			ucp[0] = 0x07 & *c >> 2;
-			ucp[1] = (*c << 6 & 0xC0) | (*(c + 1) & 0x3F);
-			c += 2;
-		} else if ((*c & 0xF0) == 0xE0) {
-			shift = 3;
-			ucp[0] = (*c << 4 & 0xF0) | (*(c + 1) >> 2 & 0x0F);
-			ucp[1] = (*(c + 1) << 6 & 0xC0) | (*(c + 2) & 0x3F);
-			c += 3;
-		} else if ((*c & 0xF8) == 0xF0) {
-			shift = 4;
-			ucptemp = ((*c << 2 & 0x1C) | (*(c + 1) >> 4 & 0x03)) -
-			    0x01;
-			ucp[0] = (ucptemp >> 2 & 0x03) | 0xD8;
-			ucp[1] = (ucptemp << 6 & 0xC0) |
-			    (*(c + 1) << 2 & 0x3C) | (*(c + 2) >> 4 & 0x03);
-			ucp[2] = (*(c + 2) >> 2 & 0x03) | 0xDC;
-			ucp[3] = (*(c + 2) << 6 & 0xC0) | (*(c + 3) & 0x3F);
-			c += 4;
-		}
-
-		/* Convert Unicode characters to UTF-7. */
-		if (padding == 0) {
-			*out_++ = base64[ucp[0] >> 2 & 0x3F];
-			*out_++ = base64[(ucp[0] << 4 & 0x30) |
-			    (ucp[1] >> 4 & 0x0F)];
-			if (shift == 4) {
-				ucplast = ucp[3];
-				*out_++ = base64[(ucp[1] << 2 & 0x3C) |
-				    (ucp[2] >> 6 & 0x03)];
-				*out_++ = base64[ucp[2] & 0x3F];
-				*out_++ = base64[ucp[3] >> 2 & 0x3F];
-				padding = 4;
-			} else {
-				ucplast = ucp[1];
-				padding = 2;
-			}
-		} else if (padding == 2) {
-			*out_++ = base64[(ucplast << 2 & 0x3C) |
-			    (ucp[0] >> 6 & 0x03)];
-			*out_++ = base64[ucp[0] & 0x3F];
-			*out_++ = base64[ucp[1] >> 2 & 0x3F];
-			if (shift == 4) {
-				*out_++ = base64[(ucp[1] << 4 & 0x30) |
-				    (ucp[2] >> 4 & 0x0F)];
-				*out_++ = base64[(ucp[2] << 2 & 0x3C) |
-				    (ucp[3] >> 6 & 0x03)];
-				*out_++ = base64[ucp[3] & 0x3F];
-				padding = 0;
-			} else {
-				ucplast = ucp[1];
-				padding = 4;
-			}
-		} else if (padding == 4) {
-			*out_++ = base64[(ucplast << 4 & 0x30) |
-			    (ucp[0] >> 4 & 0x0F)];
-			*out_++ = base64[(ucp[0] << 2 & 0x3C) |
-			    (ucp[1] >> 6 & 0x03)];
-			if (shift == 4) {
-				ucplast = ucp[3];
-				*out_++ = base64[ucp[1] & 0x3F];
-				*out_++ = base64[ucp[2] >> 2 & 0x3F];
-				*out_++ = base64[(ucp[2] << 4 & 0x30) |
-				    (ucp[3] >> 4 & 0x0F)];
-				padding = 2;
-			} else {
-				*out_++ = base64[ucp[1] & 0x3F];
-				padding = 0;
-			}
-		}
+	if (input.front < Hex!"80")
+	{
+		return input.front;
 	}
-	*out_ = '\0';
 
-	infof("conversion: '%s' -> '%s'\n", nbuf.data, cbuf.data);
+	// first byte has len highest bits set, followed by zero bit.
+	// the rest of the bits are used as the highest bits of the value
 
-	return cbuf.data;
+	unichar_t chr = input.front;
+	size_t len = utf8CharBytes(chr);
+	switch (len)
+	{
+		case 2:
+			chr &= 0x1f;
+			break;
+
+		case 3:
+			chr &= 0x0f;
+			break;
+
+		case 4:
+			chr &= 0x07;
+			break;
+
+		case 5:
+			chr &= 0x03;
+			break;
+
+		case 6:
+			chr &= 0x01;
+			break;
+
+		default:
+			// only 7bit chars should have len==1
+			enforce(len == 1);
+			return -1;
+	}
+
+	if (len <= max_len) {
+		lowest_valid_chr = lowest_valid_chr_table[len];
+		ret = 1;
+	} else {
+		// check first if the input is invalid before returning 0
+		lowest_valid_chr = 0;
+		ret = 0;
+		len = max_len;
+	}
+
+	// the following bytes must all be 10xxxxxx
+	for (i = 1; i < len; i++)
+	{
+		if ((input[i] & Hex!"c0") != Hex!"80")
+			return (input[i] == '\0') ? 0 : -1;
+
+		chr <<= 6;
+		chr |= input[i] & Hex!"3f";
+	}
+	if (chr < lowest_valid_chr) {
+		/* overlong encoding */
+		return -1;
+	}
+
+	return chr;
 }
-+/
 
-/// Convert a mailbox name from the modified UTF-7 encoding, according to RFC 3501 Section 5.1.3.
-string reverseConversion(string mbox) { return mbox; }
-/+
-string reverseConversion(string mbox)
+/// Returns the number of bytes belonging to this UTF-8 character. The given
+/// parameter is the first byte of the UTF-8 sequence. Invalid input is
+/// returned with length 1
+private uint utf8CharBytes(int chr)
 {
-	char* c, out_;
-	ubyte[4] ucp;
-	ubyte ucptemp;
-	ubyte[6] b64;
-	ubyte b64last;
-	int padding;
-	
-	buffer_check(&cbuf, strlen(mbox));
-	buffer_reset(&cbuf);
-	xstrncpy(cbuf.data, mbox, cbuf.size);
-	cbuf.len = strlen(cbuf.data);
-	buffer_check(&nbuf, cbuf.len);
-	buffer_reset(&nbuf);
-
-	c = cast(char* )cbuf.data;
-	out_ = cast(char* )nbuf.data;
-
-	memset(cast(void *)ucp, 0, sizeof(ucp));
-	memset(cast(void *)b64, 0, sizeof(b64));
-	ucptemp = b64last = 0;
-	padding = 0;
-
-	while (*c != '\0') {
-		/* Copy all ASCII printable characters. */
-		if (*c >= 0x20 && *c <= 0x7e) {
-			if (*c != '&') {
-				*out_++ = *c++;
-				continue;
-			} else {
-				c++;
-			}
-		}
-
-		/* Write shift character for modified UTF-7. */
-		if (*c == '-') {
-			*out_++ = '&';
-			c++;
-			continue;
-		}
-
-		/* UTF-7 characters follow. */
-		padding = 0;
-		do {
-			/* Read Base64 characters. */
-			b64[0] = strchr(base64, *c) - base64;
-			b64[1] = strchr(base64, *(c + 1)) - base64;
-			if (padding == 0 || padding == 2) {
-				b64[2] = strchr(base64, *(c + 2)) - base64;
-				c += 3;
-			} else {
-				c += 2;
-			}
-			/* Convert from Base64 to Unicode code point. */
-			if (padding == 0) {
-				ucp[0] = (b64[0] << 2 & 0xFC) |
-				    (b64[1] >> 4 & 0x03);
-				ucp[1] = (b64[1] << 4 & 0xF0) |
-				    (b64[2] >> 2 & 0x0F);
-				b64last = b64[2];
-				padding = 2;
-			} else if (padding == 2) {
-				ucp[0] = (b64last << 6 & 0xC0) |
-				    (b64[0] & 0x3F);
-				ucp[1] = (b64[1] << 2 & 0xFC) |
-				    (b64[2] >> 4 & 0x03);
-				b64last = b64[2];
-				padding = 4;
-			} else if (padding == 4) {
-				ucp[0] = (b64last << 4 & 0xF0) |
-				    (b64[0] >> 2 & 0x0F);
-				ucp[1] = (b64[0] << 6 & 0xC0) |
-				    (b64[1] & 0x3F);
-				padding = 0;
-			}
-
-			/* Convert from Unicode to UTF-8. */
-			if (ucp[0] <= 0x07) {
-				*out_++ = 0xC0 | (ucp[0] << 2 & 0x1C) |
-				    (ucp[1] >> 6 & 0x03);
-				*out_++ = 0x80 | (ucp[1] & 0x3F);
-			} else if ((ucp[0] >= 0x08 && ucp[0] <= 0xD7) ||
-			    ucp[0] >= 0xE0) {
-				*out_++ = 0xE0 | (ucp[0] >> 4 & 0x0F);
-				*out_++ = 0x80 | (ucp[0] << 2 & 0x1C) |
-				    (ucp[1] >> 6 & 0x03);
-				*out_++ = 0x80 | (ucp[1] & 0x3F);
-			} else if (ucp[0] >= 0xD8 && ucp[0] <= 0xDF) {
-				b64[3] = strchr(base64, *c) - base64;
-				b64[4] = strchr(base64, *(c + 1)) - base64;
-				if (padding == 0 || padding == 2) {
-					b64[5] = strchr(base64, *(c + 2)) -
-					    base64;
-					c += 3;
-				} else {
-					c += 2;
-				}
-
-				if (padding == 0) {
-					ucp[2] = (b64[3] << 2 & 0xFC) |
-					    (b64[4] >> 4 & 0x03);
-					ucp[3] = (b64[4] << 4 & 0xF0) |
-					    (b64[5] >> 2 & 0x0F);
-					b64last = b64[5];
-					padding = 2;
-				} else if (padding == 2) {
-					ucp[2] = (b64last << 6 & 0xC0) |
-					    (b64[3] & 0x3F);
-					ucp[3] = (b64[4] << 2 & 0xFC) |
-					    (b64[5] >> 4 & 0x03);
-					b64last = b64[5];
-					padding = 4;
-				} else if (padding == 4) {
-					ucp[2] = (b64last << 4 & 0xF0) |
-					    (b64[3] >> 2 & 0x0F);
-					ucp[3] = (b64[3] << 6 & 0xC0) |
-					    (b64[4] & 0x3F);
-					padding = 0;
-				}
-
-				ucp[0] &= 0xFF - 0xDF;
-				ucptemp = ((ucp[0] << 2 & 0x0C) |
-				    (ucp[1] >> 6 & 0x03)) + 0x1;
-				ucp[2] &= 0xFF - 0xDC;
-
-				*out_++ = 0xF0 | (ucptemp >> 2 & 0x03);
-				*out_++ = 0x80 | (ucptemp << 4 & 0x30) |
-				    (ucp[1] >> 2 & 0x0F);
-				*out_++ = 0x80 | (ucp[1] << 4 & 0x30) |
-				    (ucp[2] << 2 & 0x0C) |
-				    (ucp[3] >> 6 & 0x03);
-				*out_++ = 0x80 | (ucp[3] & 0x3F);
-			}
-			if (*c == '-') {
-				c++;
-				break;
-			}
-		} while (*c != '-');
-	}
-	*out_ = '\0';
-
-	infof("conversion: '%s' <- '%s'\n", nbuf.data, cbuf.data);
-
-	return nbuf.data;
+	/* 0x00 .. 0x7f are ASCII. 0x80 .. 0xC1 are invalid. */
+	if (chr < (192 + 2))
+		return 1;
+	return utf8_non1_bytes[chr - (192 + 2)];
 }
+
+private const char[256-192-2] utf8_non1_bytes = [
+		2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+		3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,6,6,1,1
+];
+
+
+/+
+	Permission is hereby granted, free of charge, to any person obtaining a
+	copy of this software and associated documentation files (the "Software"),
+	 to deal in the Software without restriction, including without limitation
+	 the rights to use, copy, modify, merge, publish, distribute, sublicense,
+	 and/or sell copies of the Software, and to permit persons to whom the
+	 Software is furnished to do so, subject to the following conditions:
+
+	 The above copyright notice and this permission notice shall be included in
+	 all copies or substantial portions of the Software.
+
+	 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+	 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+	 DEALINGS IN THE SOFTWARE.
+
+	 utf7 code taken from Dovecot by Timo Sirainen <tss@iki.fi>
 +/

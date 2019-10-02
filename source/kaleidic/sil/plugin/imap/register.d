@@ -87,6 +87,7 @@ void registerImap(ref Handlers handlers)
 	import deimos.openssl.pem;
 	import deimos.openssl.evp;
 	import std.stdio : File;
+	import arsd.email : IncomingEmailMessage,RelayInfo,MimeAttachment,ToType,EmailMessage,MimePart,MimeContainer;
 
 	{
 		handlers.openModule("imap");
@@ -96,7 +97,8 @@ void registerImap(ref Handlers handlers)
 		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
-				Status, FlagResult,SearchResult,Status,StatusResult,
+				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,
+				IncomingEmailMessage,RelayInfo,MimeAttachment,ToType,EmailMessage,MimePart,MimeContainer,
 		))
 			handlers.registerType!T;
 

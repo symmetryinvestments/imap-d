@@ -174,7 +174,7 @@ struct Session
 		this.port = imapServer.port;
         this.useSSL = useSSL;
 		this.username = imapLogin.username;
-		this.password = environment.get("IMAP_PASS",""); //imapLogin.password;
+		this.password = imapLogin.password;
 	}
 
 	ref Session setSelected(Mailbox mailbox)

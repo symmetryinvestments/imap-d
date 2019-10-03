@@ -39,6 +39,16 @@ struct Set(T)
 		return values_.keys.filter!(c => values_[c])
 				.array;
 	}
+
+    string toString()
+    {
+        import std.format : format;
+        import std.algorithm : map, sort;
+        import std.array : array;
+        import std.string : join;
+        import std.conv : to;
+        return format!"[%s]"(values.map!(value => value.to!string).array.sort.array.join(","));
+    }
 }
 
 ///
@@ -66,6 +76,12 @@ struct ImapServer
 {
 	string server = "imap.fastmail.com"; // localhost";
 	string port = "993";
+
+    string toString()
+    {
+        import std.format : format;
+        return format!"%s:%s"(server,port);
+    }
 }
 
 ///
@@ -73,6 +89,12 @@ struct  ImapLogin
 {
 	string username = "laeeth@kaleidic.io";
 	string password;
+
+    string toString()
+    {
+        import std.format : format;
+        return format!"%s:[hidden]"(username);
+    }
 }
 
 ///
@@ -81,11 +103,11 @@ struct Options
 	import core.time : Duration, seconds, minutes;
 
 	bool debugMode = true;
-	bool verboseOutput = false;
+	bool verboseOutput = true;
 	bool interactive = false;
 	bool namespace = false;
 	bool cramMD5 = false;
-	bool startTLS = false;
+	bool startTLS = true;
 	bool tryCreate = false;
 	bool recoverAll = true;
 	bool recoverErrors = true;
@@ -122,16 +144,35 @@ struct Session
 
 	bool useSSL = true;
 	bool noCerts = true;
-	ProtocolSSL sslProtocol = ProtocolSSL.ssl3; // tls1_2;
+	ProtocolSSL sslProtocol = ProtocolSSL.tls1_2; // ssl3; // tls1_2;
 	SSL* sslConnection;
 	SSL_CTX* sslContext;
 
-	this(ImapServer imapServer,ImapLogin imapLogin)
+    string toString()
+    {
+        import std.array : Appender;
+        import std.format : format;
+        import std.conv : to;
+        Appender!string ret;
+        ret.put(format!"Session to %s:%s as user %s\n"(server,port,username));
+        ret.put(format!"- useSSL: %s\n"(useSSL.to!string));
+        ret.put(format!"- startTLS: %s\n"(useSSL.to!string));
+        ret.put(format!"- noCerts: %s\n"(noCerts.to!string));
+        ret.put(format!"- sslProtocol: %s\n"(sslProtocol.to!string));
+        ret.put(format!"- imap protocol: %s\n"(imapProtocol.to!string));
+        ret.put(format!" - capabilities: %s\n"(capabilities.to!string));
+        ret.put(format!" - namespace: %s/%s\n"(namespacePrefix,[namespaceDelim]));
+        ret.put(format!" - selected mailbox: %s\n"(selected));
+        return ret.data;
+    }
+
+	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true)
 	{
 		import std.exception : enforce;
 		import std.process : environment;
 		this.server = imapServer.server;
 		this.port = imapServer.port;
+        this.useSSL = useSSL;
 		this.username = imapLogin.username;
 		this.password = environment.get("IMAP_PASS",""); //imapLogin.password;
 	}

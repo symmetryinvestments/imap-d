@@ -94,10 +94,9 @@ int sendRequest(ref Session session, string value)
 		tracef("C (%s): %s", session.socket, value);
 	}
 
-	auto taggedValue = format!"D%04X %s%s"(tag,value, value.endsWith("\n") ? "":"\n");
+	auto taggedValue = format!"D%04X %s%s"(tag,value, value.endsWith("\n") ? "":"\r\n");
 	stderr.writefln("sending %s",taggedValue);
-	//if (session.socketWrite(value) == -1)
-	if (session.socketSecureWrite(taggedValue) <= 0)
+	if (session.socketWrite(taggedValue) == -1)
 		return -1;
 
 	if (tag == 0xFFFF)	/* Tag always between 0x1000 and 0xFFFF. */
@@ -180,26 +179,35 @@ ref Session login(ref Session session)
 
 	auto rg = session.check!responseGreeting();
 	stderr.writefln("got login first stage: %s",rg);
+/+
 	if (session.options.debugMode)
 	{
 		t = session.check!sendRequest("NOOP");
 		session.check!responseGeneric(t);
-	}
+	}+/
 	t = session.check!sendRequest("CAPABILITY");
 	stderr.writefln("sent capability request");
 	res = session.check!responseCapability(t);
 	stderr.writefln("got capabilities: %s",res);
 
-	if (!session.sslProtocol== ProtocolSSL.none && session.capabilities.has(Capability.startTLS)  && session.options.startTLS)
+	bool needsStartTLS =   (session.sslProtocol != ProtocolSSL.none) &&
+                            session.capabilities.has(Capability.startTLS) &&
+                            session.options.startTLS;
+	if (needsStartTLS)
 	{
-		t = session.check!sendRequest("STARTLS");
+        version(Trace) stderr.writeln("sending StartTLS");
+		t = session.check!sendRequest("STARTTLS");
+        version(Trace) stderr.writeln("checking for StartTLS response ");
 		res = session.check!responseGeneric(t);
-		if (res.status == ImapStatus.ok)
-		{
-			session.openSecureConnection();
-			t = session.check!sendRequest("CAPABILITY");
-			res = session.check!responseCapability(t);
-		}
+		// enforce(res.status == ImapStatus.ok, "received bad response: " ~ res.to!string);
+        version(Trace) stderr.writeln("opening secure connection");
+        session.openSecureConnection();
+        version(Trace) stderr.writeln("opened secure connection; check capabilties");
+        t = session.check!sendRequest("CAPABILITY");
+        version(Trace) stderr.writeln("sent capabilties request");
+        res = session.check!responseCapability(t);
+        version(Trace) stderr.writeln("got capabilities response");
+        version(Trace) stderr.writeln(res);
 	}
 
 	if (rg.status == ImapStatus.preAuth)
@@ -231,9 +239,11 @@ ref Session login(ref Session session)
 		}
 		if (rl == ImapStatus.no)
 		{
+			auto err = format!"username %s or password rejected at %s\n"(session.username, session.server);
 			errorf("username %s or password rejected at %s\n",session.username, session.server);
 			session.closeConnection();
-			return session.setStatus(ImapStatus.no);
+			// return session.setStatus(ImapStatus.no);
+            throw new Exception(err);
 		}
 	} 
 

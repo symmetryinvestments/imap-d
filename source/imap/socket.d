@@ -52,6 +52,7 @@ SSL_CTX* getContext(string caFile, string caPath, string certificateFile, string
 ///	Connect to mail server.
 Session openConnection(ref Session session)
 {
+    import core.time : seconds;
 	import std.format : format;
 	import std.exception : enforce;
 	import std.range : front;
@@ -64,8 +65,9 @@ Session openConnection(ref Session session)
 	session.socket.blocking(true);
 	session.socket.connect(session.addressInfo.address);
 	session.socket.blocking(false);
+    session.socket.setOption(SocketOptionLevel.SOCKET,SocketOption.SNDTIMEO,1.seconds);
 	enforce(session.socket.isAlive(), format!"connecting to %s:%s failed"(session.server, session.port));
-	if (session.useSSL)
+	if (session.useSSL && !session.options.startTLS)
 		return openSecureConnection(session);
 	return session;
 }
@@ -239,13 +241,15 @@ Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail
 	socketSet.add(session.socket);
 	auto selectResult = Socket.select(socketSet,null,null,timeout);
 	if (session.sslConnection)
+        return socketSecureRead(session);
+/+
 	{
 		if (SSL_pending(session.sslConnection) > 0 || selectResult > 0)
 		{
 			r = SSL_read(session.sslConnection, cast(void*) buf.ptr, buf.length.to!int);
 			enforce(r > 0, "error reading socket");
 		}
-	}
+	} +/
 	if (!session.sslConnection)
 	{
 		if (selectResult > 0)
@@ -260,7 +264,7 @@ Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail
 	enforce(s != -1, format!"waiting to read from socket; %s"(strerror(errno).fromStringz));
 	enforce (s != 0 || !timeoutFail, "timeout period expired while waiting to read data");
 	tracef("socketRead: %s / %s",session.socket,buf);
-	return result(Status.success,cast(string)buf);
+	return result(Status.success,cast(string)buf[0..r]);
 }
 
 ///
@@ -318,12 +322,14 @@ Result!string socketSecureRead(ref Session session)
 	import std.conv : to;
 	import std.format : format;
 	version(Trace) import std.stdio: writefln,stderr;
+    enforce(session.sslConnection !is null);
 	int res;
 	auto buf = new char[16384*1024];
 	scope(failure)
 		SSL_set_shutdown(session.sslConnection, SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
 	do
 	{
+        enforce(session.sslConnection !is null, "trying to read from unconnected SSL socket");
 		res = SSL_read(session.sslConnection, cast(void*)buf.ptr, buf.length.to!int);
 		enforce(!session.isSSLReadError(res), session.sslReadErrorMessage(res));
 	} while(session.isTryAgain(res));
@@ -377,6 +383,10 @@ ssize_t socketWrite(ref Session session, string buf)
 	s = 1;
 	
 	tracef("socketWrite: %s / %s",session.socket,buf);
+    if (session.sslConnection) {
+        tracef("socketSecureWrite: %s / %s",session.socket,buf);
+        return session.socketSecureWrite(buf);
+    }
 
 	scope(failure)
 		closeConnection(session);
@@ -384,37 +394,28 @@ ssize_t socketWrite(ref Session session, string buf)
 	auto socketSet = new SocketSet(1);
 	socketSet.add(session.socket);
 
+	tracef("entering loop with buf.length=%s",buf.length);
 	while(buf.length > 0)
 	{
-		s = Socket.select(socketSet,null,null,null);
-		if (s> 0)
-		{
-			version(SSL)
-			{
-				if (session.sslConnection) {
-					r = SSL_write(session.sslConnection, cast(const(void)*) buf.ptr, buf.length.to!int);
-					enforce(r>0, "error writing to ssl socket");
-				}
-			}
-			if (!session.sslConnection)
-			{
-				r = session.socket.send(cast(void[])buf);
-				enforce(r != -1, format!"writing data; %s"(strerror(errno).fromStringz));
-				enforce(r !=0, "unknown error");
-			}
+        tracef("buf is of length %s",buf.length);
+        tracef("sending buf: %s",buf);
+        r = session.socket.send(cast(void[])buf);
+        tracef("r=: %s",r);
+        enforce(r != -1, format!"writing data; %s"(strerror(errno).fromStringz));
+        enforce(r !=0, "unknown error");
 
-			if (r > 0) {
-				enforce(r <= buf.length, "send to socket returned more bytes than we sent!");
-				buf = buf[r .. $];
-				t += r;
-			}
-		}
-	}
+        if (r > 0) {
+            enforce(r <= buf.length, "send to socket returned more bytes than we sent!");
+            buf = buf[r .. $];
+            t += r;
+            tracef("buf now =: %s",buf);
+        }
+    }
 
-	enforce(s != -1, format!"waiting to write to socket; %s"(strerror(errno).fromStringz));
-	enforce(s != 0, "timeout period expired while waiting to write data");
+    enforce(s != -1, format!"waiting to write to socket; %s"(strerror(errno).fromStringz));
+    enforce(s != 0, "timeout period expired while waiting to write data");
 
-	return t;
+    return t;
 }
 
 /// Write data to a TLS/SSL connection.
@@ -467,4 +468,13 @@ auto socketSecureWrite(ref Session session, string buf)
 	}
 	return r;
 }
+
+
+enum StateTLS
+{
+    connecting,
+    accepting,
+    connected,
+}
+
 

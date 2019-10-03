@@ -4,7 +4,7 @@ dependency "openssl" version="~>1.1.6+1.0.1g"
 dependency "arsd-official:email" version="~master"
 license "MIT"
 
-versions "SSL" "OPENSSL_NO_SRP"
+versions "SSL" "OPENSSL_NO_SRP" //"Trace"
 libs "ssl" "crypto" 
 
 configuration "library" {

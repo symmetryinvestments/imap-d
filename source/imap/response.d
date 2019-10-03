@@ -39,8 +39,8 @@ enum ImapResponse
 auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool timeoutFail = false)
 {
 	timeout = (timeout == Duration.init) ? session.options.timeout : timeout;
-	auto result = session.socketSecureRead(); // timeout,timeoutFail);
-	//auto result = session.socketRead(timeout,timeoutFail);
+	//auto result = session.socketSecureRead(); // timeout,timeoutFail);
+	auto result = session.socketRead(timeout,timeoutFail);
 	if (result.status != Status.success)
 		return tuple(Status.failure,"");
 	auto buf = result.value;
@@ -156,6 +156,7 @@ ImapResult responseGeneric(ref Session session, Tag tag)
 {
 	import std.typecons: Tuple;
 	import std.array : Appender;
+    import core.time: msecs;
 	Tuple!(Status,string) result;
 	Appender!string buf;
 	ImapStatus r;
@@ -165,7 +166,7 @@ ImapResult responseGeneric(ref Session session, Tag tag)
 
 	do
 	{
-		result = session.receiveResponse(Duration.init,true);
+		result = session.receiveResponse(500.msecs,false);
 		if (result[0] == Status.failure)
 			return ImapResult(ImapStatus.unknown,buf.data);
 		buf.put(result[1].idup);
@@ -222,7 +223,7 @@ ImapResult responseGreeting(ref Session session)
 {
 	import std.experimental.logger : tracef;
 
-	auto res = session.receiveResponse(Duration.init, true);
+	auto res = session.receiveResponse(Duration.init, false);
 	if (res[0] == Status.failure)
 		return ImapResult(ImapStatus.unknown,"");
 

@@ -34,7 +34,7 @@ void registerGrammar(ref Handlers handlers)
 	import imap.grammar;
 	handlers.registerHandler!parse;
 	handlers.registerHandler!parseTest;
-	handlers.registerType!ParseTree;
+	// handlers.registerType!ParseTree;
 }
 
 enum TestImap=`
@@ -74,6 +74,12 @@ void writeBinary(string file, string data)
 {
 	import std.file;
 	write(file,data);
+}
+
+struct X509_
+{
+	import deimos.openssl.x509;
+    X509* handle;
 }
 
 ///
@@ -146,8 +152,9 @@ void registerImap(ref Handlers handlers)
 					getFilePath,
 		))
 		handlers.registerHandler!F;
-		static foreach(T; AliasSeq!(EVP_MD,X509,SSL_))
+		static foreach(T; AliasSeq!(EVP_MD,SSL_))
 			handlers.registerType!T;
+        handlers.registerType!X509_("X509");
 	}
 }
 

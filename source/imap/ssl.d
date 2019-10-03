@@ -6,6 +6,7 @@ import core.sys.posix.unistd : isatty;
 import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.x509;
+import deimos.openssl.x509_vfy; // needed to use openssl master
 import deimos.openssl.pem;
 import deimos.openssl.evp;
 
@@ -31,7 +32,7 @@ Status getCert(ref Session session)
 	import std.exception : enforce;
 	X509* pcert = getPeerCertificate(*session.sslConnection);
 	enforce(pcert !is null);
-	auto cert = *pcert;
+	auto cert = pcert;
 
 	scope(exit)
 		X509_free(pcert);
@@ -60,7 +61,7 @@ enum Status
 }
 
 //	Check if the SSL/TLS certificate exists in the certificates file.
-Status checkCert(ref X509 pcert, string pmd)
+Status checkCert(X509* pcert, string pmd)
 {
 	import std.file : exists;
 	Status status = Status.failure;
@@ -77,7 +78,7 @@ Status checkCert(ref X509 pcert, string pmd)
 
 	while ((certp = readX509(file,certp)) !is null)
 	{
-		auto cert = *certp;
+		auto cert = certp;
 		if (cert.getSubject != pcertSubject || (cert.getIssuerName() != pIssuerName) ||
 			(cert.getSerial() != pSerial))
 			continue;
@@ -107,13 +108,13 @@ X509* readX509(File file, ref X509* cert)
 
 
 
-string getDigest(ref X509 cert,const(EVP_MD)* type)
+string getDigest(X509* cert,const(EVP_MD)* type)
 {
 	import std.exception : enforce;
 	import std.format : format;
 	ubyte[EVP_MAX_MD_SIZE] md;
 	uint len;
-	auto result = X509_digest(&cert,type,md.ptr,&len);
+	auto result = X509_digest(cert,type,md.ptr,&len);
 	enforce(result == 1, "failed to get digest for certificate");
 	enforce(len > 0, format!"X509_digest returned digest of length: %s"(len));
 	return cast(string)(md[0 .. len].idup);
@@ -122,21 +123,21 @@ string getDigest(ref X509 cert,const(EVP_MD)* type)
 	
 
 ///
-string getIssuerName(ref X509 cert)
+string getIssuerName(X509* cert)
 {
 	import core.memory : pureFree;
 	import std.string : fromStringz;
-	char* s = X509_NAME_oneline(X509_get_issuer_name(&cert), null, 0);
+	char* s = X509_NAME_oneline(X509_get_issuer_name(cert), null, 0);
 	scope(exit) pureFree(s);
 	return s.fromStringz.idup;
 }
 
 ///
-string getSubject(ref X509 cert)
+string getSubject(X509* cert)
 {
 	import core.memory : pureFree;
 	import std.string : fromStringz;
-	char* s = X509_NAME_oneline(X509_get_subject_name(&cert), null, 0);
+	char* s = X509_NAME_oneline(X509_get_subject_name(cert), null, 0);
 	scope(exit) pureFree(s);
 	return s.fromStringz.idup;
 }
@@ -153,7 +154,7 @@ string asHex(string s)
 
 	
 ///	Print information about the SSL/TLS certificate.
-void printCert(ref X509 cert, string fingerprint)
+void printCert(X509* cert, string fingerprint)
 {
 	writefln("Server certificate subject: %s",cert.getSubject);
 	writefln("Server certificate issuer: %s",getIssuerName(cert));
@@ -163,13 +164,13 @@ void printCert(ref X509 cert, string fingerprint)
 
 
 ///	Extract certificate serial number as a string.
-string getSerial(ref X509 cert)
+string getSerial(X509* cert)
 {
 	import std.string : fromStringz;
 	import std.format : format;
 	string buf;
 
-	ASN1_INTEGER* serial = X509_get_serialNumber(&cert);
+	ASN1_INTEGER* serial = X509_get_serialNumber(cert);
 	if (serial.length <= cast(int)long.sizeof) {
 		long num = ASN1_INTEGER_get(serial);
 		if (serial.type == V_ASN1_NEG_INTEGER) {
@@ -191,7 +192,7 @@ string getSerial(ref X509 cert)
 
 
 ///	Store the SSL/TLS certificate after asking the user to accept/reject it.
-void storeCert(ref X509 cert)
+void storeCert(X509* cert)
 {
 	import std.string : toLower;
 	import std.stdio : stdin, writef, File;
@@ -212,16 +213,16 @@ void storeCert(ref X509 cert)
 		return;
 	auto certf = getFilePath("certificates");
 	auto file  = File(certf,"a");
-	char* s = X509_NAME_oneline(X509_get_subject_name(&cert), null, 0);
+	char* s = X509_NAME_oneline(X509_get_subject_name(cert), null, 0);
 	file.writefln("Subject: %s", s);
 	pureFree(s);
-	s = X509_NAME_oneline(X509_get_issuer_name(&cert), null, 0);
+	s = X509_NAME_oneline(X509_get_issuer_name(cert), null, 0);
 	file.writefln("Issuer: %s", s);
 	pureFree(s);
 	auto serialNo = getSerial(cert);
 	file.writefln("Serial: %s", serialNo);
 
-	PEM_write_X509(file.getFP(), &cert);
+	PEM_write_X509(file.getFP(), cert);
 
 	file.writefln("");
 }

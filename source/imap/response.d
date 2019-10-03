@@ -724,6 +724,7 @@ struct BodyResponse
 	string value;
 	string[] lines;
 	IncomingEmailMessage message;
+    MimeAttachment[] attachments;
 }
 
 struct MimeAttachment
@@ -760,7 +761,9 @@ BodyResponse responseFetchBody(ref Session session, Tag tag)
 		bodyLines = bodyLines[1..$];
 	//return BodyResponse(r.status,r.value,new IncomingEmailMessage(bodyLines));
 	auto bodyLinesEmail = cast(immutable(ubyte)[][]) bodyLines.idup;
-	return BodyResponse(r.status,r.value,bodyLines,new IncomingEmailMessage(bodyLinesEmail,false));
+	auto incomingEmail = new IncomingEmailMessage(bodyLinesEmail,false);
+    auto attach = attachments(incomingEmail);
+	return BodyResponse(r.status,r.value,bodyLines,incomingEmail,attach);
 }
 /+
 //	Process the data that server sent due to IMAP FETCH BODY[] client request,

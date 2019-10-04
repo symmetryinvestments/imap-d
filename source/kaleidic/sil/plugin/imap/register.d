@@ -26,6 +26,7 @@ import core.time : Duration;
 import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.sha;
+import arsd.email : MimeContainer;
 
 ///
 void registerGrammar(ref Handlers handlers)
@@ -82,6 +83,32 @@ struct X509_
     X509* handle;
 }
 
+struct MimeContainer_
+{
+    MimeContainer h;
+    string contentType() { return h._contentType; }
+    string boundary() { return h.boundary; }
+    string[] headers() { return h.headers; }
+    string content() {return h.content; }
+
+    MimeContainer_[] stuff()
+    {
+        import std.algorithm : map;
+        import std.array : array;
+        return h.stuff.map!(s => MimeContainer_(s)).array;
+    }
+
+    this(MimeContainer h)
+    {
+        this.h = h;
+    }
+}
+
+MimeContainer_ accessMimeContainer(MimeContainer mimeContainer)
+{
+    return MimeContainer_(mimeContainer);
+}
+
 ///
 void registerImap(ref Handlers handlers)
 {
@@ -99,7 +126,7 @@ void registerImap(ref Handlers handlers)
 	import deimos.openssl.pem;
 	import deimos.openssl.evp;
 	import std.stdio : File;
-	import arsd.email : IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer;
+	import arsd.email : IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart;
 
 	{
 		handlers.openModule("imap");
@@ -110,7 +137,7 @@ void registerImap(ref Handlers handlers)
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,
-				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer,MimePart,
+				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer_,MimePart,
 				MimeAttachment, // proxy from imap not arsd
 		))
 			handlers.registerType!T;

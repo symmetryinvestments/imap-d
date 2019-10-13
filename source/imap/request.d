@@ -86,9 +86,9 @@ int sendRequest(ref Session session, string value)
 	if (value.isLoginRequest)
 	{
 		infof("sending command (%s):\n\n%s\n\n", session.socket,
-		    value.length - session.password.length - "\"\"\r\n".length, value);
+		    value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
 		tracef("C (%s): %s\n", session.socket, value.length,
-				session.password.length - "\"\"\r\n".length,  value);
+				session.imapLogin.password.length - "\"\"\r\n".length,  value);
 	} else {
 		infof("sending command (%s):\n\n%s\n", session.socket, value);
 		tracef("C (%s): %s", session.socket, value);
@@ -111,7 +111,7 @@ int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
 	enforce(session.socket,"not connected to server");
-	session.socketSecureWrite(data ~ "\r\n");
+	session.socketWrite(data ~ "\r\n");
 	//socketWrite(session, data ~ "\r\n");
 	return 1;
 }
@@ -167,13 +167,16 @@ ref Session login(ref Session session)
 	int t;
 	ImapResult res;
 	ImapStatus rl = ImapStatus.unknown;
+	auto login = session.imapLogin;
 
 	scope(failure)
 		closeConnection(session);
-	if (!session.socket.isAlive())
+	if (session.socket is null || !session.socket.isAlive())
 	{
 		infof("login called with dead socket, so trying to reconnect");
 		session = openConnection(session);
+	 	if (session.useSSL && !session.options.startTLS)
+			 session = openSecureConnection(session);
 	}
 	enforce(session.socket.isAlive(), "not connected to server");
 
@@ -224,7 +227,7 @@ ref Session login(ref Session session)
 			res = session.check!responseAuthenticate(t);
 			stderr.writefln("authenticate cram first response: %s",res);
 			enforce(res.status == ImapStatus.continue_, "login failure");
-			auto hash = authCramMD5(session.username,session.password,res.value.strip);
+			auto hash = authCramMD5(login.username,login.password,res.value.strip);
 			stderr.writefln("hhash: %s",hash);
 			t = session.check!sendContinuation(hash);
 			res = session.check!responseGeneric(t);
@@ -233,14 +236,14 @@ ref Session login(ref Session session)
 		}
 		if (rl != ImapStatus.ok)
 		{
-			t = session.check!sendRequest(format!"LOGIN \"%s\" \"%s\""(session.username, session.password));
+			t = session.check!sendRequest(format!"LOGIN \"%s\" \"%s\""(login.username, login.password));
 			res = session.check!responseGeneric(t);
 			rl = res.status;
 		}
 		if (rl == ImapStatus.no)
 		{
-			auto err = format!"username %s or password rejected at %s\n"(session.username, session.server);
-			errorf("username %s or password rejected at %s\n",session.username, session.server);
+			auto err = format!"username %s or password rejected at %s\n"(login.username, session.server);
+			errorf("username %s or password rejected at %s\n",login.username, session.server);
 			session.closeConnection();
 			// return session.setStatus(ImapStatus.no);
             throw new Exception(err);
@@ -260,8 +263,9 @@ ref Session login(ref Session session)
 	if (session.selected != Mailbox.init)
 	{
 		t = session.check!sendRequest(format!"SELECT \"%s\""(session.selected.applyNamespace()));
-		res = session.check!responseSelect(t);
-		rl = res.status;
+		auto selectResult = session.responseSelect(t);
+		enforce(selectResult.status == ImapStatus.ok);
+		rl = selectResult.status;
 	}
 
 	return session.setStatus(rl);
@@ -315,7 +319,7 @@ auto status(ref Session session, Mailbox mbox)
 
 
 ///	Open mailbox in read-write mode.
-ImapResult select(ref Session session, Mailbox mailbox)
+auto select(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
 	auto request = format!`SELECT "%s"`(mailbox.toString);
@@ -665,3 +669,61 @@ auto idle(ref Session session)
 
 	return ri;
 }
+
+///
+enum SearchField
+{
+    all,
+    and,
+    or,
+    not,
+    old,
+    answered,
+    deleted,
+    draft,
+    flagged,
+    header,
+    body_,
+    bcc,
+    cc,
+    from,
+    to,
+    subject,
+    text,
+    uid,
+    unanswered,
+    undeleted,
+    undraft,
+    unflagged,
+    unkeyword,
+    unseen,
+    larger,
+    smaller,
+    sentBefore,
+    sentOn,
+    sentSince,
+    keyword,
+    messageNumbers,
+	uidNumbers,
+	resultMin,
+	resultMax,
+	resultAll,
+	resultCount,
+	resultRemoveFrom,
+	resultPartial,
+	sourceMailbox,
+	sourceSubtree,
+	sourceTag,
+	sourceUidValidity,
+	contextCount,
+	context
+}
+
+struct SearchParameter
+{
+    string fieldName;
+    //Variable value;
+}
+
+
+

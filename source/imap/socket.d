@@ -67,8 +67,6 @@ Session openConnection(ref Session session)
 	session.socket.blocking(false);
     session.socket.setOption(SocketOptionLevel.SOCKET,SocketOption.SNDTIMEO,1.seconds);
 	enforce(session.socket.isAlive(), format!"connecting to %s:%s failed"(session.server, session.port));
-	if (session.useSSL && !session.options.startTLS)
-		return openSecureConnection(session);
 	return session;
 }
 

@@ -22,12 +22,28 @@ enum ImapProtocol
 /// Capabilities of mail server
 enum Capability
 {
-    none = 0x00,
+	none = 0x00,
+
+	@("NAMESPACE")
     namespace = 0x01,
+
+	@("AUTH=CRAM-MD5")
     cramMD5 = 0x02,
+
+	@("STARTTLS")
     startTLS = 0x04,
+
+	@("CHILDREN")
     children = 0x08,
+
+	@("IDLE")
     idle = 0x10,
+
+	@("IMAP4rev1")
+	imap4Rev1,
+
+	@("IMAP4")
+	imap4,
 
 	@("LITERAL+")
 	literalPlus,
@@ -190,9 +206,16 @@ enum Capability
 enum ImapStatus
 {
     none = 0,
+
+	@("OK")
     ok = 1,
+
+	@("NO")
     no = 2,
+
+	@("BAD")
     bad = 3,
+
     untagged = 4,
     continue_ = 5,
     bye = 6,

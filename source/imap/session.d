@@ -107,7 +107,7 @@ struct Options
 	bool interactive = false;
 	bool namespace = false;
 	bool cramMD5 = false;
-	bool startTLS = true;
+	bool startTLS = false;
 	bool tryCreate = false;
 	bool recoverAll = true;
 	bool recoverErrors = true;
@@ -133,8 +133,7 @@ struct Session
 	string server;
 	string port;
 	package AddressInfo addressInfo;
-	string username;
-	string password;
+	ImapLogin imapLogin;
 	Socket socket;
 	ImapProtocol imapProtocol;
 	Set!Capability capabilities;
@@ -154,7 +153,7 @@ struct Session
         import std.format : format;
         import std.conv : to;
         Appender!string ret;
-        ret.put(format!"Session to %s:%s as user %s\n"(server,port,username));
+        ret.put(format!"Session to %s:%s as user %s\n"(server,port,imapLogin.username));
         ret.put(format!"- useSSL: %s\n"(useSSL.to!string));
         ret.put(format!"- startTLS: %s\n"(useSSL.to!string));
         ret.put(format!"- noCerts: %s\n"(noCerts.to!string));
@@ -173,8 +172,13 @@ struct Session
 		this.server = imapServer.server;
 		this.port = imapServer.port;
         this.useSSL = useSSL;
-		this.username = imapLogin.username;
-		this.password = imapLogin.password;
+		this.imapLogin = imapLogin;
+	}
+
+	ref Session useStartTLS(bool useTLS = true)
+	{
+		this.options.startTLS = useTLS;
+		return this;
 	}
 
 	ref Session setSelected(Mailbox mailbox)

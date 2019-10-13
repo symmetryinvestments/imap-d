@@ -238,6 +238,25 @@ ImapResult responseGreeting(ref Session session)
 	return ImapResult(ImapStatus.none,res[1]);
 }
 
+T parseEnum(T)(string val, T def = T.init)
+{
+	import std.traits : EnumMembers;
+	import std.conv : to;
+	static foreach(C;EnumMembers!T)
+	{{
+		enum name = C.to!string;
+		enum udas = __traits(getAttributes, __traits(getMember,T,name));
+		static if(udas.length > 0)
+		{
+			if (val == udas[0].to!string)
+			{
+				return C;
+			}
+		}
+	}}
+	return def;
+}
+
 
 ///	Process the data that server sent due to IMAP CAPABILITY client request.
 ImapResult responseCapability(ref Session session, Tag tag)
@@ -268,61 +287,25 @@ ImapResult responseCapability(ref Session session, Tag tag)
 
 	foreach(token;lines)
 	{
-		switch(token)
+		auto capability = parseEnum!Capability(token,Capability.none);
+		if (capability != Capability.none)
 		{
-			case "NAMESPACE":
-				capabilities = capabilities.add(Capability.namespace);
-				break;
-			
-			case "AUTH=CRAM-MD5":
-				capabilities = capabilities.add(Capability.cramMD5);
-				break;
-
-			case "STARTTLS":
-				capabilities = capabilities.add(Capability.startTLS);
-				break;
-
-			case "CHILDREN":
-				capabilities = capabilities.add(Capability.children);
-				break;
-
-			case "IDLE":
-				capabilities = capabilities.add(Capability.idle);
-				break;
-
-			case "IMAP4rev1":
-				protocol = ImapProtocol.imap4Rev1;
-				break;
-
-			case "IMAP4":
-				protocol = ImapProtocol.imap4;
-				break;
-
-			default:
-				bool isKnown = false;
-				static foreach(C;EnumMembers!Capability)
-				{{
-					enum name = C.to!string;
-					enum udas = __traits(getAttributes, __traits(getMember,Capability,name));
-					static if(udas.length > 0)
-					{
-						if (token == udas[0].to!string)
-						{
-							capabilities = capabilities.add(C);
-							isKnown = true;
-						}
-					}
-				}}
-				if (!isKnown)
-				{
-					infof("unknown capabilty: %s",token);
-				}
-				break;
+					capabilities = capabilities.add(capability);
+		}
+		else
+		{
+			infof("unknown capabilty: %s",token);
 		}
 	}
 
+	if (capabilities.has(Capability.imap4Rev1))
+		session.imapProtocol = ImapProtocol.imap4Rev1;
+	else if (capabilities.has(Capability.imap4))
+		session.imapProtocol = ImapProtocol.imap4;
+	else
+		session.imapProtocol = ImapProtocol.init;
+
 	session.capabilities = capabilities;
-	session.imapProtocol = protocol;
 	version(Trace)
 	{
 		import std.stdio;
@@ -363,13 +346,75 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 	return r;
 }
 
+
+string coreUDA(string uda)
+{
+	import std.string : replace, strip;
+	return uda.replace("# ","").replace(" #","").strip;
+}
+
+
+T getValueFromLine(T)(string line, string uda)
+{
+	import std.conv : to;
+	import std.string : startsWith, strip, split;
+	auto udaToken = uda.coreUDA();
+	auto i = token.indexOf(token,udaToken);
+	auto j = i + udaToken.length + 1;
+
+	bool isPrefix = uda.startsWith("# ");
+	if (isPrefix)
+	{
+		return token[0..i].strip.split.back.to!T;
+	}
+	else
+	{
+		return token[j .. $].strip.to!T;
+	}
+}
+
+string getTokenFromLine(string line, string uda)
+{
+	return "";
+}
+
+version(None)
+T parseStruct(T)(T agg, string line)
+{
+	import std.traits : Fields;
+	import std.conv : to;
+	static foreach(M;__traits(allMembers,T))
+	{{
+		enum name = M.to!string;
+		enum udas = __traits(getAttributes, __traits(getMember,T,name));
+		alias FT = typeof( __traits(getMember,T,name));
+		static if(udas.length > 0)
+		{
+			enum uda = udas[0].to!string;
+			if (token == uda.coreUDA)
+			{
+				__traits(getMember,agg,name) = getValueFromToken!FT(line,uda);
+			}
+		}
+	}}
+	return agg;
+}
+
 struct StatusResult
 {
 	ImapStatus status;
 	string value;
+
+	@("MESSAGES #")
 	int messages;
+
+	@("RECENT #")
 	int recent;
+
+	@("UIDNEXT #")
 	int uidNext;
+
+	@("UNSEEN #")
 	int unseen;
 }
 ///	Process the data that server sent due to IMAP STATUS client request.
@@ -389,13 +434,9 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
 		return StatusResult(r.status,r.value);
 
-	auto lines = r.value.splitLines
-					.map!(line => line.strip)
-					.filter!(line => line.startsWith(StatusToken) && 
-									line.length > StatusToken.length + mailboxName.length+2)
-					.map!(line => line[StatusToken.length .. $].strip)
-					.filter!(line => line.split.front == mailboxName.strip);
+	auto lines = r.value.extractLinesWithPrefix(StatusToken, StatusToken.length + mailboxName.length + 2);
 
+	version(None)
 	foreach(line;lines)
 	{
 		auto i = line.indexOf(" ");
@@ -408,24 +449,7 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 			auto val = cols[j*2 +1];
 			if (!val.isNumeric)
 				continue;
-			auto n = val.to!int;
-			switch(key.toUpper)
-			{
-				case "MESSAGES":
-					ret.messages = n;
-					break;
-				case "RECENT":
-					ret.recent = n;
-					break;
-				case "UIDNEXT":
-					ret.uidNext = n;
-					break;
-				case "UNSEEN":
-					ret.unseen = n;
-					break;
-				default:
-					break;
-			}
+			ret = ret.parseStruct(key.toUpper,val.to!int);
 		}
 	}
 	ret.status = r.status;
@@ -433,6 +457,19 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 	return ret;
 }
 
+string[] extractLinesWithPrefix(string buf, string prefix, size_t minimumLength = 0)
+{
+	import std.string : splitLines, strip, startsWith;
+	import std.algorithm : map, filter;
+	import std.array : array;
+	
+	auto lines = buf.splitLines
+					.map!(line => line.strip)
+					.filter!(line => line.startsWith(prefix) && line.length > minimumLength)
+					.map!(line => line[prefix.length .. $].strip)
+					.array;
+	return lines;
+}
 
 
 ///	Process the data that server sent due to IMAP EXAMINE client request.
@@ -444,19 +481,54 @@ ImapResult responseExamine(ref Session session, int tag)
 	return r;
 }
 
+struct SelectResult
+{
+	ImapStatus status;
+	string value;
+
+	@("FLAGS (#)")
+	ImapFlag[] flags;
+
+	@("# EXISTS")
+	int exists;
+
+	@("# RECENT")
+	int recent;
+
+	@("OK [UNSEEN #]")
+	int unseen;
+
+	@("OK [PERMANENTFLAGS #]")
+	ImapFlag[] permanentFlags;
+
+	@("OK [UIDNEXT #]")
+	int uidNext;
+
+	@("OK [UIDVALIDITY #]")
+	int uidValidity;
+}
+
 
 ///	Process the data that server sent due to IMAP SELECT client request.
-ImapResult responseSelect(ref Session session, int tag)
+SelectResult responseSelect(ref Session session, int tag)
 {
+	import std.algorithm: canFind;
 	import std.string : toUpper;
+	SelectResult ret;
 	auto r = session.responseGeneric(tag);
-	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-		return r;
+	ret.status = (r.value.canFind("OK [READ-ONLY] SELECT")) ? ImapStatus.readOnly : r.status;
+	ret.value = r.value;
 
-	if (r.value.toUpper == "[READ-ONLY]")
-		return ImapResult(ImapStatus.readOnly,r.value);
-	else
-		return r;
+	if (ret.status == ImapStatus.unknown || ret.status == ImapStatus.bye)
+		return ret;
+
+	auto lines = r.value.extractLinesWithPrefix("* ", 3);
+	version(None)
+	foreach(line;lines)
+	{
+		ret = ret.parseStruct(line);
+	}
+	return ret;
 }
 
 ///
@@ -564,6 +636,8 @@ ListResponse responseList(ref Session session, Tag tag)
 	}
 	return ListResponse(ImapStatus.ok,result.value,listEntries);
 }
+
+
 
 ///
 struct SearchResult

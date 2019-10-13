@@ -7,6 +7,7 @@ import imap.namespace;
 import imap.defines;
 import imap.auth;
 import imap.response;
+import imap.sil : SILdoc;
 
 /// Every IMAP command is preceded with a unique string
 static int tag = 0x1000;

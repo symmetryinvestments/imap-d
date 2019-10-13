@@ -3,6 +3,7 @@ module imap.session;
 import imap.defines;
 import imap.socket;
 import imap.set;
+import imap.sil : SILdoc;
 
 import core.stdc.stdio;
 import core.stdc.string;
@@ -14,14 +15,6 @@ import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.sha;
 
-version(SILdoc) {}
-else
-{
-	struct SILdoc
-	{
-		string value;
-	}
-}
 
 struct SSL_
 {

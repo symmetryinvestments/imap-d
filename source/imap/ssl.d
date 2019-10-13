@@ -1,5 +1,6 @@
 ///
 module imap.ssl;
+import imap.sil : SILdoc;
 import std.stdio;
 import std.string;
 import core.sys.posix.unistd : isatty;
@@ -26,7 +27,7 @@ X509* getPeerCertificate(ref SSL context)
 	return cert;
 }
 
-//	Get SSL/TLS certificate check it, maybe ask user about it and act accordingly.
+@SILdoc("Get SSL/TLS certificate check it, maybe ask user about it and act accordingly.")
 Status getCert(ref Session session)
 {
 	import std.exception : enforce;
@@ -60,7 +61,7 @@ enum Status
 	failure,
 }
 
-//	Check if the SSL/TLS certificate exists in the certificates file.
+@SILdoc("Check if the SSL/TLS certificate exists in the certificates file.")
 Status checkCert(X509* pcert, string pmd)
 {
 	import std.file : exists;
@@ -153,7 +154,7 @@ string asHex(string s)
 }
 
 	
-///	Print information about the SSL/TLS certificate.
+@SILdoc("Print information about the SSL/TLS certificate.")
 void printCert(X509* cert, string fingerprint)
 {
 	writefln("Server certificate subject: %s",cert.getSubject);
@@ -163,7 +164,7 @@ void printCert(X509* cert, string fingerprint)
 }
 
 
-///	Extract certificate serial number as a string.
+@SILdoc("Extract certificate serial number as a string.")
 string getSerial(X509* cert)
 {
 	import std.string : fromStringz;
@@ -191,7 +192,7 @@ string getSerial(X509* cert)
 }
 
 
-///	Store the SSL/TLS certificate after asking the user to accept/reject it.
+@SILdoc("Store the SSL/TLS certificate after asking the user to accept/reject it.")
 void storeCert(X509* cert)
 {
 	import std.string : toLower;

@@ -1,5 +1,6 @@
 ///
 module imap.auth;
+import imap.sil : SILdoc;
 import std.string;
 import std.stdio;
 import deimos.openssl.ssl;
@@ -8,7 +9,7 @@ import deimos.openssl.evp;
 import imap.defines;
 
 
-///
+@SILdoc("challenge-response authentication mechanism MD5")
 string authCramMD5(string user, string pass,string challenge)
 {
 	import std.conv : to;

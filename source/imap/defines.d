@@ -3,6 +3,7 @@ module imap.defines;
 import std.stdio;
 import deimos.openssl.ssl;
 import imap.socket;
+import imap.sil : SILdoc;
 import core.sys.posix.sys.stat;
 
 static if (is(size_t==uint))
@@ -11,7 +12,7 @@ else
     alias ssize_t=long;
 
 
-/// IMAP protocol supported by the server
+@SILdoc("IMAP protocol supported by the server")
 enum ImapProtocol
 {
     none = 0,
@@ -19,7 +20,7 @@ enum ImapProtocol
     imap4 = 2,
 }
 
-/// Capabilities of mail server
+@SILdoc("Capabilities of mail server")
 enum Capability
 {
 	none = 0x00,
@@ -202,7 +203,7 @@ enum Capability
 	xMove,
 }
 
-/// Status responses and response codes
+@SILdoc("Status responses and response codes")
 enum ImapStatus
 {
     none = 0,

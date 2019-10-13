@@ -6,6 +6,7 @@ version(SIL):
 import kaleidic.sil.lang.handlers:Handlers;
 import kaleidic.sil.lang.types : Variable,Function,SILdoc;
 import std.meta:AliasSeq;
+import imap.set;
 
 version (SIL_Plugin)
 {
@@ -127,7 +128,9 @@ void registerImap(ref Handlers handlers)
 	import deimos.openssl.evp;
 	import std.stdio : File;
 	import arsd.email : IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart;
-
+	import std.process : pipeProcess, ProcessPipes, Redirect;
+	//import std.file: wait, flush, close;
+	import std.stdio : writeln, File;
 	{
 		handlers.openModule("imap");
 		scope(exit) handlers.closeModule();
@@ -141,6 +144,13 @@ void registerImap(ref Handlers handlers)
 				MimeAttachment, // proxy from imap not arsd
 		))
 			handlers.registerType!T;
+
+		handlers.registerType!ProcessPipes;
+		handlers.registerHandler!((string processName) => pipeProcess(processName, Redirect.stdout | Redirect.stdin | Redirect.stderr))("pipeProcess");
+		handlers.registerType!File;
+		handlers.registerHandler!((string s) => writeln(s))("writeln");
+
+
 
 		handlers.registerType!(Set!Capability)("Capabilities");
 
@@ -184,4 +194,6 @@ void registerImap(ref Handlers handlers)
         handlers.registerType!X509_("X509");
 	}
 }
+
+
 

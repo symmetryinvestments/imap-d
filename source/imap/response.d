@@ -3,6 +3,8 @@ module imap.response;
 import imap.defines;
 import imap.socket;
 import imap.session;
+import imap.set;
+
 import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;

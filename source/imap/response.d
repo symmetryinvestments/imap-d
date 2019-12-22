@@ -755,7 +755,9 @@ BodyResponse responseFetchBody(ref Session session, Tag tag)
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
 		return BodyResponse(r.status,r.value);
 	auto parsed = r.value.extractLiterals;
-	enforce(parsed[1].length <2);
+	
+	if (parsed[1].length >=2)
+		return BodyResponse(r.status,r.value,parsed[1]);
 	auto bodyText = (parsed[1].length==0) ? r.value: parsed[1][0];
 	auto bodyLines = bodyText.splitLines;
 	if (bodyLines.length > 0 && bodyLines.front.length ==0)
@@ -887,7 +889,7 @@ LiteralInfo findLiteral(string buf)
 		j = (j == -1) ? j : (i + 1) + j;
 		hasLength = (i !=-1 && j != -1) && buf[i+1 .. j].isNumeric;
 		len = hasLength ? buf[i+1 .. j].to!ptrdiff_t : -1;
-		stderr.writefln("i=%s,j=%s,len=%s",i,j,len);
+		version(Trace) stderr.writefln("i=%s,j=%s,len=%s",i,j,len);
 	} while (i != -1 && j !=-1 && !hasLength);
 	return LiteralInfo(i,j,len);
 }
@@ -904,7 +906,7 @@ auto extractLiterals(string buf)
 	do
 	{
 		literalInfo= findLiteral(buf);
-		stderr.writefln("literalInfo=%s,buf=%s",literalInfo,buf.length);
+		version(Trace) stderr.writefln("literalInfo=%s,buf=%s",literalInfo,buf.length);
 		if(literalInfo.length > 0)
 		{
 			string literal = buf[literalInfo.j+1.. literalInfo.j+1 + literalInfo.length];

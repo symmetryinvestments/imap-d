@@ -95,7 +95,7 @@ int sendRequest(ref Session session, string value)
 	}
 
 	auto taggedValue = format!"D%04X %s%s"(tag,value, value.endsWith("\n") ? "":"\r\n");
-	stderr.writefln("sending %s",taggedValue);
+	version(Trace) stderr.writefln("sending %s",taggedValue);
 	if (session.socketWrite(taggedValue) == -1)
 		return -1;
 
@@ -178,17 +178,16 @@ ref Session login(ref Session session)
 	enforce(session.socket.isAlive(), "not connected to server");
 
 	auto rg = session.check!responseGreeting();
-	stderr.writefln("got login first stage: %s",rg);
-/+
+	version(Trace) stderr.writefln("got login first stage: %s",rg);
 	if (session.options.debugMode)
 	{
 		t = session.check!sendRequest("NOOP");
 		session.check!responseGeneric(t);
-	}+/
+	}
 	t = session.check!sendRequest("CAPABILITY");
-	stderr.writefln("sent capability request");
+	version(Trace) stderr.writefln("sent capability request");
 	res = session.check!responseCapability(t);
-	stderr.writefln("got capabilities: %s",res);
+	version(Trace) stderr.writefln("got capabilities: %s",res);
 
 	bool needsStartTLS =   (session.sslProtocol != ProtocolSSL.none) &&
                             session.capabilities.has(Capability.startTLS) &&
@@ -219,16 +218,16 @@ ref Session login(ref Session session)
 	{
 		if (session.capabilities.has(Capability.cramMD5) && session.options.cramMD5)
 		{
-			stderr.writefln("cram");
+			version(Trace) stderr.writefln("cram");
 			t = session.check!sendRequest("AUTHENTICATE CRAM-MD5");
 			res = session.check!responseAuthenticate(t);
-			stderr.writefln("authenticate cram first response: %s",res);
+			version(Trace) stderr.writefln("authenticate cram first response: %s",res);
 			enforce(res.status == ImapStatus.continue_, "login failure");
 			auto hash = authCramMD5(session.username,session.password,res.value.strip);
-			stderr.writefln("hhash: %s",hash);
+			version(Trace) stderr.writefln("hash: %s",hash);
 			t = session.check!sendContinuation(hash);
 			res = session.check!responseGeneric(t);
-			stderr.writefln("response: %s",res);
+			version(Trace) stderr.writefln("response: %s",res);
 			rl = res.status;
 		}
 		if (rl != ImapStatus.ok)
@@ -245,7 +244,7 @@ ref Session login(ref Session session)
 			// return session.setStatus(ImapStatus.no);
             throw new Exception(err);
 		}
-	} 
+	}
 
 	t = session.check!sendRequest("CAPABILITY");
 	res = session.check!responseCapability(t);
@@ -646,19 +645,19 @@ auto idle(ref Session session)
 
 	do
 	{
-		stderr.writefln("inner loop for idle");
+		version(Trace) stderr.writefln("inner loop for idle");
 		t = session.sendRequest("IDLE");
 		ri = session.responseIdle(t);
 		r = session.responseContinuation(t);
-		stderr.writefln("sendRequest - responseContinuation was %s",r);
+		version(Trace) stderr.writefln("sendRequest - responseContinuation was %s",r);
 		if (r.status == ImapStatus.continue_)
 		{
 			ri = session.responseIdle(t);
-			stderr.writefln("responseIdle result was %s",ri);
+			version(Trace) stderr.writefln("responseIdle result was %s",ri);
 			session.sendContinuation("DONE");
-			stderr.writefln("continuation result was %s",ri);
+			version(Trace) stderr.writefln("continuation result was %s",ri);
 			r = session.responseGeneric(t);
-			stderr.writefln("reponseGenericresult was %s",r);
+			version(Trace) stderr.writefln("reponseGenericresult was %s",r);
 		}
 	} while (ri.status != ImapStatus.untagged);
 	stderr.writefln("returning %s",ri);

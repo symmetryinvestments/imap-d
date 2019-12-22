@@ -1,8 +1,9 @@
+import imap
 // PASSWORD is set in IMAP_PASS environmental variable
-login = imap.ImapLogin("laeeth@kaleidic.io","")
+login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS"))
 server = imap.ImapServer("imap.fastmail.com","993")
 
-session = imap.Session(server,login)
+session = imap.Session(server,login,true,false)
 session=imap.openConnection(session)
 print(session.socket)
 session = imap.login(session);
@@ -14,12 +15,15 @@ print(session)
 INBOX =imap.Mailbox("INBOX/kaleidic","/",'/')
 
 // Run status on INBOX before we open it
-status_result = imap.status(session,INBOX)
-print(status_result)
+// status_result = imap.examine(session,INBOX)
+//print(status_result)
 
 // Select Inbox
 result = imap.select(session,INBOX)
+print("======")
+print("INBOX:")
 print(result)
+print("======")
 
 // search all messages since 29 Jan 2019 and get UIDs
 result=imap.search(session,"SINCE 29-Jan-2019")
@@ -46,4 +50,3 @@ print(a.type)
 print(a.filename)
 print(a.content[0:100])
 imap.writeBinary(a.filename,a.content) // get first attachment and save to file
-➜

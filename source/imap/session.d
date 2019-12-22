@@ -107,7 +107,7 @@ struct Options
 	bool interactive = false;
 	bool namespace = false;
 	bool cramMD5 = false;
-	bool startTLS = true;
+	bool startTLS = false;
 	bool tryCreate = false;
 	bool recoverAll = true;
 	bool recoverErrors = true;
@@ -166,13 +166,14 @@ struct Session
         return ret.data;
     }
 
-	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true)
+	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true, bool useStartTLS = false)
 	{
 		import std.exception : enforce;
 		import std.process : environment;
 		this.server = imapServer.server;
 		this.port = imapServer.port;
         this.useSSL = useSSL;
+		this.options.startTLS = useStartTLS;
 		this.username = imapLogin.username;
 		this.password = imapLogin.password;
 	}

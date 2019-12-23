@@ -2,9 +2,10 @@ name "symmetry-imap"
 description "IMAP client library"
 dependency "openssl" version="~>1.1.6+1.0.1g"
 dependency "arsd-official:email" version="~master"
+
 license "MIT"
 
-versions "SSL" "OPENSSL_NO_SRP" //"Trace"
+versions "SSL" "OPENSSL_NO_SRP"
 libs "ssl" "crypto" 
 
 configuration "library" {

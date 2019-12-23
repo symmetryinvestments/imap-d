@@ -3,9 +3,17 @@ module imap.response;
 import imap.defines;
 import imap.socket;
 import imap.session;
+import imap.sildoc;
 import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;
+
+
+/**
+  		TODO:
+			- add optional response code when parsing statuses
+*/
+
 ///
 alias Tag = int;
 
@@ -363,16 +371,81 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 	return r;
 }
 
+
 struct StatusResult
 {
 	ImapStatus status;
 	string value;
+
+	@("MESSAGES")
 	int messages;
+
+	@("RECENT")
 	int recent;
+
+	@("UIDNEXT")
 	int uidNext;
+
+	@("UNSEEN")
 	int unseen;
 }
-///	Process the data that server sent due to IMAP STATUS client request.
+
+T parseUpdateT(T)(T t, string name, string value)
+{
+	import std.format : format;
+	import std.exception : enforce;
+	import std.conv : to;
+
+	bool isKnown = false;
+	static foreach(M; __traits(allMembers,T))
+	{{
+		enum udas = __traits(getAttributes, __traits(getMember,T,M));
+		static if(udas.length > 0)
+		{
+			if (name == udas[0].to!string)
+			{
+				import std.stdio;
+				alias FieldType = typeof(__traits(getMember,T,M));
+				__traits(getMember,t,M) = value.to!FieldType;
+				isKnown = true;
+			}
+		}
+	}}
+	enforce(isKnown, format!"unknown token for type %s parsing name = %s; value = %s"
+					(__traits(identifier,T),name,value));
+	return t;
+}
+
+private string extractMailbox(string line)
+{
+	import std.string : split, strip;
+	auto cols = line.split;
+	return (cols.length < 3) ? null : cols[2].strip;
+}
+
+private string[][] extractParenthesizedList(string line)
+{
+	import std.string : indexOf, lastIndexOf, strip, split;
+	import std.format : format;
+	import std.range : chunks;
+	import std.exception : enforce;
+	import std.array : array;
+	import std.algorithm : map;
+
+	auto i = line.indexOf("(");
+	auto j = line.lastIndexOf(")");
+
+	if (i == -1 || j == -1)
+		return [][];
+
+	enforce(j > i, format!"line %s should have a (parenthesized list) but it is malformed"(line));
+	auto cols = line[i+1 .. j].strip.split;
+	enforce(cols.length % 2 == 0, format!"tokens %s should have an even number of columns but they don't"(cols));
+	return cols.chunks(2).map!(r => r.array).array;
+}
+
+
+@SILdoc("Process the data that server sent due to IMAP STATUS client request")
 StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 {
 	import std.exception : enforce;
@@ -389,53 +462,27 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
 		return StatusResult(r.status,r.value);
 
-	auto lines = r.value.splitLines
-					.map!(line => line.strip)
-					.filter!(line => line.startsWith(StatusToken) && 
-									line.length > StatusToken.length + mailboxName.length+2)
-					.map!(line => line[StatusToken.length .. $].strip)
-					.filter!(line => line.split.front == mailboxName.strip);
-
-	foreach(line;lines)
-	{
-		auto i = line.indexOf(" ");
-		if (i < mailboxName.length +1)
-			continue;
-		auto cols= line[i+1 ..$].stripBrackets.split;
-		foreach(j; 0 .. cols.length / 2)
-		{
-			auto key = cols[j*2];
-			auto val = cols[j*2 +1];
-			if (!val.isNumeric)
-				continue;
-			auto n = val.to!int;
-			switch(key.toUpper)
-			{
-				case "MESSAGES":
-					ret.messages = n;
-					break;
-				case "RECENT":
-					ret.recent = n;
-					break;
-				case "UIDNEXT":
-					ret.uidNext = n;
-					break;
-				case "UNSEEN":
-					ret.unseen = n;
-					break;
-				default:
-					break;
-			}
-		}
-	}
 	ret.status = r.status;
 	ret.value = r.value;
+
+	auto lists = r.value.splitLines
+					.map!(line => line.strip)
+					.filter!(line => line.startsWith(StatusToken) && line.extractMailbox == mailboxName)
+					.map!(line => line.extractParenthesizedList)
+					.array;
+
+	foreach(list; lists)
+	{
+		foreach(pair;list)
+		{
+			ret = parseUpdateT!StatusResult(ret, pair[0],pair[1]);
+		}
+	}
 	return ret;
 }
 
 
-
-///	Process the data that server sent due to IMAP EXAMINE client request.
+@SILdoc("Process the data that server sent due to IMAP EXAMINE client request.")
 ImapResult responseExamine(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -445,7 +492,7 @@ ImapResult responseExamine(ref Session session, int tag)
 }
 
 
-///	Process the data that server sent due to IMAP SELECT client request.
+@SILdoc("Process the data that server sent due to IMAP SELECT client request.")
 ImapResult responseSelect(ref Session session, int tag)
 {
 	import std.string : toUpper;
@@ -514,7 +561,7 @@ struct ListResponse
 	ListEntry[] entries;
 }
 
-///	Process the data that server sent due to IMAP LIST or IMAP LSUB client request.
+@SILdoc("Process the data that server sent due to IMAP LIST or IMAP LSUB client request.")
 ListResponse responseList(ref Session session, Tag tag)
 {
 //			list:			"\\* (LIST|LSUB) \\(([[:print:]]*)\\) (\"[[:print:]]\"|NIL) " ~
@@ -573,7 +620,7 @@ struct SearchResult
 	long[] ids;
 }
 
-///	Process the data that server sent due to IMAP SEARCH client request.
+@SILdoc("Process the data that server sent due to IMAP SEARCH client request.")
 SearchResult responseSearch(ref Session session, int tag)
 {
 	import std.algorithm : filter, map, each;
@@ -600,7 +647,7 @@ SearchResult responseSearch(ref Session session, int tag)
 	return SearchResult(r.status,r.value,ids.data);
 }
 
-///	Process the data that server sent due to IMAP FETCH FAST client request.
+@SILdoc("Process the data that server sent due to IMAP FETCH FAST client request.")
 ImapResult responseFetchFast(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -619,7 +666,7 @@ struct FlagResult
 	ImapFlag[] flags;
 }
 
-///	Process the data that server sent due to IMAP FETCH FLAGS client request.
+@SILdoc("Process the data that server sent due to IMAP FETCH FLAGS client request.")
 FlagResult responseFetchFlags(ref Session session, Tag tag)
 {
 	import std.experimental.logger : infof;
@@ -698,7 +745,7 @@ struct ResponseSize
 }
 
 
-///	Process the data that server sent due to IMAP FETCH RFC822.SIZE client request.
+@SILdoc("Process the data that server sent due to IMAP FETCH RFC822.SIZE client request.")
 ImapResult responseFetchSize(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -708,7 +755,7 @@ ImapResult responseFetchSize(ref Session session, Tag tag)
 }
 
 
-///	Process the data that server sent due to IMAP FETCH BODYSTRUCTURE client request.
+@SILdoc("Process the data that server sent due to IMAP FETCH BODYSTRUCTURE client request.")
 ImapResult responseFetchStructure(ref Session session, int tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -736,7 +783,7 @@ struct MimeAttachment
 	string id;
 }
 
-// SIL cannot handle void[], so ...
+@SILdoc("SIL cannot handle void[], so ...")
 MimeAttachment[] attachments(IncomingEmailMessage message)
 {
 	import std.algorithm : map;
@@ -803,7 +850,7 @@ bool isTagged(ImapStatus status)
 	return (status == ImapStatus.ok) || (status == ImapStatus.bad) || (status == ImapStatus.no);
 }
 
-///	Process the data that server sent due to IMAP IDLE client request.
+@SILdoc("Process the data that server sent due to IMAP IDLE client request.")
 ImapResult responseIdle(ref Session session, Tag tag)
 {
 	import std.experimental.logger : tracef;

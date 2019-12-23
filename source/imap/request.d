@@ -7,6 +7,7 @@ import imap.namespace;
 import imap.defines;
 import imap.auth;
 import imap.response;
+import imap.sildoc;
 
 /// Every IMAP command is preceded with a unique string
 static int tag = 0x1000;
@@ -70,7 +71,7 @@ bool isLoginRequest(string value)
 	return value.strip.toUpper.startsWith("LOGIN");
 }
 
-///	Sends to server data; a command.
+@SILdoc("Sends to server data; a command")
 int sendRequest(ref Session session, string value)
 {
 	import std.format : format;
@@ -106,7 +107,7 @@ int sendRequest(ref Session session, string value)
 	return t;
 }
 
-///	Sends a response to a command continuation request.
+@SILdoc("Sends a response to a command continuation request.")
 int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
@@ -117,7 +118,7 @@ int sendContinuation(ref Session session, string data)
 }
 
 
-///	Reset any inactivity autologout timer on the server.
+@SILdoc("Reset any inactivity autologout timer on the server.")
 void noop(ref Session session)
 {
 	auto t = session.sendRequest("NOOP");
@@ -155,7 +156,7 @@ auto check(alias F, Args...)(ref Session session, Args args)
 }
 
 
-// Connect to the server, login to the IMAP server, get its capabilities, get the namespace of the mailboxes.
+@SILdoc("Connect to the server, login to the IMAP server, get its capabilities, get the namespace of the mailboxes.")
 ref Session login(ref Session session)
 {
 	import std.format : format;
@@ -267,7 +268,7 @@ ref Session login(ref Session session)
 }
 
 
-///	Logout from the IMAP server and disconnect
+@SILdoc("Logout from the IMAP server and disconnect")
 int logout(ref Session session)
 {
 
@@ -300,7 +301,7 @@ auto examine(ref Session session, Mailbox mbox)
 
 // MailboxImapStatus
 
-/// Get mailbox status
+@SILdoc("Get mailbox status")
 auto status(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
@@ -313,7 +314,7 @@ auto status(ref Session session, Mailbox mbox)
 }
 
 
-///	Open mailbox in read-write mode.
+@SILdoc("Open mailbox in read-write mode.")
 ImapResult select(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -326,7 +327,7 @@ ImapResult select(ref Session session, Mailbox mailbox)
 }
 
 
-///	Close examined/selected mailbox.
+@SILdoc("Close examined/selected mailbox.")
 ImapResult raw(ref Session session, string command)
 {
 	auto id = sendRequest(session,command);
@@ -339,7 +340,7 @@ ImapResult raw(ref Session session, string command)
 	return response;
 }
 
-///	Close examined/selected mailbox.
+@SILdoc("Close examined/selected mailbox.")
 ImapResult close(ref Session session)
 {
 	enum request = "CLOSE";
@@ -353,7 +354,7 @@ ImapResult close(ref Session session)
 	return response;
 }
 
-///	Remove all messages marked for deletion from selected mailbox.
+@SILdoc("Remove all messages marked for deletion from selected mailbox.")
 ImapResult expunge(ref Session session)
 {
 	enum request = "EXPUNGE";
@@ -368,17 +369,58 @@ struct MailboxList
 	string[] folders;
 }
 
-///	List available mailboxes
-auto list(ref Session session, string refer, string name)
+@SILdoc(`List available mailboxes:
+	The LIST command returns a subset of names from the complete set
+	of all names available to the client.  Zero or more untagged LIST
+	replies are returned, containing the name attributes, hierarchy
+	delimiter, and name.
+
+	The reference and mailbox name arguments are interpreted into a
+	canonical form that represents an unambiguous left-to-right
+	hierarchy. 
+
+	Here are some examples of how references and mailbox names might
+	be interpreted on a UNIX-based server:
+
+	   Reference     Mailbox Name  Interpretation
+	   ------------  ------------  --------------
+	   ~smith/Mail/  foo.*         ~smith/Mail/foo.*
+	   archive/      %             archive/%
+	   #news.        comp.mail.*   #news.comp.mail.*
+	   ~smith/Mail/  /usr/doc/foo  /usr/doc/foo
+	   archive/      ~fred/Mail/*  ~fred/Mail/*
+
+	The first three examples demonstrate interpretations in
+	the context of the reference argument.  Note that
+	"~smith/Mail" SHOULD NOT be transformed into something
+	like "/u2/users/smith/Mail", or it would be impossible
+	for the client to determine that the interpretation was
+	in the context of the reference.
+
+	The character "*" is a wildcard, and matches zero or more
+	characters at this position.  The character "%" is similar to "*",
+	but it does not match a hierarchy delimiter.  If the "%" wildcard
+	is the last character of a mailbox name argument, matching levels
+	of hierarchy are also returned.  If these levels of hierarchy are
+	not also selectable mailboxes, they are returned with the
+	\Noselect mailbox name attribute (see the description of the LIST
+	response for more details).
+
+	Params:
+		session - current IMAP session
+		referenceName
+		mailboxName
+`)
+auto list(ref Session session, string referenceName="", string mailboxName="*")
 {
 	import std.format: format;
-	auto request = format!`LIST "%s" "%s"`(refer,name);
+	auto request = format!`LIST "%s" "%s"`(referenceName,mailboxName);
 	auto id = session.sendRequest(request);
 	return session.responseList(id);
 }
 
 
-///	List subscribed mailboxes.
+@SILdoc("List subscribed mailboxes.")
 auto lsub(ref Session session, string refer, string name)
 {
 	import std.format : format;
@@ -387,7 +429,7 @@ auto lsub(ref Session session, string refer, string name)
 	return session.responseList(id);
 }
 
-///	Search selected mailbox according to the supplied search criteria.
+@SILdoc("Search selected mailbox according to the supplied search criteria.")
 auto search(ref Session session, string criteria, string charset = null)
 {
 	import std.format : format;
@@ -401,7 +443,7 @@ auto search(ref Session session, string criteria, string charset = null)
 	return r;
 }
 
-///	Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages
+@SILdoc("Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages")
 auto fetchFast(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -410,7 +452,7 @@ auto fetchFast(ref Session session, string mesg)
 	return r;
 }
 
-///	Fetch the FLAGS of the messages
+@SILdoc("Fetch the FLAGS of the messages")
 auto fetchFlags(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -418,7 +460,7 @@ auto fetchFlags(ref Session session, string mesg)
 	return session.responseFetchFlags(t);
 }
 
-///	Fetch the INTERNALDATE of the messages
+@SILdoc("Fetch the INTERNALDATE of the messages")
 auto fetchDate(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -427,7 +469,7 @@ auto fetchDate(ref Session session, string mesg)
 	return session.responseFetchDate(id);
 }
 
-///	Fetch the RFC822.SIZE of the messages
+@SILdoc("Fetch the RFC822.SIZE of the messages")
 auto fetchSize(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -436,7 +478,7 @@ auto fetchSize(ref Session session, string mesg)
 	return session.responseFetchSize(id);
 }
 
-///	Fetch the BODYSTRUCTURE of the messages
+@SILdoc("Fetch the BODYSTRUCTURE of the messages")
 auto fetchStructure(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -446,7 +488,7 @@ auto fetchStructure(ref Session session, string mesg)
 }
 
 
-///	Fetch the BODY[HEADER] of the messages
+@SILdoc("Fetch the BODY[HEADER] of the messages")
 auto fetchHeader(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -457,7 +499,7 @@ auto fetchHeader(ref Session session, string mesg)
 }
 
 
-///	Fetch the text, ie. BODY[TEXT], of the messages
+@SILdoc("Fetch the text, ie. BODY[TEXT], of the messages")
 auto fetchRFC822(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -467,7 +509,7 @@ auto fetchRFC822(ref Session session, string mesg)
 	return r;
 }
 
-///	Fetch the text, ie. BODY[TEXT], of the messages
+@SILdoc("Fetch the text, ie. BODY[TEXT], of the messages")
 auto fetchText(ref Session session, string mesg)
 {
 	import std.format : format;
@@ -478,7 +520,7 @@ auto fetchText(ref Session session, string mesg)
 }
 
 
-///	Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.
+@SILdoc("Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.")
 auto fetchFields(ref Session session, string mesg, string headerFields)
 {
 	import std.format : format;
@@ -489,7 +531,7 @@ auto fetchFields(ref Session session, string mesg, string headerFields)
 }
 
 
-///	Fetch the specified message part, ie. BODY[<part>], of the messages.
+@SILdoc("Fetch the specified message part, ie. BODY[<part>], of the messages.")
 auto fetchPart(ref Session session, string mesg, string part)
 {
 	import std.format : format;
@@ -499,7 +541,7 @@ auto fetchPart(ref Session session, string mesg, string part)
 	return r;
 }
 
-///	Add, remove or replace the specified flags of the messages.
+	@SILdoc("Add, remove or replace the specified flags of the messages.")
 auto store(ref Session session, string mesg, string mode, string flags)
 {
 	import std.format : format;
@@ -523,7 +565,7 @@ auto store(ref Session session, string mesg, string mode, string flags)
 }
 
 
-///	Copy the specified messages to another mailbox.
+@SILdoc("Copy the specified messages to another mailbox.")
 auto copy(ref Session session, string mesg, Mailbox mailbox)
 {
 	import std.format : format;
@@ -586,7 +628,7 @@ auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, stri
 }
 +/
 
-///	Create the specified mailbox.
+@SILdoc("Create the specified mailbox.")
 auto create(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -596,7 +638,7 @@ auto create(ref Session session, Mailbox mailbox)
 }
 
 
-///	Delete the specified mailbox.
+@SILdoc("Delete the specified mailbox.")
 auto delete_(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -605,7 +647,7 @@ auto delete_(ref Session session, Mailbox mailbox)
 	return session.responseGeneric(id);
 }
 
-///	Rename a mailbox.
+@SILdoc("Rename a mailbox.")
 auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 {
 	import std.format : format;
@@ -614,7 +656,7 @@ auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 	return session.responseGeneric(id);
 }
 
-///	Subscribe to the specified mailbox.
+@SILdoc("Subscribe to the specified mailbox.")
 auto subscribe(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -624,7 +666,7 @@ auto subscribe(ref Session session, Mailbox mailbox)
 }
 
 
-///	Unsubscribe from the specified mailbox.
+@SILdoc("Unsubscribe from the specified mailbox.")
 auto unsubscribe(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -664,3 +706,4 @@ auto idle(ref Session session)
 
 	return ri;
 }
+

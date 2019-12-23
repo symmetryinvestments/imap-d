@@ -621,7 +621,13 @@ struct SearchResult
 }
 
 @SILdoc("Process the data that server sent due to IMAP SEARCH client request.")
-SearchResult responseSearch(ref Session session, int tag)
+SearchResult responseEsearch(ref Session session, int tag)
+{
+	return responseSearch(session,tag,"* ESEARCH ");
+}
+
+@SILdoc("Process the data that server sent due to IMAP SEARCH client request.")
+SearchResult responseSearch(ref Session session, int tag, string searchToken = "* SEARCH ")
 {
 	import std.algorithm : filter, map, each;
 	import std.array : array, Appender;
@@ -630,7 +636,33 @@ SearchResult responseSearch(ref Session session, int tag)
 
 	SearchResult ret;
 	Appender!(long[]) ids;
-	enum SearchToken = "* SEARCH ";
+	auto r = session.responseGeneric(tag);
+	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
+		return SearchResult(r.status,r.value);
+
+	auto lines = r.value.splitLines.filter!(line => line.strip.startsWith(searchToken)).array
+					.map!(line => line[searchToken.length -1 .. $]
+									.strip
+									.split
+									.map!(token => token.strip)
+									.filter!(token => token.isNumeric)
+									.map!(token => token.to!long));
+
+	lines.each!( line => line.each!(val => ids.put(val)));
+	return SearchResult(r.status,r.value,ids.data);
+}
+
+@SILdoc("Process the data that server sent due to IMAP ESEARCH (really multi-search) client request.")
+SearchResult responseMultiSearch(ref Session session, int tag)
+{
+	import std.algorithm : filter, map, each;
+	import std.array : array, Appender;
+	import std.string : startsWith, strip, isNumeric, splitLines, split;
+	import std.conv : to;
+
+	SearchResult ret;
+	Appender!(long[]) ids;
+	enum SearchToken = "* ESEARCH ";
 	auto r = session.responseGeneric(tag);
 	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
 		return SearchResult(r.status,r.value);

@@ -62,6 +62,9 @@ enum Capability
 	@("MULTIAPPEND")
 	multiAppend,
 
+	@("MULTISEARCH")
+	multiSearch,
+
 	@("BINARY")
 	binary,
 

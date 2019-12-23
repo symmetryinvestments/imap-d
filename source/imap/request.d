@@ -443,6 +443,84 @@ auto search(ref Session session, string criteria, string charset = null)
 	return r;
 }
 
+enum SearchResultType
+{
+	min,
+	max,
+	count,
+	all,
+}
+
+string toString(SearchResultType[] resultTypes)
+{
+	import std.string : toUpper, join;
+	import std.format : format;
+	import std.algorithm : map;
+	import std.conv : to;
+	import std.array : array;
+
+	if (resultTypes.length == 0)
+		return null;
+	return format!"RETURN (%s) "(resultTypes.map!(t => t.to!string.toUpper).array.join(" "));
+}
+
+private string createSearchMailboxList(string[] mailboxes, string[] subtrees, bool subtreeOne = false)
+{
+	import std.array : Appender;
+	import std.algorithm : map;
+	Appender!string ret;
+	import std.format : format;
+	import std.algorithm : map;
+	import std.string : join, strip;
+	auto subtreeTerm = subtreeOne ? "subtree-one" : "subtree";
+
+	// FIXME = should add "subscribed", "inboxes" and maybe "selected" and "selected-delayed"
+	if (mailboxes.length == 0 && subtrees.length == 0)
+	   return `IN ("personal") `;
+	if (mailboxes.length > 0)
+		ret.put(format!"mailboxes %s "(mailboxes.map!(m => format!`"%s"`(m)).join(" ")));
+	if (subtrees.length > 0)
+		ret.put(format!"%s %s "(subtreeTerm, subtrees.map!(t => format!`"%s"`(t)).join(" ")));
+	return format!"IN (%s) "(ret.data.strip);
+}
+
+			
+@SILdoc("Search selected mailbox according to the supplied search criteria.")
+auto esearch(ref Session session, string criteria, SearchResultType[] resultTypes=[], string charset = null)
+{
+	import std.format : format;
+	import std.string : strip;
+	string s;
+
+	s = (charset.length > 0) ? format!`UID SEARCH %sCHARSET "%s" %s`(resultTypes.toString(),charset,criteria) :
+								format!`UID SEARCH %s%s`(resultTypes.toString(),criteria);
+	s = s.strip;
+	import std.stdio;
+	stderr.writeln(s);
+	auto t = session.imapTry!sendRequest(s);
+	auto r = session.responseEsearch(t);
+	return r;
+}
+
+@SILdoc("Search selected mailboxes and subtrees according to the supplied search criteria.")
+auto multiSearch(ref Session session, string criteria, SearchResultType[] resultTypes=[], string[] mailboxes=[], string[] subtrees = [],string charset = null, bool subtreeOne = false)
+{
+	import std.format : format;
+	import std.string : strip;
+	string s;
+
+	s = (charset.length > 0) ? format!`ESEARCH %s%sCHARSET "%s" %s`(
+										createSearchMailboxList(mailboxes,subtrees,subtreeOne),
+										resultTypes.toString(),charset,criteria) :
+								format!`ESEARCH %s%s%s`(
+										createSearchMailboxList(mailboxes,subtrees,subtreeOne),
+										resultTypes.toString(),criteria);
+	s = s.strip;
+	auto t = session.imapTry!sendRequest(s);
+	auto r = session.responseMultiSearch(t);
+	return r;
+}
+
 @SILdoc("Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages")
 auto fetchFast(ref Session session, string mesg)
 {
@@ -582,6 +660,28 @@ auto copy(ref Session session, string mesg, Mailbox mailbox)
 			session.imapTry!responseGeneric(t);
 		}
 		t = session.imapTry!sendRequest(format!`UID COPY %s "%s"`(mesg,mailbox.toString));
+		r = session.imapTry!responseGeneric(t);
+	}
+	return r;
+}
+
+@SILdoc("Move the specified messages to another mailbox.")
+auto move(ref Session session, string mesg, Mailbox mailbox)
+{
+	import std.format : format;
+
+	auto t = session.imapTry!sendRequest(format!`UID MOVE %s "%s"`(mesg, mailbox.toString));
+	auto r = session.imapTry!responseGeneric(t);
+	if (r.status == ImapStatus.tryCreate)
+	{
+		t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
+		session.imapTry!responseGeneric(t);
+		if (session.options.subscribe)
+		{
+			t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
+			session.imapTry!responseGeneric(t);
+		}
+		t = session.imapTry!sendRequest(format!`UID MOVE %s "%s"`(mesg,mailbox.toString));
 		r = session.imapTry!responseGeneric(t);
 	}
 	return r;

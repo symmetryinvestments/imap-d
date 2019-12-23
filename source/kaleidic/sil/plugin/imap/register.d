@@ -140,7 +140,7 @@ void registerImap(ref Handlers handlers)
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,ListResponse,ListEntry,
 				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer_,MimePart,
-				MimeAttachment, SearchQuery// proxy from imap not arsd
+				MimeAttachment, SearchQuery, UidRange,SearchResultType // proxy from imap not arsd
 		))
 			handlers.registerType!T;
 
@@ -151,7 +151,7 @@ void registerImap(ref Handlers handlers)
 					search,fetchFast,fetchFlags,fetchDate,fetchSize, fetchStructure, fetchHeader,
 					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
 					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinary,
-					createQuery,searchQuery,rfcDate
+					createQuery,searchQuery,rfcDate,esearch,multiSearch,move,
 		))
 			handlers.registerHandler!F;
 	}
@@ -185,6 +185,23 @@ void registerImap(ref Handlers handlers)
 		static foreach(T; AliasSeq!(EVP_MD,SSL_))
 			handlers.registerType!T;
         handlers.registerType!X509_("X509");
+	}
+}
+
+struct UidRange
+{
+	long start = -1;
+	long end = -1;
+
+	string toString()
+	{
+		import std.string: format;
+		import std.conv : to;
+
+		return format!"%s:%s"(
+				(start == -1 ) ? 0 : start,
+				(end == -1) ? "*" : end.to!string
+		);
 	}
 }
 
@@ -256,6 +273,9 @@ struct SearchQuery
 	@("UID")
 	ulong[] uniqueIdentifiers;
 
+	@("UID")
+	UidRange[] uniqueIdentifierRanges;
+
 	string applyNot(string s)
 	{
 		import std.string : join;
@@ -286,7 +306,6 @@ struct SearchQuery
 			{
 				alias T = typeof( __traits(getMember,this,M));
 				enum name = udas[0].to!string;
-				pragma(msg,name);
 				auto v = __traits(getMember,this,M);
 				static if (is(T==string))
 				{
@@ -351,7 +370,18 @@ struct SearchQuery
 							if (i != len-1)
 								sink(",");
 						}
-						sink(" ");
+						static if (name == "UID")
+						{
+							if (len > 0 && uniqueIdentifierRanges.length > 0)
+								sink(",");
+							len = uniqueIdentifierRanges.length;
+							foreach(i,entry;uniqueIdentifierRanges)
+							{
+								sink(entry.to!string);
+								if (i != len-1)
+									sink(",");
+							}
+						}
 					}
 				}
 			}

@@ -16,7 +16,7 @@ configuration "plugin" {
 	dependency "sil-lang" version="*"
 	dependency "pegged" version="*"
 	targetType "dynamicLibrary"
-	versions "SIL_Plugin" "SIL"
+	versions "SIL_Plugin" "SIL" "MoveSanity" // "Trace"
 }
 
 

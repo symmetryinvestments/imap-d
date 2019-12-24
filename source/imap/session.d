@@ -26,6 +26,11 @@ struct Set(T)
 	bool[T] values_;
 	alias values_ this;
 
+	this(T[] values)
+	{
+		import std.algorithm : each;
+		values.each!(value => values_[value]=true);
+	}
 	bool has(T value)
 	{
 		return (value in values_) !is null;
@@ -33,10 +38,12 @@ struct Set(T)
 
 	T[] values()
 	{
-		import std.algorithm : filter, map;
+		import std.algorithm : filter, map, sort;
 		import std.array : array;
 		import std.conv : to;
 		return values_.keys.filter!(c => values_[c])
+				.array
+				.sort()
 				.array;
 	}
 
@@ -49,6 +56,19 @@ struct Set(T)
         import std.conv : to;
         return format!"[%s]"(values.map!(value => value.to!string).array.sort.array.join(","));
     }
+	T[] opBinary(string op)(Set!T rhs)
+	if (op == "+" || op == "-")
+	{
+		static if(op == "+")
+		{
+			return addValues(this, rhs);
+		}
+		else static if (op == "-")
+		{
+			return removeValues(this,rhs);
+		}
+		else static assert(0, "only + and - implemented for set");
+	}
 }
 
 ///
@@ -67,8 +87,49 @@ Set!T remove(T)(Set!T set, T value)
 	import std.algorithm : each;
 	Set!T ret;
 	set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
-	ret.remove(value);
+	if (value in ret)
+		ret.remove(value);
 	return ret;
+}
+
+///
+Set!T removeValues(T)(Set!T set, T[] values)
+{
+	import std.algorithm : each;
+	Set!T ret;
+	set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
+	foreach(value;values)
+	{
+		if (value in ret)
+			ret.remove(value);
+	}
+	return ret;
+}
+
+///
+Set!T addValues(T)(Set!T set, T[] values)
+{
+	import std.algorithm : each;
+	Set!T ret;
+	set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
+	values.each!(value => set.values_[value]=true);
+	return ret;
+}
+
+///
+Set!T addSet(T)(Set!T lhs, Set!T rhs)
+{
+	import std.algorithm : each;
+	Set!T ret;
+	return lhs.addValues(rhs.values);
+}
+
+///
+Set!T removeSet(T)(Set!T lhs, Set!T rhs)
+{
+	import std.algorithm : each;
+	Set!T ret;
+	return lhs.removeValues(rhs.values);
 }
 
 ///

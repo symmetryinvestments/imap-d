@@ -356,8 +356,8 @@ private bool utf7IsValid(string src)
 struct Mailbox
 {
 	string mailbox;
-	string prefix;
-	char delim;
+	string prefix = "";
+	char delim = '/';
 
 	///
 	string toString()

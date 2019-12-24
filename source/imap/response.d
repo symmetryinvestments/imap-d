@@ -7,6 +7,7 @@ import imap.sildoc;
 import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;
+import core.time: msecs;
 
 
 /**
@@ -50,14 +51,14 @@ auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool
 	//auto result = session.socketSecureRead(); // timeout,timeoutFail);
 	auto result = session.socketRead(timeout,timeoutFail);
 	if (result.status != Status.success)
-		return tuple(Status.failure,"");
+		return tuple(Status.failure,result.value.idup);
 	auto buf = result.value;
 
 	if (session.options.debugMode)
 	{
-		import std.experimental.logger : tracef;
-		tracef("getting response (%s):", session.socket);
-		tracef("buf: %s",buf);
+		import std.experimental.logger : infof;
+		infof("getting response (%s):", session.socket);
+		infof("buf: %s",buf);
 	}
 	return tuple(Status.success,buf.idup);
 }
@@ -160,11 +161,12 @@ struct ImapResult
 }
 
 ///	Get server data and make sure there is a tagged response inside them.
-ImapResult responseGeneric(ref Session session, Tag tag)
+ImapResult responseGeneric(ref Session session, Tag tag, Duration timeout = 2000.msecs)
 {
 	import std.typecons: Tuple;
 	import std.array : Appender;
     import core.time: msecs;
+	import std.datetime : MonoTime;
 	Tuple!(Status,string) result;
 	Appender!string buf;
 	ImapStatus r;
@@ -172,11 +174,12 @@ ImapResult responseGeneric(ref Session session, Tag tag)
 	if (tag == -1)
 		return ImapResult(ImapStatus.unknown,"");
 
+	MonoTime before = MonoTime.currTime();
 	do
 	{
-		result = session.receiveResponse(500.msecs,false);
+		result = session.receiveResponse(timeout,false);
 		if (result[0] == Status.failure)
-			return ImapResult(ImapStatus.unknown,buf.data);
+			return ImapResult(ImapStatus.unknown,buf.data ~ result[1].idup);
 		buf.put(result[1].idup);
 
 		if (checkBye(result[1]))
@@ -505,6 +508,17 @@ ImapResult responseSelect(ref Session session, int tag)
 	else
 		return r;
 }
+
+@SILdoc("Process the data that server sent due to IMAP MOVE client request.")
+ImapResult responseMove(ref Session session, int tag)
+{
+	auto r = session.responseGeneric(tag);
+	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
+		return ImapResult(r.status,r.value);
+	return r;
+}
+
+
 
 ///
 enum ListNameAttribute

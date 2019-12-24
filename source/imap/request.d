@@ -16,7 +16,8 @@ static int tag = 0x1000;
 auto imapTry(alias F,Args...)(ref Session session, Args args)
 {
 	import std.traits : isInstanceOf;
-
+	import std.conv : to;
+	enum noThrow = true;
 	auto result = F(session,args);
 	alias ResultT = typeof(result);
 	static if (is(ResultT == int))
@@ -40,11 +41,13 @@ auto imapTry(alias F,Args...)(ref Session session, Args args)
 			if (session.options.recoverAll || session.options.recoverErrors)
 			{
 				session.login();
-				return ImapResult(ImapStatus.none,"");
+				return F(session,args);
 			}
 			else
 			{
-				return ImapResult(ImapStatus.unknown,"");
+				if(!noThrow)
+					throw new Exception("unknown result " ~ result.to!string);
+				return result; // ImapResult(ImapStatus.unknown,"");
 			}
 		}
 		else if (status == ImapStatus.bye)
@@ -53,13 +56,15 @@ auto imapTry(alias F,Args...)(ref Session session, Args args)
 			if (session.options.recoverAll)
 			{
 				session.login();
-				return ImapResult(ImapStatus.none,"");
+				return F(session,args);
+				//return ImapResult(ImapStatus.none,"");
 			}
 		}
 		else
 		{
-			session.destroy();
-			return ImapResult(ImapStatus.unknown,"");
+			if (!noThrow)
+				throw new Exception("IMAP error : " ~ result.to!string ~ "when calling " ~ __traits(identifier,F)  ~ " with args " ~ args.to!string);
+			return result;
 		}
 	}
 	assert(0);
@@ -619,25 +624,46 @@ auto fetchPart(ref Session session, string mesg, string part)
 	return r;
 }
 
-	@SILdoc("Add, remove or replace the specified flags of the messages.")
-auto store(ref Session session, string mesg, string mode, string flags)
+enum StoreMode
+{
+	replace,
+	add,
+	remove,
+}
+
+private string modeString(StoreMode mode)
+{
+	final switch(mode) with(StoreMode)
+	{
+		case replace : return "";
+		case add : return "+";
+		case remove: return "-";
+	}
+	assert(0);
+}
+
+@SILdoc("Add, remove or replace the specified flags of the messages.")
+auto store(ref Session session, string mesg, StoreMode mode, string flags)
 {
 	import std.format : format;
-	import std.algorithm : canFind;
+	import std.algorithm: canFind;
 	import std.string : toLower, startsWith;
 	import std.format : format;
-	mode = mode.toLower();
-	bool addMode = (mode.startsWith("add"));
-	bool removeMode = (mode.startsWith("remove"));
-	string useMode = addMode ? "+" : (removeMode ? "-" : "");
-
-	auto t = session.imapTry!sendRequest(format!"UID STORE %s %sFLAGS.SILENT (%s)"(mesg, useMode,flags));
+	auto t = session.imapTry!sendRequest(format!"UID STORE %s %sFLAGS.SILENT (%s)"(mesg, mode.modeString,flags));
 	auto r = session.responseGeneric(t);
 
-	if (canFind(flags,`\Deleted`) && session.options.expunge)
+	if (canFind(flags,`\Deleted`) && mode != StoreMode.remove && session.options.expunge)
 	{
-		t = session.imapTry!sendRequest("EXPUNGE");
-		session.responseGeneric(t);
+		if (session.capabilities.has(Capability.uidPlus))
+		{
+			t = session.imapTry!sendRequest(format!"UID EXPUNGE %s"(mesg));
+			session.responseGeneric(t);
+		}
+		else
+		{
+			t = session.imapTry!sendRequest("EXPUNGE");
+			session.responseGeneric(t);
+		}
 	}
 	return r;
 }
@@ -665,27 +691,59 @@ auto copy(ref Session session, string mesg, Mailbox mailbox)
 	return r;
 }
 
-@SILdoc("Move the specified messages to another mailbox.")
-auto move(ref Session session, string mesg, Mailbox mailbox)
+@SILdoc("Move the specified message to another mailbox.")
+auto move(ref Session session, long uid, string mailbox)
 {
-	import std.format : format;
-
-	auto t = session.imapTry!sendRequest(format!`UID MOVE %s "%s"`(mesg, mailbox.toString));
-	auto r = session.imapTry!responseGeneric(t);
-	if (r.status == ImapStatus.tryCreate)
-	{
-		t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
-		session.imapTry!responseGeneric(t);
-		if (session.options.subscribe)
-		{
-			t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
-			session.imapTry!responseGeneric(t);
-		}
-		t = session.imapTry!sendRequest(format!`UID MOVE %s "%s"`(mesg,mailbox.toString));
-		r = session.imapTry!responseGeneric(t);
-	}
-	return r;
+	import std.conv : text;
+	return multiMove(session,text(uid),Mailbox(mailbox));
 }
+
+@SILdoc("Move the specified messages to another mailbox.")
+auto moveUIDs(ref Session session, long[] uids, string mailbox)
+{
+	import std.conv : text;
+	import std.algorithm: map;
+	import std.array : array;
+	import std.string : join;
+	return multiMove(session,uids.map!(uid => text(uid)).array.join(","),Mailbox(mailbox));
+}
+
+@SILdoc("Move the specified messages to another mailbox.")
+auto multiMove(ref Session session, string mesg, Mailbox mailbox)
+{
+	import std.exception : enforce;
+	import std.format : format;
+	import std.conv : to;
+	version(MoveSanity)
+	{
+		auto t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg, mailbox.toString));
+		auto r = session.imapTry!responseMove(t);
+		if (r.status == ImapStatus.tryCreate)
+		{
+			t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
+			session.imapTry!responseGeneric(t);
+			if (session.options.subscribe)
+			{
+				t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
+				session.imapTry!responseGeneric(t);
+			}
+			t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg,mailbox.toString));
+			r = session.imapTry!responseMove(t);
+		}
+		enforce(r.status == ImapStatus.ok, "imap error when moving : " ~ r.to!string);
+		return r;
+	}
+	else
+	{
+		auto result = copy(session,mesg,mailbox);
+		enforce(result.status == ImapStatus.ok, format!"unable to copy message %s to %s as first stage of move:%s"(mesg,mailbox,result));
+		result = store(session,mesg,StoreMode.add,`\Deleted`);
+		// enforce(result.status == ImapStatus.ok, format!"unable to set deleted flags for message %s as second stage of move:%s"(mesg,result));
+		return result;
+	}
+	assert(0);
+}
+
 
 /+
 ///	Append supplied message to the specified mailbox.

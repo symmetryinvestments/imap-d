@@ -140,18 +140,21 @@ void registerImap(ref Handlers handlers)
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,ListResponse,ListEntry,
 				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer_,MimePart,
-				MimeAttachment, SearchQuery, UidRange,SearchResultType // proxy from imap not arsd
+				MimeAttachment, SearchQuery, UidRange,SearchResultType,StoreMode // proxy from imap not arsd
 		))
 			handlers.registerType!T;
 
 		handlers.registerType!(Set!Capability)("Capabilities");
+		handlers.registerType!(Set!ulong)("UidSet");
 
+		handlers.registerHandler!(addSet!ulong)("addUidSet");
+		handlers.registerHandler!(removeSet!ulong)("removeUidSet");
 		// FIXME - finish and add append	
 		static foreach(F; AliasSeq!(noop,login,logout,status,examine,select,close,expunge,list,lsub,
 					search,fetchFast,fetchFlags,fetchDate,fetchSize, fetchStructure, fetchHeader,
 					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
 					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinary,
-					createQuery,searchQuery,rfcDate,esearch,multiSearch,move,
+					createQuery,searchQuery,searchQueries, rfcDate,esearch,multiSearch,move,multiMove,moveUIDs,
 		))
 			handlers.registerHandler!F;
 	}
@@ -163,6 +166,8 @@ void registerImap(ref Handlers handlers)
 			handlers.registerType!T;
 		handlers.registerHandler!(add!Capability)("addCapability");
 		handlers.registerHandler!(remove!Capability)("removeCapability");
+		handlers.registerHandler!(addSet!Capability)("addCapabilities");
+		handlers.registerHandler!(removeSet!Capability)("removeCapabilities");
 
 		static foreach(F; AliasSeq!(socketRead,socketWrite,
 						getTerminalAttributes,setTerminalAttributes,enableEcho,disableEcho,
@@ -410,16 +415,28 @@ string createQuery(SearchQuery[] searchQueries)
 				searchQueries.map!(q => q.to!string.strip)).join(" ").strip;
 }
 
-
+@SILdoc(`Search selected mailbox according to the supplied search criteria.
+There is an implicit AND within a searchQuery. For NOT, set not within the query
+to be true - this applies to all the conditions within the query.
+`)
+auto searchQuery(ref Session session, string mailbox, SearchQuery searchQuery, string charset = null)
+{
+	import imap.namespace : Mailbox;
+	import imap.request;
+	select(session,Mailbox(mailbox));
+	return search(session,createQuery([searchQuery]),charset);
+}
 
 @SILdoc(`Search selected mailbox according to the supplied search criteria.
 The searchQueries are ORed together.  There is an implicit AND within a searchQuery
 For NOT, set not within the query to be true - this applies to all the conditions within
 the query.
 `)
-auto searchQuery(ref Session session, SearchQuery[] searchQueries, string charset = null)
+auto searchQueries(ref Session session, string mailbox, SearchQuery[] searchQueries, string charset = null)
 {
+	import imap.namespace : Mailbox;
 	import imap.request;
+	select(session,Mailbox(mailbox));
 	return search(session,createQuery(searchQueries),charset);
 }
 

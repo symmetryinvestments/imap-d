@@ -19,6 +19,8 @@ matrix:
 
 script:
   - dub fetch dub && dub build dub
+  - dub run dub -- add-local .
+  - dub run dub -- build
   - pushd example && dub run dub -- build --compiler=${DC} && popd # && dub test --build=unittest-cov --compiler=${DC}
 
 after_success:

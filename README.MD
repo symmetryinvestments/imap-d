@@ -60,7 +60,7 @@ Heavily inspired by imapfilter.
 
 ## Example use
 
-```
+```d
 import imap;
 
 int main(string[] args)

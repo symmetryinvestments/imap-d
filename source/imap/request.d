@@ -118,7 +118,6 @@ int sendContinuation(ref Session session, string data)
 	import std.exception : enforce;
 	enforce(session.socket,"not connected to server");
 	session.socketSecureWrite(data ~ "\r\n");
-	//socketWrite(session, data ~ "\r\n");
 	return 1;
 }
 
@@ -200,19 +199,19 @@ ref Session login(ref Session session)
                             session.options.startTLS;
 	if (needsStartTLS)
 	{
-        version(Trace) stderr.writeln("sending StartTLS");
+	        version(Trace) stderr.writeln("sending StartTLS");
 		t = session.check!sendRequest("STARTTLS");
-        version(Trace) stderr.writeln("checking for StartTLS response ");
+        	version(Trace) stderr.writeln("checking for StartTLS response ");
 		res = session.check!responseGeneric(t);
 		// enforce(res.status == ImapStatus.ok, "received bad response: " ~ res.to!string);
-        version(Trace) stderr.writeln("opening secure connection");
-        session.openSecureConnection();
-        version(Trace) stderr.writeln("opened secure connection; check capabilties");
-        t = session.check!sendRequest("CAPABILITY");
-        version(Trace) stderr.writeln("sent capabilties request");
-        res = session.check!responseCapability(t);
-        version(Trace) stderr.writeln("got capabilities response");
-        version(Trace) stderr.writeln(res);
+        	version(Trace) stderr.writeln("opening secure connection");
+        	session.openSecureConnection();
+        	version(Trace) stderr.writeln("opened secure connection; check capabilties");
+        	t = session.check!sendRequest("CAPABILITY");
+        	version(Trace) stderr.writeln("sent capabilties request");
+        	res = session.check!responseCapability(t);
+        	version(Trace) stderr.writeln("got capabilities response");
+        	version(Trace) stderr.writeln(res);
 	}
 
 	if (rg.status == ImapStatus.preAuth)
@@ -247,8 +246,7 @@ ref Session login(ref Session session)
 			auto err = format!"username %s or password rejected at %s\n"(session.username, session.server);
 			errorf("username %s or password rejected at %s\n",session.username, session.server);
 			session.closeConnection();
-			// return session.setStatus(ImapStatus.no);
-            throw new Exception(err);
+            		throw new Exception(err);
 		}
 	}
 
@@ -286,7 +284,7 @@ int logout(ref Session session)
 	return ImapStatus.ok;
 }
 
-///
+@SILdoc("Mailbox status returned by IMAP status command")
 struct MailboxImapStatus
 {
 	uint exists;
@@ -295,7 +293,7 @@ struct MailboxImapStatus
 	uint uidnext;
 }
 
-///
+@SILdoc("IMAP examine command for mailbox mbox")
 auto examine(ref Session session, Mailbox mbox)
 {
 	import std.format : format;
@@ -304,7 +302,6 @@ auto examine(ref Session session, Mailbox mbox)
 	return session.responseExamine(id);
 }
 
-// MailboxImapStatus
 
 @SILdoc("Get mailbox status")
 auto status(ref Session session, Mailbox mbox)
@@ -746,7 +743,8 @@ auto multiMove(ref Session session, string mesg, Mailbox mailbox)
 
 
 /+
-///	Append supplied message to the specified mailbox.
+// TODO - finish append function
+@SILdoc(`Append supplied message to the specified mailbox.`)
 auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, string flags, string date)
 {
 	auto request = format!`CREATE "%s"`(mailbox);
@@ -833,7 +831,7 @@ auto unsubscribe(ref Session session, Mailbox mailbox)
 	return session.responseGeneric(id);
 }
 
-///
+@SILdoc(`IMAP idle command`)
 auto idle(ref Session session)
 {
 	import std.stdio;

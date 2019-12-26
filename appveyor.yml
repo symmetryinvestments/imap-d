@@ -70,7 +70,7 @@ before_build:
 
 build_script:
  - dub build
- - dub build -c plugin
+ - echo "not building plugin on public CI" # dub build -c plugin
  
 test_script:
  - echo %PLATFORM%

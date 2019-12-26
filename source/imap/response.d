@@ -73,13 +73,12 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 	import std.format : format;
 	import std.string: splitLines, toUpper,strip, split, startsWith;
 	import std.array : array;
-	import std.stdio;
 	import std.range : front;
 
-	version(Trace) stderr.writefln("checking for tag %s in buf: %s",tag,buf);
+	if (session.options.debugMode) tracef("checking for tag %s in buf: %s",tag,buf);
 	auto r = ImapStatus.none;
 	auto t = format!"D%04X"(tag);
-	version(Trace) stderr.writefln("checking for tag %s in buf: %s",t,buf);
+	if (session.options.debugMode) tracef("checking for tag %s in buf: %s",t,buf);
 	auto lines = buf.splitLines.map!(line => line.strip).array;
 	auto relevantLines = lines
 							.filter!(line => line.startsWith(t))
@@ -106,9 +105,9 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 		}
 	}
 	
-	version(Trace) stderr.writefln("tag result is status %s for lines: %s",r,relevantLines);
+	if(session.options.debugMode) tracef("tag result is status %s for lines: %s",r,relevantLines);
 
-	if (r != ImapStatus.none)
+	if (r != ImapStatus.none && session.options.debugMode)
 		tracef("S (%s): %s / %s", session.socket, buf,relevantLines);
 
 	if (r == ImapStatus.no || r == ImapStatus.bad)
@@ -238,7 +237,7 @@ ImapResult responseGreeting(ref Session session)
 	if (res[0] == Status.failure)
 		return ImapResult(ImapStatus.unknown,"");
 
-	tracef("S (%s): %s", session.socket, res);
+	if (session.options.debugMode) tracef("S (%s): %s", session.socket, res);
 
 	if (checkBye(res[1]))
 		return ImapResult(ImapStatus.bye,res[1]);
@@ -253,7 +252,7 @@ ImapResult responseGreeting(ref Session session)
 ///	Process the data that server sent due to IMAP CAPABILITY client request.
 ImapResult responseCapability(ref Session session, Tag tag)
 {
-	import std.experimental.logger : infof;
+	import std.experimental.logger : infof, tracef;
 	import std.string : splitLines, join, startsWith, toUpper, strip, split;
 	import std.algorithm : filter, map;
 	import std.array : array;
@@ -324,7 +323,7 @@ ImapResult responseCapability(ref Session session, Tag tag)
 						}
 					}
 				}}
-				if (!isKnown)
+				if (!isKnown && session.options.debugMode)
 				{
 					infof("unknown capabilty: %s",token);
 				}
@@ -334,11 +333,10 @@ ImapResult responseCapability(ref Session session, Tag tag)
 
 	session.capabilities = capabilities;
 	session.imapProtocol = protocol;
-	version(Trace)
+	if (session.options.debugMode)
 	{
-		import std.stdio;
-		stderr.writefln("session capabilities: %s",session.capabilities.values);
-		stderr.writefln("session protocol: %s",session.imapProtocol);
+		tracef("session capabilities: %s",session.capabilities.values);
+		tracef("session protocol: %s",session.imapProtocol);
 	}
 	return res;
 }
@@ -407,7 +405,6 @@ T parseUpdateT(T)(T t, string name, string value)
 		{
 			if (name == udas[0].to!string)
 			{
-				import std.stdio;
 				alias FieldType = typeof(__traits(getMember,T,M));
 				__traits(getMember,t,M) = value.to!FieldType;
 				isKnown = true;
@@ -766,7 +763,7 @@ FlagResult responseFetchFlags(ref Session session, Tag tag)
 				}
 			}
 		}}
-		if (!isKnown)
+		if (!isKnown && session.options.debugMode)
 		{
 			infof("unknown flag: %s",token);
 		}
@@ -912,7 +909,7 @@ ImapResult responseIdle(ref Session session, Tag tag)
 		//if (result[0] == Status.failure)
 			//return ImapResult(ImapStatus.unknown,result[1]);
 
-		tracef("S (%s): %s", session.socket, result[1]);
+		if (session.options.debugMode) tracef("S (%s): %s", session.socket, result[1]);
 		auto bufUpper = result[1].toUpper;
 
 		if (checkBye(result[1]))
@@ -973,7 +970,6 @@ LiteralInfo findLiteral(string buf)
 	import std.conv : to;
 	ptrdiff_t i,j, len;
 	bool hasLength;
-	import std.stdio;
 	do
 	{
 		i = buf[j..$].indexOf("{");
@@ -982,7 +978,6 @@ LiteralInfo findLiteral(string buf)
 		j = (j == -1) ? j : (i + 1) + j;
 		hasLength = (i !=-1 && j != -1) && buf[i+1 .. j].isNumeric;
 		len = hasLength ? buf[i+1 .. j].to!ptrdiff_t : -1;
-		version(Trace) stderr.writefln("i=%s,j=%s,len=%s",i,j,len);
 	} while (i != -1 && j !=-1 && !hasLength);
 	return LiteralInfo(i,j,len);
 }
@@ -999,7 +994,6 @@ auto extractLiterals(string buf)
 	do
 	{
 		literalInfo= findLiteral(buf);
-		version(Trace) stderr.writefln("literalInfo=%s,buf=%s",literalInfo,buf.length);
 		if(literalInfo.length > 0)
 		{
 			string literal = buf[literalInfo.j+1.. literalInfo.j+1 + literalInfo.length];

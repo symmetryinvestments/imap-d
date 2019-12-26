@@ -8,8 +8,9 @@ license "MIT"
 versions "SSL" "OPENSSL_NO_SRP"
 libs "ssl" "crypto" 
 
-configuration "library" {
-	targetType "library" "MoveSanity"
+configuration "default" {
+	targetType "library"
+	versions "MoveSanity"
 }
 
 configuration "plugin" {

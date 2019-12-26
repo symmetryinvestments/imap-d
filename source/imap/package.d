@@ -8,4 +8,5 @@ public import imap.request;
 public import imap.response;
 public import imap.session;
 public import imap.socket;
+public import imap.searchquery;
 public import imap.system;

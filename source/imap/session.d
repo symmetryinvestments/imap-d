@@ -163,8 +163,8 @@ struct Options
 {
 	import core.time : Duration, seconds, minutes;
 
-	bool debugMode = true;
-	bool verboseOutput = true;
+	bool debugMode = false;
+	bool verboseOutput = false;
 	bool interactive = false;
 	bool namespace = false;
 	bool cramMD5 = false;

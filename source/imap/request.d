@@ -91,13 +91,16 @@ int sendRequest(ref Session session, string value)
 
 	if (value.isLoginRequest)
 	{
-		infof("sending command (%s):\n\n%s\n\n", session.socket,
+		if (session.options.debugMode) infof("sending command (%s):\n\n%s\n\n", session.socket,
 		    value.length - session.password.length - "\"\"\r\n".length, value);
-		tracef("C (%s): %s\n", session.socket, value.length,
+		if (session.options.debugMode) tracef("C (%s): %s\n", session.socket, value.length,
 				session.password.length - "\"\"\r\n".length,  value);
 	} else {
-		infof("sending command (%s):\n\n%s\n", session.socket, value);
-		tracef("C (%s): %s", session.socket, value);
+		if (session.options.debugMode)
+		{
+			infof("sending command (%s):\n\n%s\n", session.socket, value);
+			tracef("C (%s): %s", session.socket, value);
+		}
 	}
 
 	auto taggedValue = format!"D%04X %s%s"(tag,value, value.endsWith("\n") ? "":"\r\n");

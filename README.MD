@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Laeeth/imap-d.png?branch=master)](https://travis-ci.org/Laeeth/imap-d)
+[![Build Status](https://travis-ci.org/symmetryinvestments/imap-d.png?branch=master)](https://travis-ci.org/symmetryinvestments/imap-d)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/Laeeth/imap-d?branch=master&svg=true)](https://ci.appveyor.com/project/Laeeth/imap-d)
 [![Coverage](https://codecov.io/gh/symmetryinvestments/imap-d/branch/master/graph/badge.svg)](https://codecov.io/gh/symmetryinvestments/imap-d)
 

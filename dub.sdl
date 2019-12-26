@@ -9,7 +9,7 @@ versions "SSL" "OPENSSL_NO_SRP"
 libs "ssl" "crypto" 
 
 configuration "library" {
-	targetType "library"
+	targetType "library" "MoveSanity"
 }
 
 configuration "plugin" {

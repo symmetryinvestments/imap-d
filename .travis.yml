@@ -4,7 +4,8 @@ dist: bionic
 
 before_install:
   - sudo apt update
-  - sudo apt install -y libssl-dev
+  - sudo apt install -y libssl-dev build-essential checkinstall zlib1g-dev
+  - sudo ./travis_install_deps.sh
   
 install:
   - mkdir bin

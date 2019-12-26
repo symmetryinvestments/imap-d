@@ -70,7 +70,8 @@ before_build:
 
 build_script:
  - cd example
- - dub build
+ - dub fetch dub
+ - dub run dub -- build
  - cd ..
  - echo "not building plugin on public CI" # dub build -c plugin
  

@@ -22,9 +22,7 @@ matrix:
     - d: dmd-nightly
 
 script:
-  - dub build --vverbose
-  - pushd example && dub build --compiler=${DC} --vverbose && popd
-  - # && dub test --build=unittest-cov --compiler=${DC}
+  - ./travis.sh
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)

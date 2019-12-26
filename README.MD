@@ -6,41 +6,41 @@ I am starting to use this daily, but there are probably many bugs - please file 
 
 ### Features that should work (ones without a check may work but be more awkward to use)
 
-[X] session capabilities
-[X] copy message
-[X] create mailbox
-[X] createQuery (higher level API for IMAP search)
-[X] delete_ mailbox
-[X] esearch
-[X] examine
-[X] expunge
-[X] fetchFast
-[X] fetchFields
-[ ] fetchFlags
-[X] fetchHeader
-[ ] fetchPart
-[X] fetchRFC822 - whole email fetch and parse
-[ ] fetchSize
-[ ] fetchStructure
-[ ] fetchText
-[X] idle
-[X] list
-[X] login
-[X] logout
-[X] lsub
-[X] move
-[X] moveUIDs
-[X] multiMove
-[X] multiSearch - search multiple mailboxes (sadly not widely supported on IMAP servers)
-[X] noop
-[X] raw IMAP command
-[X] search
-[X] searchQuery
-[X] select
-[X] status
-[X] store
-[X] subscribe
-[X] unsubscribe
+- [X] session capabilities
+- [X] copy message
+- [X] create mailbox
+- [X] createQuery (higher level API for IMAP search)
+- [X] delete_ mailbox
+- [X] esearch
+- [X] examine
+- [X] expunge
+- [X] fetchFast
+- [X] fetchFields
+- [ ] fetchFlags
+- [X] fetchHeader
+- [ ] fetchPart
+- [X] fetchRFC822 - whole email fetch and parse
+- [ ] fetchSize
+- [ ] fetchStructure
+- [ ] fetchText
+- [X] idle
+- [X] list
+- [X] login
+- [X] logout
+- [X] lsub
+- [X] move
+- [X] moveUIDs
+- [X] multiMove
+- [X] multiSearch - search multiple mailboxes (sadly not widely supported on IMAP servers)
+- [X] noop
+- [X] raw IMAP command
+- [X] search
+- [X] searchQuery
+- [X] select
+- [X] status
+- [X] store
+- [X] subscribe
+- [X] unsubscribe
 
 
 Heavily inspired by imapfilter.
@@ -51,6 +51,7 @@ Heavily inspired by imapfilter.
   attachments)
 - mailbox UTF7 conversion code is horrible, may not work and needs improving
 - more abstraction and better design needed for parsing
+- synchronous and single threaded: use processes to start multiple connections for performance
 
 
 ### Features to add

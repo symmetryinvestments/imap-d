@@ -69,9 +69,10 @@ before_build:
   - '"%compilersetup%" %compilersetupargs%'
 
 build_script:
- - cd example
  - dub fetch dub
  - dub run dub -- build
+ - cd example
+ - dub run dub -- build --vverbose
  - cd ..
  - echo "not building plugin on public CI" # dub build -c plugin
  

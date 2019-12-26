@@ -19,9 +19,11 @@ matrix:
 
 script:
   - dub fetch dub && dub build dub
-  - dub run dub -- add-local .
   - dub run dub -- build
-  - pushd example && dub run dub -- build --compiler=${DC} && popd # && dub test --build=unittest-cov --compiler=${DC}
+  - pushd example
+  - dub run dub -- build --compiler=${DC} --vverbose
+  - popd
+  - # && dub test --build=unittest-cov --compiler=${DC}
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)

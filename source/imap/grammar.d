@@ -1,5 +1,11 @@
 ///
 module imap.grammar;
+
+/++
+	This code is not currently used or required.  An experiment with replacing custom parsing code by
+	a PEG grammer.
++/
+
 version(SIL):
 import pegged.grammar;
 

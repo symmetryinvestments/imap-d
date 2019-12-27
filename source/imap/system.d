@@ -1,6 +1,7 @@
 ///
 module imap.system;
 
+version(linux):
 import core.sys.linux.termios;
 import core.stdc.stdio;
 import core.stdc.string;

@@ -377,7 +377,7 @@ ssize_t socketWrite(ref Session session, string buf)
 	import std.string : fromStringz;
 	import std.conv : to;
 	int s;
-	ssize_t r, t;
+	ptrdiff_t r, t;
 
 	r = t = 0;
 	s = 1;

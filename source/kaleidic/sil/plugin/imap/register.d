@@ -120,7 +120,7 @@ void registerImap(ref Handlers handlers)
 	import imap.request;
 	import imap.response;
 	import imap.namespace;
-	import core.sys.linux.termios;
+	version(linux) import core.sys.linux.termios;
 	import std.meta : AliasSeq;
 	import imap.ssl;
 	import deimos.openssl.ssl;
@@ -162,7 +162,16 @@ void registerImap(ref Handlers handlers)
 	{
 		handlers.openModule("imap.impl");
 		scope(exit) handlers.closeModule();
-		static foreach(T; AliasSeq!( AddressInfo, Socket,termios,ImapServer,ImapLogin,File
+		version(linux)
+		{
+			handlers.registerType!termios;
+			handlers.registerHandler!getTerminalAttributes;
+			handler.registerHandler!setTerminalAttributes;
+			handler.registerHandler!enableEcho;
+			handler.registerHandler!disableEcho;
+		}
+
+		static foreach(T; AliasSeq!( AddressInfo, Socket,ImapServer,ImapLogin,File
 		))
 			handlers.registerType!T;
 		handlers.registerHandler!(add!Capability)("addCapability");
@@ -171,7 +180,6 @@ void registerImap(ref Handlers handlers)
 		handlers.registerHandler!(removeSet!Capability)("removeCapabilities");
 
 		static foreach(F; AliasSeq!(socketRead,socketWrite,
-						getTerminalAttributes,setTerminalAttributes,enableEcho,disableEcho,
 						socketSecureRead,socketSecureWrite,closeSecureConnection,openSecureConnection,
 						isLoginRequest, sendRequest, sendContinuation, 
 		))

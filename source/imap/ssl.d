@@ -2,7 +2,6 @@
 module imap.ssl;
 import std.stdio;
 import std.string;
-import core.sys.posix.unistd : isatty;
 import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.x509;
@@ -16,6 +15,17 @@ import imap.session;
 
 ///
 enum STDIN_FILENO = 0;
+
+version(Posix) import core.sys.posix.unistd : isatty;
+else
+{
+	// FIXME
+	bool isatty(int fileno)
+	{
+		return false;
+	}
+}
+
 
 ///
 X509* getPeerCertificate(ref SSL context)

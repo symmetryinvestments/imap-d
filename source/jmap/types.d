@@ -134,17 +134,17 @@ struct Session
 	}
 
 
-	Variable get(string type, string accountId, string[] ids, Variable[string] properties = null)
+	Variable get(string type, string accountId, string[] ids, Variable properties = Variable.init)
 	{
 		return getRaw(type,accountId,ids,properties).toVariable;
 	}
 
-	Asdf getRaw(string type, string accountId, string[] ids, Variable[string] properties = null)
+	Asdf getRaw(string type, string accountId, string[] ids, Variable properties = Variable.init)
 	{
 		import std.algorithm : map;
 		import std.array : array;
 		auto invocationId = "12345678";
-		auto props = parseJson(toJsonString(Variable(properties)));
+		auto props =  parseJson(toJsonString(properties));
 		auto invocation = Invocation.get(type,accountId, invocationId,ids, props);
 		auto request = JmapRequest(listCapabilities(),[invocation],null);
 		return post(request);
@@ -154,7 +154,7 @@ struct Session
 	Mailbox[] getMailboxes(string accountId)
 	{
 		import std.range : front, dropOne;
-		auto asdf = getRaw("Mailbox/get",accountId,[]);
+		auto asdf = getRaw("Mailbox",accountId,null);
 		return deserialize!(Mailbox[])(asdf["methodResponses"].byElement.front.byElement.dropOne.front["list"]);
 	}
 
@@ -207,14 +207,18 @@ struct Session
 	}
 
 
-	Asdf queryRaw(string type, string accountId, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false)
+	Asdf queryRaw(string type, string accountId, Variable filter, Variable sort, int position, string anchor=null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false)
 	{
 		import std.algorithm : map;
 		import std.array : array;
 		auto invocationId = "12345678";
 		auto filterAsdf = parseJson(toJsonString(filter));
+		import std.stdio;
+		//writeln(filterAsdf);
 		auto sortAsdf = parseJson(toJsonString(sort));
+		//writeln(sortAsdf);
 		auto invocation = Invocation.query(type,accountId,invocationId,filterAsdf,sortAsdf,position,anchor,anchorOffset,limit,calculateTotal);
+		writeln(invocation);
 		auto request = JmapRequest(listCapabilities(),[invocation],null);
 		import std.stdio;
 		writeln(request);
@@ -587,7 +591,7 @@ struct Invocation
 		return ret;
 	}
 
-	static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false)
+	static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor=null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false)
 	{
 		auto arguments = AsdfNode("{}".parseJson);
 		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);

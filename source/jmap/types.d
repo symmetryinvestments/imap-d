@@ -226,7 +226,7 @@ struct Session
 		return queryRaw(type, accountId, filter, sort, position, anchor, anchorOffset, limit,calculateTotal).toVariable;
 	}
 
-	Asdf queryChangesRaw(string type, string accountId, Variable filter, Variable sortAsdf, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false)
+	Asdf queryChangesRaw(string type, string accountId, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false)
 	{
 		import std.algorithm : map;
 		import std.array : array;

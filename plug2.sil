@@ -1,14 +1,46 @@
 import * from jmap
+import toUpper from string
 c=Credentials("laeeth@kaleidic.io","fjr4f2aflcnewpph")
 uri = "https://jmap.fastmail.com/.well-known/jmap"
 jp = JmapSessionParams(uri: uri,credentials:c)
 print(jp)
 session = getSession(jp)
 print(session)
-accountId = keys(session.accounts).front
-mailboxes=session.getMailboxes(accountId)
-filterOptions = {"inMailbox":mailboxes.front.id}
+// accountId = keys(session.accounts).front
+session.setActiveAccount("laeeth@kaleidic.io")
+mailboxes=session.getMailboxes()
+//print(mailboxes |> mapa(mbox => mbox.name) |> sort |> uniq)
+//print(members(mailboxes.front))
+mailbox = mailboxes |> filter(mbox => mbox.name == "Inbox").front
+filterOptions = {"inMailbox":mailbox.id}
 sortOptions=[{"isAscending":false,"property":"receivedAt"}]
-q=session.query("Email",accountId,filterOptions,sortOptions,0,"")
+q=session.query("Email",filterOptions,sortOptions,0,"")
 ids=q.methodResponses.front[1].ids
- 
+properties = [ "id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments" ]
+simpleProperties = ["from","to"]
+bodyProperties = ["all"]
+stripQuoteLeft(x) => if (len(x) > 1 && x[0]=='"') then x[1:$] else x
+stripQuoteRight(x) => if (len(x) > 1 && x[$-1]=='"') then x[0:$-1] else x
+stripQuotes(x) => x |> stripQuoteLeft |> stripQuoteRight
+
+fixup(x) =>  if typeOf(x)=="void" then {} else makeTable() |> addEntry("email", get(x,"email","") |> text |> stripQuotes |> addQuotes)|>addEntry("name",get(x,"name","") |> text |> stripQuotes |>addQuotes)
+emailCompare(a,b) => get(a,"email",[]) < get(b,"email",[])
+
+emails = session.getEmails(ids,properties:simpleProperties) |> filter(email => typeOf(email["from"])=="array" && len(get(email,"from",[]))>0) |> array; //[0:1000]); // ,properties)
+froms = (emails |> mapa(email => get(email,"from",[])) |> zip).front |> sortBy(emailCompare) |> uniq |> array
+tos = [] // (emails |> mapa(email => get(email,"to",[])) |> zip).front |> sortBy(emailCompare) |> uniq |>array
+allEmails = froms |>appendSeq(tos)
+					|> sortBy(emailCompare)
+					|> uniqBy((a,b) => (get(a,"email","") |> toUpper) == (get(b,"email","") |> toUpper))
+					|> map(f => f |> fixup)
+					|> mapa(e => e |> renameEntry("name","Nick Name") |> renameEntry("email","E-mail Address"))
+
+writeCsv(allEmails,"emails.csv",["Last Name","E-mail Address"])
+readText("emails.csv")
+	|> replace("Nick Name","\"Last Name\"")
+	|> replace("E-mail Address","\"E-mail Address\"")
+	|> replace("\"\"","")
+	|> replace("\"void\"","\"\"")
+	|> writeText("emails.csv")
+
+account = session.accounts |> keys |> map(k => session.accounts[k]).front

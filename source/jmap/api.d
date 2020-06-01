@@ -13,14 +13,28 @@ version(SIL)
 		handlers.openModule("jmap");
 		scope(exit) handlers.closeModule();
 
-		static foreach(T; AliasSeq!(Credentials, JmapSessionParams, Session,Mailbox,MailboxRights,MailboxSortProperty,Filter,FilterOperator,FilterOperatorKind,FilterCondition,Comparator))
-				handlers.registerType!T;
+		static foreach(T; AliasSeq!(Credentials, JmapSessionParams, Session,Mailbox,MailboxRights,MailboxSortProperty,Filter,FilterOperator,FilterOperatorKind,FilterCondition,Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, Address, ResultReference, JmapResponseError))
+	handlers.registerType!T;
 
-		static foreach(F; AliasSeq!(getSession, getSessionJson, wellKnownJmap,operatorAsFilter,conditionAsFilter))
+		static foreach(F; AliasSeq!(getSession, getSessionJson, wellKnownJmap,operatorAsFilter,conditionAsFilter,addQuotes,uniqBy))
 			handlers.registerHandler!F;
 	}
 }
 
+
+Variable[] uniqBy(Variable[] input, Function f)
+{
+	import std.algorithm : uniq;
+	import std.array : array;
+	return input.uniq!((a,b) => f(a,b).get!bool).array;
+}
+
+string addQuotes(string s)
+{
+	if (s.length <2 || s[0]=='"' || s[$-1] =='"')
+		return s;
+	return '"' ~ s ~ '"';
+}
 
 
 struct JmapSessionParams

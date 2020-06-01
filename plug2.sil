@@ -1,0 +1,10 @@
+import * from jmap
+c=Credentials("laeeth@kaleidic.io","fjr4f2aflcnewpph")
+uri = "https://jmap.fastmail.com/.well-known/jmap"
+jp = JmapSessionParams(uri: uri,credentials:c)
+print(jp)
+session = getSession(jp)
+print(session)
+accountId = keys(session.accounts).front
+
+ 

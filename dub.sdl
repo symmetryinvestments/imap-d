@@ -2,6 +2,7 @@ name "symmetry-imap"
 description "IMAP client library"
 dependency "openssl" version="~>1.1.6+1.0.1g"
 dependency "arsd-official:email" version="~master"
+dependency "requests" version="~master"
 
 license "MIT"
 
@@ -13,10 +14,11 @@ configuration "library" {
 }
 
 configuration "plugin" {
-	dependency "sil-lang" version="*"
+	dependency "sil-lang" path="../../lang"
+	dependency "core-json" path="../../stdlib/core-json"
 	dependency "pegged" version="*"
 	targetType "dynamicLibrary"
-	versions "SIL_Plugin" "SIL" "MoveSanity" // "Trace"
+	versions "SIL_Plugin" "SIL" "MoveSanity" "permissiveRegistration" "Trace" 
 }
 
 

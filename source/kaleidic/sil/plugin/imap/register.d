@@ -23,7 +23,7 @@ import core.stdc.string;
 import core.stdc.errno;
 import std.socket;
 import core.time : Duration;
-import std.datetime : Date;
+import std.datetime : Date, SysTime, TimeZone;
 
 import deimos.openssl.ssl;
 import deimos.openssl.err;
@@ -134,18 +134,22 @@ void registerImap(ref Handlers handlers)
 		handlers.openModule("imap");
 		scope(exit) handlers.closeModule();
 		handlers.registerGrammar();
-
+		     
 		static foreach(T; AliasSeq!(MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,ListResponse,ListEntry,
-				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,MimeContainer_,MimePart,
+				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,
+				MimeContainer_,MimePart,
 				MimeAttachment, SearchQuery, UidRange,SearchResultType,StoreMode // proxy from imap not arsd
 		))
 			handlers.registerType!T;
 
 		handlers.registerType!(Set!Capability)("Capabilities");
 		handlers.registerType!(Set!ulong)("UidSet");
+	    handlers.registerType!SysTime;
+		handlers.registerType!TimeZone;
+		handlers.registerType!Duration;
 
 		handlers.registerHandler!(addSet!ulong)("addUidSet");
 		handlers.registerHandler!(removeSet!ulong)("removeUidSet");
@@ -155,13 +159,20 @@ void registerImap(ref Handlers handlers)
 					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
 					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinary,
 					createQuery,searchQuery,searchQueries, rfcDate,esearch,multiSearch,move,multiMove,moveUIDs,
+					extractAddress,
 		))
 			handlers.registerHandler!F;
+		handlers.registerType!Socket;
+
+		import jmap : registerHandlersJmap;
+		handlers.registerHandlersJmap();
 	}
+	/+
 	{
 		handlers.openModule("imap.impl");
 		scope(exit) handlers.closeModule();
-		static foreach(T; AliasSeq!( AddressInfo, Socket,termios,ImapServer,ImapLogin,File
+		static foreach(T; AliasSeq!( AddressInfo, //Socket,
+					termios,ImapServer,ImapLogin,File
 		))
 			handlers.registerType!T;
 		handlers.registerHandler!(add!Capability)("addCapability");
@@ -176,17 +187,18 @@ void registerImap(ref Handlers handlers)
 		))
 			handlers.registerHandler!F;
 	}
-
+	+/
 	// FIXME - add current tag as SIL vairable - static int tag = 0x1000;
 
 	{
 		handlers.openModule("ssl");
 		scope(exit) handlers.closeModule();
+/+		
 		static foreach(F; AliasSeq!(getPeerCertificate, getCert, checkCert, readX509,
 					getDigest,getIssuerName,getSubject,asHex,printCert,getSerial,storeCert,
 					getFilePath,
 		))
-		handlers.registerHandler!F;
+		handlers.registerHandler!F; +/
 		static foreach(T; AliasSeq!(EVP_MD,SSL_))
 			handlers.registerType!T;
         handlers.registerType!X509_("X509");
@@ -448,4 +460,16 @@ string rfcDate(Date date)
 	import std.string : capitalize;
 	return format!"%02d-%s-%04d"(date.day,date.month.to!string.capitalize,date.year);
 }
+
+@SILdoc("Extract email address from sender/recipient eg Laeeth <laeeth@nospam-laeeth.com>")
+string extractAddress(string arg)
+{
+	import std.string : indexOf;
+	auto i = arg.indexOf("<");
+	auto j = arg.indexOf(">");
+	if  ((i == -1) || (j == -1) || (j <= i))
+		return "";
+	return arg[i+1 .. j];
+}
+
 

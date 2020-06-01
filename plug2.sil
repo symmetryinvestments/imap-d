@@ -6,5 +6,9 @@ print(jp)
 session = getSession(jp)
 print(session)
 accountId = keys(session.accounts).front
-
+mailboxes=session.getMailboxes(accountId)
+filterOptions = {"inMailbox":mailboxes.front.id}
+sortOptions=[{"isAscending":false,"property":"receivedAt"}]
+q=session.query("Email",accountId,filterOptions,sortOptions,0,"")
+ids=q.methodResponses.front[1].ids
  

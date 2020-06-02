@@ -348,15 +348,9 @@ struct Session
 		import std.array : array;
 		auto invocationId = "12345678";
 		auto filterAsdf = parseJson(toJsonString(filter));
-		import std.stdio;
-		//writeln(filterAsdf);
 		auto sortAsdf = parseJson(toJsonString(sort));
-		//writeln(sortAsdf);
 		auto invocation = Invocation.query(type,activeAccountId,invocationId,filterAsdf,sortAsdf,position,anchor,anchorOffset,limit,calculateTotal, additionalArguments);
-		writeln(invocation);
 		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		import std.stdio;
-		writeln(request);
 		return post(request);
 	}
 

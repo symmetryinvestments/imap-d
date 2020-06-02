@@ -80,14 +80,4 @@ Session getSession(JmapSessionParams params)
 	return ret;
 }
 
-/+
-auto getMailboxes(string uri, Credentials credentials)
-{
-	auto req = Request();
-	req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	auto query = "getMailboxes",{},"#9"
-	auto result = cast(string) req.post(uri,query).data.idup;
-	return result;
-}
-+/
 

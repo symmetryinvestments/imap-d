@@ -77,7 +77,6 @@ struct AccountCapabilities
 	void finalizeDeserialization(Asdf data)
 	{
 		import asdf : deserialize, Asdf;
-		import std.stdio : writeln;
 
 		foreach(el;data.byKeyValue)
 			allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
@@ -175,13 +174,9 @@ struct Session
 	void finalizeDeserialization(Asdf data)
 	{
 		import asdf : deserialize, Asdf;
-		import std.stdio : writeln;
 
 		foreach(el;data["capabilities"].byKeyValue)
 			capabilities[el.key] = el.value.get!Asdf(Asdf.init);
-		//writeln(data);
-		//writeln(data["capabilities"]["urn:ietf:params:jmap:core"]);
-		//writeln(capabilities["urn:ietf:params:jmap:core"]);
 		this.coreCapabilities = deserialize!SessionCoreCapabilities(capabilities["urn:ietf:params:jmap:core"]);
 	}
 
@@ -189,13 +184,10 @@ struct Session
 	{
 		import asdf;
 	    import requests : Request, BasicAuthentication;
-		import std.stdio;
-		auto json = serializeToJsonPretty(request);
-		stderr.writeln(json);
+		auto json = serializeToJson(request); // serializeToJsonPretty
 	    auto req = Request();
 	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
 	    auto result = cast(string) req.post(apiUrl, json,"application/json").responseBody.data.idup;
-		stderr.writeln(result);
 	    return parseJson(result);
 	}
 

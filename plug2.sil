@@ -1,4 +1,5 @@
 import * from jmap
+import fmod from math
 import writeBinaryString from imap
 import toUpper from string
 c=Credentials(environment("JMAP_USER"),environment("JMAP_PASS"))
@@ -48,14 +49,21 @@ readText("emails.csv")
 
 account = session.accounts |> keys |> map(k => session.accounts[k]).front
 
-e1 = session.getEmails(ids[0:400],properties,bodyProperties:bodyProperties)
-e2 = e1 |> filter(x => x["hasAttachment"]) |> array
+Chunks = zip([len(ids) |> iota,ids])
+			|> array
+			|> sortBy((a,b) => (fmod(a[0],200) < fmod(b[0],200)))
+			|> chunkBy((a,b) => (fmod(a[0],200) == fmod(b[0],200)))
+			|> mapa(g => g|> mapa(gm => gm[1]))
+
+e1 = Chunks |> mapa(ch => session.getEmails(ch,properties,bodyProperties:bodyProperties))
+e2all = e1 |> mapa(ch => ch |> filter(x => x["hasAttachment"]) |> array)
+e2 = e2all.back
 print(e2.back |> keys)
 bogey = e2.back.textBody.front
 print(session.downloadBinary(bogey.blobId,bogey.type,"test.txt"))
 code = e2.back.attachments.front
-pdf = session.downloadBinary(code.blobId,code.type,code.name)
-writeBinaryString("foo.pdf",pdf)
+attachmentFile = session.downloadBinary(code.blobId,code.type,code.name)
+writeBinaryString("saved_"~code.name,attachmentFile)
 //print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf"))
 //print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf","https://www.fastmail.com/jmap/download/{accountId}/{blobId}/{name}"))
 //print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf","https://www.fastmailusercontent.com/jmap/download/{accountId}/{blobId}/{name}"))

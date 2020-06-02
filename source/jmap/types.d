@@ -199,7 +199,7 @@ struct Session
 	    return parseJson(result);
 	}
 
-	Variable uploadBinary(string data)
+	Variable uploadBinary(string data, string type = "application/binary")
 	{
 		import std.string : replace;
 		import asdf;
@@ -207,22 +207,25 @@ struct Session
 		auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
 	    auto req = Request();
 	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	    auto result = cast(string) req.post(uploadUrl, data,"application/binary").responseBody.data.idup;
+	    auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
 		return parseJson(result).toVariable;
 	}
 
-	string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin")
+	string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl=null)
 	{
 		import std.string : replace;
 		import asdf;
 	    import requests : Request, BasicAuthentication;
+		import std.algorithm : canFind;
 
-		auto uri = this.downloadUrl
-						.replace("{accountId}",this.activeAccountId())
-						.replace("{blobId}",blobId)
-						.replace("{type}",type)
-						.replace("{name}",name);
+		downloadUrl = (downloadUrl.length == 0) ? this.downloadUrl : downloadUrl;
+		downloadUrl = downloadUrl
+						.replace("{accountId}",this.activeAccountId().uriEncode)
+						.replace("{blobId}",blobId.uriEncode)
+						.replace("{type}",type.uriEncode)
+						.replace("{name}",name.uriEncode);
 
+		downloadUrl = downloadUrl ~  "&accept=" ~ type.uriEncode;
 	    auto req = Request();
 	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
 	    auto result = cast(string) req.get(downloadUrl).responseBody.data.idup;
@@ -913,3 +916,13 @@ struct ContactGroup
 	string[] ids;
 }
 
+string uriEncode(const(char)[] s)
+{
+	import std.string : replace;
+
+	return  s.replace("!","%21").replace("#","%23").replace("$","%24").replace("&","%26").replace("'","%27")
+			.replace("(","%28").replace(")","%29").replace("*","%2A").replace("+","%2B").replace(",","%2C")
+			.replace("-","%2D").replace(".","%2E").replace("/","%2F").replace(":","%3A").replace(";","%3B")
+			.replace("=","%3D").replace("?","%3F").replace("@","%40").replace("[","%5B").replace("]","%5D")
+			.idup;
+}

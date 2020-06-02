@@ -1,7 +1,10 @@
 import * from jmap
+import writeBinaryString from imap
 import toUpper from string
-c=Credentials("laeeth@kaleidic.io","fjr4f2aflcnewpph")
-uri = "https://jmap.fastmail.com/.well-known/jmap"
+c=Credentials(environment("JMAP_USER"),environment("JMAP_PASS"))
+//uri = "https://jmap.fastmail.com/.well-known/jmap"
+uri = "https://betajmap.fastmail.com/.well-known/jmap"
+//uri = "https://www.fastmail.com/jmap/api/?u=1f4140ae"
 jp = JmapSessionParams(uri: uri,credentials:c)
 print(jp)
 session = getSession(jp)
@@ -18,7 +21,7 @@ q=session.query("Email",filterOptions,sortOptions,0,"")
 ids=q.methodResponses.front[1].ids
 properties = [ "id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments" ]
 simpleProperties = ["from","to"]
-bodyProperties = ["all"]
+bodyProperties = [ "partId", "blobId", "size", "name", "type", "charset", "disposition", "cid", "language", "location" ]
 stripQuoteLeft(x) => if (len(x) > 1 && x[0]=='"') then x[1:$] else x
 stripQuoteRight(x) => if (len(x) > 1 && x[$-1]=='"') then x[0:$-1] else x
 stripQuotes(x) => x |> stripQuoteLeft |> stripQuoteRight
@@ -44,3 +47,15 @@ readText("emails.csv")
 	|> writeText("emails.csv")
 
 account = session.accounts |> keys |> map(k => session.accounts[k]).front
+
+e1 = session.getEmails(ids[0:400],properties,bodyProperties:bodyProperties)
+e2 = e1 |> filter(x => x["hasAttachment"]) |> array
+print(e2.back |> keys)
+bogey = e2.back.textBody.front
+print(session.downloadBinary(bogey.blobId,bogey.type,"test.txt"))
+code = e2.back.attachments.front
+pdf = session.downloadBinary(code.blobId,code.type,code.name)
+writeBinaryString("foo.pdf",pdf)
+//print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf"))
+//print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf","https://www.fastmail.com/jmap/download/{accountId}/{blobId}/{name}"))
+//print(session.downloadBinary("Gb7129facf7f15325cc20e50997f75a1104476d32","application/pdf","test.pdf","https://www.fastmailusercontent.com/jmap/download/{accountId}/{blobId}/{name}"))

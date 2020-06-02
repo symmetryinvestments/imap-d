@@ -73,7 +73,7 @@ auto parse(string arg)
 }
 
 
-void writeBinary(string file, string data)
+void writeBinaryString(string file, string data)
 {
 	import std.file;
 	write(file,data);
@@ -157,7 +157,7 @@ void registerImap(ref Handlers handlers)
 		static foreach(F; AliasSeq!(noop,login,logout,status,examine,select,close,expunge,list,lsub,
 					search,fetchFast,fetchFlags,fetchDate,fetchSize, fetchStructure, fetchHeader,
 					fetchText,fetchFields,fetchPart,logout,store,copy,create, delete_,rename,subscribe,
-					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinary,
+					unsubscribe, idle, openConnection, closeConnection,raw,fetchRFC822,attachments,writeBinaryString,
 					createQuery,searchQuery,searchQueries, rfcDate,esearch,multiSearch,move,multiMove,moveUIDs,
 					extractAddress,
 		))

@@ -52,7 +52,7 @@ print(a.id)
 print(a.type)
 print(a.filename)
 //print(a.content[0:100] |> text)
-imap.writeBinary(a.filename,a.content) // get first attachment and save to file
+imap.writeBinaryString(a.filename,a.content) // get first attachment and save to file
 //kal=imap.search(session,"ALL")
 //froms2 = kal.ids |> mapa(id => imap.fetchFields(session,text(id),"FROM").lines)
 //writeCsv(froms2,"remaining.csv")

@@ -1,9 +1,12 @@
 module jmap.types;
 import std.datetime : SysTime;
 import std.typecons : Nullable;
+
+version(SIL):
 import kaleidic.sil.lang.types : Variable,Function,SILdoc;
-import asdf;
 import kaleidic.sil.lang.json : toVariable, toJsonString;
+
+import asdf;
 
 struct Credentials
 {
@@ -72,14 +75,17 @@ struct AccountCapabilities
 
 	//@serializationIgnoreIn Asdf vacationResponseParams;
 
-	@serializationIgnoreIn Variable[string] allAccountCapabilities;
-
-	void finalizeDeserialization(Asdf data)
+	version(SIL)
 	{
-		import asdf : deserialize, Asdf;
+		@serializationIgnoreIn Variable[string] allAccountCapabilities;
 
-		foreach(el;data.byKeyValue)
-			allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
+		void finalizeDeserialization(Asdf data)
+		{
+			import asdf : deserialize, Asdf;
+
+			foreach(el;data.byKeyValue)
+				allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
+		}
 	}
 }
 
@@ -191,17 +197,35 @@ struct Session
 	    return parseJson(result);
 	}
 
-	Variable uploadBinary(string data, string type = "application/binary")
+	version(SIL)
 	{
-		import std.string : replace;
-		import asdf;
-	    import requests : Request, BasicAuthentication;
-		auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
-	    auto req = Request();
-	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	    auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
-		return parseJson(result).toVariable;
+		Variable uploadBinary(string data, string type = "application/binary")
+		{
+			import std.string : replace;
+			import asdf;
+			import requests : Request, BasicAuthentication;
+			auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
+			auto req = Request();
+			req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
+			auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
+			return parseJson(result).toVariable;
+		}
 	}
+	else
+	{
+		Asdf uploadBinary(string data, string type = "application/binary")
+		{
+			import std.string : replace;
+			import asdf;
+			import requests : Request, BasicAuthentication;
+			auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
+			auto req = Request();
+			req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
+			auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
+			return parseJson(result);
+		}
+	}
+
 
 	string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl=null)
 	{
@@ -226,20 +250,23 @@ struct Session
 	
 
 
-	Variable get(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
+	version(SIL)
 	{
-		return getRaw(type,ids,properties, additionalArguments).toVariable;
-	}
+		Variable get(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
+		{
+			return getRaw(type,ids,properties, additionalArguments).toVariable;
+		}
 
-	Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto props =  parseJson(toJsonString(properties));
-		auto invocation = Invocation.get(type,activeAccountId(), invocationId,ids, props,additionalArguments);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
+		Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
+		{
+			import std.algorithm : map;
+			import std.array : array;
+			auto invocationId = "12345678";
+			auto props =  parseJson(toJsonString(properties));
+			auto invocation = Invocation.get(type,activeAccountId(), invocationId,ids, props,additionalArguments);
+			auto request = JmapRequest(listCapabilities(),[invocation],null);
+			return post(request);
+		}
 	}
 
 

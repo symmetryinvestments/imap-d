@@ -61,6 +61,7 @@ Heavily inspired by imapfilter.
 - mailbox UTF7 conversion code is horrible, may not work and needs improving
 - more abstraction and better design needed for parsing
 - synchronous and single threaded: use processes to start multiple connections for performance
+- JMAP depends on internal Symmetry Variable type and will require changes to work without it
 
 
 ### Features to add

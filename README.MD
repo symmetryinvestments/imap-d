@@ -2,12 +2,12 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/mpti6h28igwso71e/branch/master?svg=true)](https://ci.appveyor.com/project/Laeeth/imap-d/branch/master)
 [![Coverage](https://codecov.io/gh/symmetryinvestments/imap-d/branch/master/graph/badge.svg)](https://codecov.io/gh/symmetryinvestments/imap-d)
 
-# IMAP for D / SIL
+# IMAP and JMAP for D / SIL
 
 ## Status - usable alpha
 I am starting to use this daily, but there are probably many bugs - please file issues.  PRs welcomed.
 
-### Features that should work (ones without a check may work but be more awkward to use)
+### IMAP Features that should work (ones without a check may work but be more awkward to use)
 
 - [X] session capabilities
 - [X] copy message
@@ -45,6 +45,12 @@ I am starting to use this daily, but there are probably many bugs - please file 
 - [X] subscribe
 - [X] unsubscribe
 
+### JMAP Features that should work (ones without a check may work but have not yet been tested)
+
+- [X] Email
+- [ ] Contacts
+- [ ] Calendar
+
 
 Heavily inspired by imapfilter.
 
@@ -60,6 +66,7 @@ Heavily inspired by imapfilter.
 ### Features to add
 
 [ ] more IMAP extensions
+[ ] more JMAP capabilities
 
 ## Example use
 

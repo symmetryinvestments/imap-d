@@ -46,8 +46,6 @@ Set!T addValues(T)(Set!T set, T[] values)
 	values.each!(value => set.values_[value]=true);
 	return ret;
 }
-=======
->>>>>>> wip2
 
 ///
 Set!T addSet(T)(Set!T lhs, Set!T rhs)
@@ -106,10 +104,7 @@ struct Options
 
 	@SILdoc("When this option is enabled and the server supports the Challenge-Response Authentication Mechanism (specifically CRAM-MD5), this method will be used for user authentication instead of a plaintext password LOGIN. This variable takes a boolean as a value. Default is false")
 	bool cramMD5 = false;
-<<<<<<< HEAD
-=======
 
->>>>>>> wip2
 	bool startTLS = false;
 	bool tryCreate = false;
 	bool recoverAll = true;
@@ -186,11 +181,6 @@ struct Session
 		this.server = imapServer.server;
 		this.port = imapServer.port;
         this.useSSL = useSSL;
-<<<<<<< HEAD
-		this.options.startTLS = useStartTLS;
-		this.username = imapLogin.username;
-		this.password = imapLogin.password;
-=======
 		this.imapLogin = imapLogin;
 	}
 
@@ -198,7 +188,6 @@ struct Session
 	{
 		this.options.startTLS = useTLS;
 		return this;
->>>>>>> wip2
 	}
 
 	ref Session setSelected(Mailbox mailbox)

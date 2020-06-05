@@ -92,9 +92,9 @@ int sendRequest(ref Session session, string value)
 	if (value.isLoginRequest)
 	{
 		if (session.options.debugMode) infof("sending command (%s):\n\n%s\n\n", session.socket,
-		    value.length - session.password.length - "\"\"\r\n".length, value);
+		    value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
 		if (session.options.debugMode) tracef("C (%s): %s\n", session.socket, value.length,
-				session.password.length - "\"\"\r\n".length,  value);
+				session.imapLogin.password.length - "\"\"\r\n".length,  value);
 	} else {
 		if (session.options.debugMode)
 		{
@@ -120,7 +120,7 @@ int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
 	enforce(session.socket,"not connected to server");
-	session.socketWrite(data ~ "\r\n");
+	session.socketSecureWrite(data ~ "\r\n");
 	//socketWrite(session, data ~ "\r\n");
 	return 1;
 }
@@ -811,7 +811,6 @@ auto delete_(ref Session session, Mailbox mailbox)
 }
 
 @SILdoc("Rename a mailbox")
->>>>>>> wip2
 auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 {
 	import std.format : format;

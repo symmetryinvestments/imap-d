@@ -302,24 +302,26 @@ ImapResult responseCapability(ref Session session, Tag tag)
 		auto capability = parseEnum!Capability(token,Capability.none);
 		if (capability != Capability.none)
 		{
-			case "NAMESPACE":
-				capabilities = capabilities.add(Capability.namespace);
-				break;
-			
-			case "AUTH=CRAM-MD5":
-				capabilities = capabilities.add(Capability.cramMD5);
-				break;
+			switch(token)
+			{
+				case "NAMESPACE":
+					capabilities = capabilities.add(Capability.namespace);
+					break;
+				
+				case "AUTH=CRAM-MD5":
+					capabilities = capabilities.add(Capability.cramMD5);
+					break;
 
-			case "STARTTLS":
-				capabilities = capabilities.add(Capability.startTLS);
-				break;
+				case "STARTTLS":
+					capabilities = capabilities.add(Capability.startTLS);
+					break;
 
-			case "CHILDREN":
-				capabilities = capabilities.add(Capability.children);
-				break;
+				case "CHILDREN":
+					capabilities = capabilities.add(Capability.children);
+					break;
 
-			case "IDLE":
-				capabilities = capabilities.add(Capability.idle);
+				case "IDLE":
+					capabilities = capabilities.add(Capability.idle);
 				break;
 
 			case "IMAP4rev1":
@@ -350,6 +352,7 @@ ImapResult responseCapability(ref Session session, Tag tag)
 					infof("unknown capabilty: %s",token);
 				}
 				break;
+			}
 		}
 	}
 
@@ -528,20 +531,6 @@ private string[][] extractParenthesizedList(string line)
 }
 
 
-@SILdoc("Process the data that server sent due to IMAP STATUS client request")
-=======
-	@("MESSAGES #")
-	int messages;
-
-	@("RECENT #")
-	int recent;
-
-	@("UIDNEXT #")
-	int uidNext;
-
-	@("UNSEEN #")
-	int unseen;
-}
 
 @SILdoc("Process the data that server sent due to IMAP STATUS client request.")
 StatusResult responseStatus(ref Session session, int tag, string mailboxName)

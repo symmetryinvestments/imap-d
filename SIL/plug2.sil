@@ -1,12 +1,12 @@
 import imap
 // PASSWORD is set in IMAP_PASS environmental variable
-login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS"))
-server = imap.ImapServer("imap.fastmail.com","993")
+login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS")).returnValue
+server = imap.ImapServer("imap.fastmail.com","993").returnValue
 
-session = imap.Session(server,login,true,false)
-session=imap.openConnection(session)
-print(session.socket)
-session = imap.login(session);
+session = imap.Session(server,login,true,false).returnValue
+session=imap.openConnection(session).returnValue
+//print(session.socket)
+session = imap.login(session).returnValue
 
 print(session)
 //print(imap.socketSecureWrite(session,"HELLO"))
@@ -49,4 +49,4 @@ print(a.id)
 print(a.type)
 print(a.filename)
 print(a.content[0:100])
-imap.writeBinary(a.filename,a.content) // get first attachment and save to file
+imap.writeBinaryString(a.filename,a.content) // get first attachment and save to file

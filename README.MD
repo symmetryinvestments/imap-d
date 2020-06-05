@@ -2,7 +2,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/mpti6h28igwso71e/branch/master?svg=true)](https://ci.appveyor.com/project/Laeeth/imap-d/branch/master)
 [![Coverage](https://codecov.io/gh/symmetryinvestments/imap-d/branch/master/graph/badge.svg)](https://codecov.io/gh/symmetryinvestments/imap-d)
 
-# IMAP and JMAP for D / SIL
+# IMAP for D / SIL and JMAP for SIL
 
 ## Status - usable alpha
 I am starting to use this daily, but there are probably many bugs - please file issues.  PRs welcomed.

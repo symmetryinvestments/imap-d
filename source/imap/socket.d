@@ -263,7 +263,7 @@ Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail
 
 	enforce(s != -1, format!"waiting to read from socket; %s"(strerror(errno).fromStringz));
 	enforce (s != 0 || !timeoutFail, "timeout period expired while waiting to read data");
-	if (session.options.debugMode) tracef("socketRead: %s / %s",session.socket,buf);
+	tracef("socketRead: %s / %s",session.socket,buf);
 	return result(Status.success,cast(string)buf[0..r]);
 }
 
@@ -377,14 +377,14 @@ ssize_t socketWrite(ref Session session, string buf)
 	import std.string : fromStringz;
 	import std.conv : to;
 	int s;
-	ptrdiff_t r, t;
+	ssize_t r, t;
 
 	r = t = 0;
 	s = 1;
 	
-	if (session.options.debugMode) tracef("socketWrite: %s / %s",session.socket,buf);
+	tracef("socketWrite: %s / %s",session.socket,buf);
     if (session.sslConnection) {
-        if (session.options.debugMode) tracef("socketSecureWrite: %s / %s",session.socket,buf);
+        tracef("socketSecureWrite: %s / %s",session.socket,buf);
         return session.socketSecureWrite(buf);
     }
 
@@ -394,16 +394,13 @@ ssize_t socketWrite(ref Session session, string buf)
 	auto socketSet = new SocketSet(1);
 	socketSet.add(session.socket);
 
-	if (session.options.debugMode) tracef("entering loop with buf.length=%s",buf.length);
+	tracef("entering loop with buf.length=%s",buf.length);
 	while(buf.length > 0)
 	{
-        if (session.options.debugMode)
-		{
-			tracef("buf is of length %s",buf.length);
-			tracef("sending buf: %s",buf);
-		}
+        tracef("buf is of length %s",buf.length);
+        tracef("sending buf: %s",buf);
         r = session.socket.send(cast(void[])buf);
-        if (session.options.debugMode) tracef("r=: %s",r);
+        tracef("r=: %s",r);
         enforce(r != -1, format!"writing data; %s"(strerror(errno).fromStringz));
         enforce(r !=0, "unknown error");
 
@@ -411,7 +408,7 @@ ssize_t socketWrite(ref Session session, string buf)
             enforce(r <= buf.length, "send to socket returned more bytes than we sent!");
             buf = buf[r .. $];
             t += r;
-            if (session.options.debugMode) tracef("buf now =: %s",buf);
+            tracef("buf now =: %s",buf);
         }
     }
 
@@ -432,7 +429,7 @@ auto socketSecureWrite(ref Session session, string buf)
 	int r;
 	size_t e;
 
-	if (session.options.debugMode) tracef("socketSecureWrite: %s / %s",session.socket,buf);
+	tracef("socketSecureWrite: %s / %s",session.socket,buf);
 	enforce(session.sslConnection, "no SSL connection has been established");
 	if (buf.length ==0)
 		return 0;

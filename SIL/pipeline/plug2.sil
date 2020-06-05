@@ -3,7 +3,7 @@ import imap
 login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS"))
 server = imap.ImapServer("imap.fastmail.com","993")
 
-session = imap.Session(server,login,true,false)
+session = imap.Session(server,login) // ,true,false)
 //print("1")
 session=imap.openConnection(session).returnValue
 //print("2")

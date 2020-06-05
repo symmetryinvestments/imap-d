@@ -1,6 +1,6 @@
 import * from imap
 server = imap.ImapServer("imap.fastmail.com","993")
-session = imap.Session(server,ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS")),true,false)
+session = imap.Session(server,ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS")),true,true) // ,true,false)
 			|> imap.openConnection().returnValue
 			|> imap.login().returnValue
 

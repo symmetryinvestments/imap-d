@@ -1,5 +1,0 @@
-30 |> fontSize
-"Dejavu Sans Mono" |> fontName
-"black" |> backgroundColor
-"green" |> foregroundColor
-true |> closeOnExit

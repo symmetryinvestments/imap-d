@@ -1,2 +1,0 @@
-loadPlugin("imap","./libsymmetry-imap.so")
-exec("pipeline2.sil")

@@ -171,8 +171,16 @@ void registerImap(ref Handlers handlers)
 	{
 		handlers.openModule("imap.impl");
 		scope(exit) handlers.closeModule();
-		static foreach(T; AliasSeq!( AddressInfo, //Socket,
-					termios,ImapServer,ImapLogin,File
+		version(linux)
+		{
+			handlers.registerType!termios;
+			handlers.registerHandler!getTerminalAttributes;
+			handlers.registerHandler!setTerminalAttributes;
+			handlers.registerHandler!enableEcho;
+			handlers.registerHandler!disableEcho;
+		}
+
+		static foreach(T; AliasSeq!( AddressInfo, Socket,ImapServer,ImapLogin,File
 		))
 			handlers.registerType!T;
 		handlers.registerHandler!(add!Capability)("addCapability");

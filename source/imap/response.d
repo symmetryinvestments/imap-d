@@ -3,7 +3,9 @@ module imap.response;
 import imap.defines;
 import imap.socket;
 import imap.session;
-import imap.sildoc;
+import imap.set;
+import imap.sil : SILdoc;
+
 import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;
@@ -44,7 +46,7 @@ enum ImapResponse
 }
 
 
-///	Read data the server sent.
+@SILdoc("Read data the server sent")
 auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool timeoutFail = false)
 {
 	timeout = (timeout == Duration.init) ? session.options.timeout : timeout;
@@ -64,7 +66,7 @@ auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool
 }
 
 
-///	Search for tagged response in the data that the server sent.
+@SILdoc("Search for tagged response in the data that the server sent.")
 ImapStatus checkTag(ref Session session, string buf, Tag tag)
 {
 	import std.algorithm : all, map, filter;
@@ -117,7 +119,7 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag)
 }
 
 
-///	Check if server sent a BYE response (connection is closed immediately).
+@SILdoc("Check if server sent a BYE response (connection is closed immediately).")
 bool checkBye(string buf)
 {
 	import std.string : toUpper;
@@ -127,7 +129,7 @@ bool checkBye(string buf)
 }
 
 
-///	Check if server sent a PREAUTH response (connection already authenticated by external means).
+@SILdoc("Check if server sent a PREAUTH response (connection already authenticated by external means).")
 int checkPreAuth(string buf)
 {
 	import std.string : toUpper;
@@ -136,7 +138,7 @@ int checkPreAuth(string buf)
 	return (buf.canFind("* PREAUTH"));
 }
 
-/// Check if the server sent a continuation request.
+@SILdoc("Check if the server sent a continuation request.")
 bool checkContinuation(string buf)
 {
 	import std.string: startsWith;
@@ -144,7 +146,7 @@ bool checkContinuation(string buf)
 }
 
 
-///	Check if the server sent a TRYCREATE response.
+@SILdoc("Check if the server sent a TRYCREATE response.")
 int checkTryCreate(string buf)
 {
 	import std.string : toUpper;
@@ -159,7 +161,7 @@ struct ImapResult
 	string value;
 }
 
-///	Get server data and make sure there is a tagged response inside them.
+@SILdoc("Get server data and make sure there is a tagged response inside them.")
 ImapResult responseGeneric(ref Session session, Tag tag, Duration timeout = 2000.msecs)
 {
 	import std.typecons: Tuple;
@@ -194,7 +196,7 @@ ImapResult responseGeneric(ref Session session, Tag tag, Duration timeout = 2000
 }
 
 
-///	Get server data and make sure there is a continuation response inside them.
+@SILdoc("Get server data and make sure there is a continuation response inside them.")
 ImapResult responseContinuation(ref Session session, Tag tag)
 {
 	import std.algorithm : any;
@@ -228,7 +230,7 @@ ImapResult responseContinuation(ref Session session, Tag tag)
 }
 
 
-///	Process the greeting that server sends during connection.
+@SILdoc("Process the greeting that server sends during connection.")
 ImapResult responseGreeting(ref Session session)
 {
 	import std.experimental.logger : tracef;
@@ -248,8 +250,27 @@ ImapResult responseGreeting(ref Session session)
 	return ImapResult(ImapStatus.none,res[1]);
 }
 
+T parseEnum(T)(string val, T def = T.init)
+{
+	import std.traits : EnumMembers;
+	import std.conv : to;
+	static foreach(C;EnumMembers!T)
+	{{
+		enum name = C.to!string;
+		enum udas = __traits(getAttributes, __traits(getMember,T,name));
+		static if(udas.length > 0)
+		{
+			if (val == udas[0].to!string)
+			{
+				return C;
+			}
+		}
+	}}
+	return def;
+}
 
-///	Process the data that server sent due to IMAP CAPABILITY client request.
+
+@SILdoc("Process the data that server sent due to IMAP CAPABILITY client request.")
 ImapResult responseCapability(ref Session session, Tag tag)
 {
 	import std.experimental.logger : infof, tracef;
@@ -278,7 +299,8 @@ ImapResult responseCapability(ref Session session, Tag tag)
 
 	foreach(token;lines)
 	{
-		switch(token)
+		auto capability = parseEnum!Capability(token,Capability.none);
+		if (capability != Capability.none)
 		{
 			case "NAMESPACE":
 				capabilities = capabilities.add(Capability.namespace);
@@ -331,9 +353,17 @@ ImapResult responseCapability(ref Session session, Tag tag)
 		}
 	}
 
+	if (capabilities.has(Capability.imap4Rev1))
+		session.imapProtocol = ImapProtocol.imap4Rev1;
+	else if (capabilities.has(Capability.imap4))
+		session.imapProtocol = ImapProtocol.imap4;
+	else
+		session.imapProtocol = ImapProtocol.init;
+
 	session.capabilities = capabilities;
 	session.imapProtocol = protocol;
 	if (session.options.debugMode)
+	version(Trace)
 	{
 		tracef("session capabilities: %s",session.capabilities.values);
 		tracef("session protocol: %s",session.imapProtocol);
@@ -342,7 +372,7 @@ ImapResult responseCapability(ref Session session, Tag tag)
 }
 
 
-///	Process the data that server sent due to IMAP AUTHENTICATE client request.
+@SILdoc("Process the data that server sent due to IMAP AUTHENTICATE client request.")
 ImapResult responseAuthenticate(ref Session session, Tag tag)
 {
 	import std.string : splitLines, join, strip, startsWith;
@@ -363,7 +393,7 @@ ImapResult responseAuthenticate(ref Session session, Tag tag)
 		return ImapResult(ImapStatus.none,res.value);
 }
 
-///	Process the data that server sent due to IMAP NAMESPACE client request.
+@SILdoc("Process the data that server sent due to IMAP NAMESPACE client request.")
 ImapResult responseNamespace(ref Session session, Tag tag)
 {
 	auto r = session.responseGeneric(tag);
@@ -372,6 +402,59 @@ ImapResult responseNamespace(ref Session session, Tag tag)
 	return r;
 }
 
+
+string coreUDA(string uda)
+{
+	import std.string : replace, strip;
+	return uda.replace("# ","").replace(" #","").strip;
+}
+
+
+T getValueFromLine(T)(string line, string uda)
+{
+	import std.conv : to;
+	import std.string : startsWith, strip, split;
+	auto udaToken = uda.coreUDA();
+	auto i = token.indexOf(token,udaToken);
+	auto j = i + udaToken.length + 1;
+
+	bool isPrefix = uda.startsWith("# ");
+	if (isPrefix)
+	{
+		return token[0..i].strip.split.back.to!T;
+	}
+	else
+	{
+		return token[j .. $].strip.to!T;
+	}
+}
+
+string getTokenFromLine(string line, string uda)
+{
+	return "";
+}
+
+version(None)
+T parseStruct(T)(T agg, string line)
+{
+	import std.traits : Fields;
+	import std.conv : to;
+	static foreach(M;__traits(allMembers,T))
+	{{
+		enum name = M.to!string;
+		enum udas = __traits(getAttributes, __traits(getMember,T,name));
+		alias FT = typeof( __traits(getMember,T,name));
+		static if(udas.length > 0)
+		{
+			enum uda = udas[0].to!string;
+			if (token == uda.coreUDA)
+			{
+				__traits(getMember,agg,name) = getValueFromToken!FT(line,uda);
+			}
+		}
+	}}
+	return agg;
+}
 
 struct StatusResult
 {
@@ -446,6 +529,21 @@ private string[][] extractParenthesizedList(string line)
 
 
 @SILdoc("Process the data that server sent due to IMAP STATUS client request")
+=======
+	@("MESSAGES #")
+	int messages;
+
+	@("RECENT #")
+	int recent;
+
+	@("UIDNEXT #")
+	int uidNext;
+
+	@("UNSEEN #")
+	int unseen;
+}
+
+@SILdoc("Process the data that server sent due to IMAP STATUS client request.")
 StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 {
 	import std.exception : enforce;
@@ -472,15 +570,37 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName)
 					.array;
 
 	foreach(list; lists)
+	auto lines = r.value.extractLinesWithPrefix(StatusToken, StatusToken.length + mailboxName.length + 2);
+
+	version(None)
+	foreach(line;lines)
 	{
 		foreach(pair;list)
 		{
 			ret = parseUpdateT!StatusResult(ret, pair[0],pair[1]);
+			auto key = cols[j*2];
+			auto val = cols[j*2 +1];
+			if (!val.isNumeric)
+				continue;
+			ret = ret.parseStruct(key.toUpper,val.to!int);
 		}
 	}
 	return ret;
 }
 
+string[] extractLinesWithPrefix(string buf, string prefix, size_t minimumLength = 0)
+{
+	import std.string : splitLines, strip, startsWith;
+	import std.algorithm : map, filter;
+	import std.array : array;
+	
+	auto lines = buf.splitLines
+					.map!(line => line.strip)
+					.filter!(line => line.startsWith(prefix) && line.length > minimumLength)
+					.map!(line => line[prefix.length .. $].strip)
+					.array;
+	return lines;
+}
 
 @SILdoc("Process the data that server sent due to IMAP EXAMINE client request.")
 ImapResult responseExamine(ref Session session, int tag)
@@ -491,19 +611,54 @@ ImapResult responseExamine(ref Session session, int tag)
 	return r;
 }
 
+struct SelectResult
+{
+	ImapStatus status;
+	string value;
+
+	@("FLAGS (#)")
+	ImapFlag[] flags;
+
+	@("# EXISTS")
+	int exists;
+
+	@("# RECENT")
+	int recent;
+
+	@("OK [UNSEEN #]")
+	int unseen;
+
+	@("OK [PERMANENTFLAGS #]")
+	ImapFlag[] permanentFlags;
+
+	@("OK [UIDNEXT #]")
+	int uidNext;
+
+	@("OK [UIDVALIDITY #]")
+	int uidValidity;
+}
+
 
 @SILdoc("Process the data that server sent due to IMAP SELECT client request.")
-ImapResult responseSelect(ref Session session, int tag)
+SelectResult responseSelect(ref Session session, int tag)
 {
+	import std.algorithm: canFind;
 	import std.string : toUpper;
+	SelectResult ret;
 	auto r = session.responseGeneric(tag);
-	if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-		return r;
+	ret.status = (r.value.canFind("OK [READ-ONLY] SELECT")) ? ImapStatus.readOnly : r.status;
+	ret.value = r.value;
 
-	if (r.value.toUpper == "[READ-ONLY]")
-		return ImapResult(ImapStatus.readOnly,r.value);
-	else
-		return r;
+	if (ret.status == ImapStatus.unknown || ret.status == ImapStatus.bye)
+		return ret;
+
+	auto lines = r.value.extractLinesWithPrefix("* ", 3);
+	version(None)
+	foreach(line;lines)
+	{
+		ret = ret.parseStruct(line);
+	}
+	return ret;
 }
 
 @SILdoc("Process the data that server sent due to IMAP MOVE client request.")
@@ -622,6 +777,8 @@ ListResponse responseList(ref Session session, Tag tag)
 	}
 	return ListResponse(ImapStatus.ok,result.value,listEntries);
 }
+
+
 
 ///
 struct SearchResult

@@ -2,6 +2,7 @@
 module imap.socket;
 import imap.defines;
 import imap.session;
+import imap.sil : SILdoc;
 
 import core.stdc.stdio;
 import core.stdc.string;
@@ -49,7 +50,7 @@ SSL_CTX* getContext(string caFile, string caPath, string certificateFile, string
 }
 
 
-///	Connect to mail server.
+@SILdoc("Connect to mail server")
 Session openConnection(ref Session session)
 {
     import core.time : seconds;
@@ -67,8 +68,6 @@ Session openConnection(ref Session session)
 	session.socket.blocking(false);
     session.socket.setOption(SocketOptionLevel.SOCKET,SocketOption.SNDTIMEO,1.seconds);
 	enforce(session.socket.isAlive(), format!"connecting to %s:%s failed"(session.server, session.port));
-	if (session.useSSL && !session.options.startTLS)
-		return openSecureConnection(session);
 	return session;
 }
 
@@ -82,7 +81,7 @@ enum ProtocolSSL
 	tls1_2,
 }
 
-///	Initialize SSL/TLS connection.
+@SILdoc("Initialize SSL/TLS connection")
 ref Session openSecureConnection(ref Session session)
 {
 	import std.exception : enforce;
@@ -174,7 +173,7 @@ private string sslConnectionSysCallError(int socketStatus)
 	return ERR_error_string(e, null).fromStringz.idup;
 }
 
-/// Disconnect from mail server.
+@SILdoc("Disconnect from mail server.")
 void closeConnection(ref Session session)
 {
 	version(SSL) closeSecureConnection(session);
@@ -184,7 +183,7 @@ void closeConnection(ref Session session)
 	}
 }
 
-///	Shutdown SSL/TLS connection.
+@SILdoc("Shutdown SSL/TLS connection.")
 int closeSecureConnection(ref Session session)
 {
 	if (session.sslConnection)
@@ -218,7 +217,7 @@ auto result(T)(Status status, T value)
 	return Result!T(status,value);
 }
 
-/// Read data from socket.
+@SILdoc("Read data from socket.")
 Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail = true)
 {
 	import std.experimental.logger : tracef;
@@ -314,7 +313,7 @@ bool isTryAgain(ref Session session, int status)
 	}
 }
 
-/// Read data from a TLS/SSL connection.
+@SILdoc("Read data from a TLS/SSL connection.")
 Result!string socketSecureRead(ref Session session)
 {
 	import std.experimental.logger : tracef;
@@ -368,7 +367,7 @@ string sslReadErrorMessage(ref Session session, int status)
 	assert(0);
 }
 
-/// Write data to socket.
+@SILdoc("Write data to socket.")
 ssize_t socketWrite(ref Session session, string buf)
 {
 	import std.experimental.logger : tracef;
@@ -421,7 +420,7 @@ ssize_t socketWrite(ref Session session, string buf)
     return t;
 }
 
-/// Write data to a TLS/SSL connection.
+@SILdoc("Write data to a TLS/SSL connection.")
 auto socketSecureWrite(ref Session session, string buf)
 {
 	import std.experimental.logger : tracef;

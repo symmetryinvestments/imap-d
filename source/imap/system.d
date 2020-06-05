@@ -6,6 +6,7 @@ import core.sys.linux.termios;
 import core.stdc.stdio;
 import core.stdc.string;
 import core.stdc.errno;
+import imap.sil : SILdoc;
 
 ///
 termios getTerminalAttributes()
@@ -28,7 +29,7 @@ void setTerminalAttributes(termios terminalAttributes, int optionalActions = TCS
 			format!"setting term attributes; %s\n"(strerror(errno).fromStringz));
 }
 
-/// Enable character echoing.
+@SILdoc("Enable character echoing.")
 void enableEcho()
 {
 	termios t = getTerminalAttributes();
@@ -37,7 +38,7 @@ void enableEcho()
 	t.setTerminalAttributes(TCSAFLUSH);
 }
 
-/// Enable character echoing.
+@SILdoc("Enable character echoing.")
 void disableEcho()
 {
 	termios t = getTerminalAttributes();

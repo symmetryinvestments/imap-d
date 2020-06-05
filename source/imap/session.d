@@ -97,8 +97,8 @@ struct Options
 {
 	import core.time : Duration, seconds, minutes;
 
-	bool debugMode = false;
-	bool verboseOutput = false;
+	bool debugMode = true;
+	bool verboseOutput = true;
 	bool interactive = false;
 	bool namespace = false;
 
@@ -174,10 +174,11 @@ struct Session
         return ret.data;
     }
 
-	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true, bool useStartTLS = false)
+	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true, Options options = Options.init)
 	{
 		import std.exception : enforce;
 		import std.process : environment;
+		this.options = options;
 		this.server = imapServer.server;
 		this.port = imapServer.port;
         this.useSSL = useSSL;

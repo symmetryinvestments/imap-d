@@ -139,7 +139,7 @@ void registerImap(ref Handlers handlers)
 				Status, FlagResult,SearchResult,Status,Session,ProtocolSSL, ImapServer, ImapLogin,
 				MailboxImapStatus, MailboxList,Mailbox,ImapResult,ImapStatus,Result!string,
 				Status, FlagResult,SearchResult,Status,StatusResult,BodyResponse,ListResponse,ListEntry,
-				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart,
+				IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart, Options,
 				MimeContainer_,MimePart,
 				MimeAttachment, SearchQuery, UidRange,SearchResultType,StoreMode // proxy from imap not arsd
 		))

@@ -1,0 +1,445 @@
+import * from imap
+server = imap.ImapServer("imap.fastmail.com","993")
+session = imap.Session(server,ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS")),true,false)
+			|> imap.openConnection()
+			|> imap.login()
+
+INBOX = Mailbox("INBOX/kaleidic","/",'/')
+
+// Get a list of the available mailboxes and folders
+folders = imap.list(session).entries |> mapa(f =>f.path)
+inbox = "INBOX"
+kaleidic = "Inbox/kaleidic"
+
+sourceFolders=folders
+
+
+emailAddressesFromFolders(folder) => searchQuery(session,folder,SearchQuery(toContains:"laeeth")).ids ~ searchQuery(session,folder,SearchQuery(fromContains:"laeeth")).ids | mapa(id => fetchFields(session,text(id),"FROM,TO,CC"))
+
+
+//createQueries(addresses) =>addresses |> mapa(address => SearchQuery(fromContains:address))
+//fileMessagesQueries(folder,addresses,destinationFolder) => searchQuery(session,folder,searchQueries(addresses)).ids |> mapa(id => move(session, id, destinationFolder)))
+fileMessagesHelper(folder,addresses,destinationFolder) =>addresses |> mapa(address => searchQuery(session,folder,SearchQuery(fromContains:address)).ids |> mapa(id => move(session, id, destinationFolder)))
+fileMessages(checkFolders,addresses,destinationFolder) => checkFolders |> mapa(folder => fileMessagesHelper(folder,addresses,destinationFolder))
+
+
+print("symmetry/analytics")
+analytics = [
+	"Richard Manthorpe","Tharun","Ben Linnecar"
+]
+
+opstech = [
+	"Arman Siddiqui"
+]
+fileMessages(sourceFolders,opstech,"Inbox/symmetry/opstech")
+
+// friends: Nina, Dom, Nils
+
+print("friends")
+
+friends = [
+	"Christine Jasper", "Johannes Jasper", "delalouviere.com","Nils Poertner","LOUISA MARTIN","Raj Sandhu", "Kurt Carroll",
+	"christine.e.jasper@gmail.com","Adrian Weller","adrian@weller.tv","Aleks Petersone", "Aleks P","David Mitchinson",
+	"dmitchinson@me.com","apetersone@gmail.com"
+]
+
+results_friends = fileMessages(sourceFolders,friends,"Inbox/friends")
+print(results_friends)
+
+
+print("symmetry/infra")
+infra = [
+	"Andrew Hunter","Matthew Teasdale", "Paul Harriman", "Joe Ang", "Wagio Chan",
+	"infosec@symmetryinvestments.com",
+	"Simon.Chivers@options-it.com","Patrick.Collins@options-it.com","Ciara.Coney@options-it.com",
+	"Stephen.Coney@options-it.com","Ruairi.Corrigin@options-it.com","Davinder.Dhillon@options-it.com",
+	"Neil.Donnelly@options-it.com","Jamie.Dow@options-it.com","Chris.Edwards@options-it.com",
+	"Leonard.Egwue@options-it.com","Felipe.Fernandez@options-it.com","John.Gracey@options-it.com",
+	"Peter.Graham@options-it.com","Jeremy.Greenwell@options-it.com","Daniella.Harbinson@options-it.com",
+	"Laura.Heagney@options-it.com","Robert.Horton@options-it.com","James.Hughes@options-it.com",
+	"Richard.Hughes@options-it.com","Kevin.Jordan@options-it.com","Andrew.Julian@options-it.com",
+	"Mike.Kapitula@options-it.com","James.Laming@options-it.com","David.Lavery@options-it.com",
+	"Filipe.Lima@options-it.com","Harshil.Malik@options-it.com","Sophie.McDonald@options-it.com",
+	"Bryan.McGrath@options-it.com","Danny.Moore@options-it.com","Steven.Mulvenna@options-it.com",
+	"Sven.Nagpal@options-it.com","Stephen.Morrow@options-it.com","Declan.OBrien@options-it.com",
+	"Jack.Odell@options-it.com","Downey.Page@options-it.com","Josh.Patel@options-it.com",
+	"Edgars.Pavlovskis@options-it.com","Marie-Louise.Quigg@options-it.com","Michael.Russo@options-it.com",
+	"Sam.Baxter@options-it.com","supportdesk@options-it.com","John.Bryant@options-it.com",
+	"Neil.Henderson@options-it.com","Benny.Chan@options-it.com","Mads.Andersen@options-it.com",
+	"news@options-it.com","Mark.Turley@options-it.com","Marino.Cambel@options-it.com","Aaron.White@options-it.com",
+	"Alex.Hampel@options-it.com","RSVP@options-it.com","news@options-it.com","Mark.Turley@options-it.com",
+	"Marino.Cambel@options-it.com","Aaron.White@options-it.com","Alex.Hampel@options-it.com",
+	"Kanye.Thompson@options-it.com","RazelAnne.Santos@options-it.com","Tim.Stockford@options-it.com",
+	"Joel.Stevens@options-it.com","Ciara.McKay@options-it.com","Aodhan.McGrath@options-it.com",
+	"leigh.jones@options-it.com","Jonathan.Devine@options-it.com","Ruairi.Corrigan@options-it.com",
+	"David.Sheehan@options-it.com","razel.santos@options-it.com","downloads@options-it.com",
+	"sean.oconnor@options-it.com","Kieran.Moreland@options-it.com","Sean.McCamphill@options-it.com",
+	"Gavin.Harvey@options-it.com","Salvatore.Farieri@options-it.com","nbalzer@options-it.com",
+	"Jun.Ashida@options-it.com"
+]
+fileMessages(sourceFolders,infra,"Inbox/kaleidic/infra")
+// kaleidic:contain_from("quarantine@options-it.com"):move_messages(account['symmetry/options/qurantine'])
+
+print("symmetry/exco")
+exco = [
+	"Feng Guo","Mike Robinson","Angie Leung","Victoria Brenninkmeijer","Amy Grogan"
+]
+
+fileMessages(sourceFolders,exco,"Inbox/kaleidic/exco")
+
+print("symmetry/ops")
+ops = [
+	"Stuart Wilson","Rob Hulme","Brad Osborn"
+]
+fileMessages(sourceFolders,ops,"Inbox/symmetry/ops")
+
+print("symmetry/harbel")
+
+harbel = [
+	"Belinda Liao", "Harriet Knight"
+]
+fileMessages(sourceFolders,harbel,"Inbox/symmetry/harbel")
+
+print("symmetry/orchestrade")
+orchestrade = [
+	"Francois-Xavier Smeets", "ctaupin@symmetryinvestments.com"
+]
+fileMessages(sourceFolders,orchestrade,"Inbox/symmetry/orchestrade")
+
+print("symmetry/finance")
+finance = [
+	"Emma Browne", "Emma Hunter"
+]
+fileMessages(sourceFolders,finance,"Inbox/symmetry/finance")
+
+print("symmetry/hr")
+hr = [
+	"Claire Hillyer", "Charlotte Godwin", "Daniela Geatti", "Liz Lilleby"
+]
+fileMessages(sourceFolders,hr,"Inbox/symmetry/hr")
+
+print("symmetry/sil")
+sil = [
+	"Pierre Micottis", "Dmitry Popov", "John Colvin", "Adam Ruppe"
+]
+fileMessages(sourceFolders,sil,"Inbox/symmetry/sil")
+
+print("symmetry/research")
+sym_research = [
+	"andreyvpogudin@gmail.com", "Andrey Pogudin", "Ian Amstad", "Guido Riolo", "Siddhartha Pathak"
+]
+fileMessages(sourceFolders,sym_research,"Inbox/symmetry/research")
+
+print("symmetry/compliance")
+compliance = [
+	"Darren Adam","Rebecca Fuller","Jonathan Caplan","Lisa McAnany","Beata Lukawska"
+]
+fileMessages(sourceFolders,compliance,"Inbox/symmetry/compliance")
+
+print("symmetry/devops")
+devops = [
+	"Chris Oldwood"
+]
+fileMessages(sourceFolders,devops,"Inbox/symmetry/devops")
+
+print("symmetry/zhao")
+zhao = [
+	"Daniel Zhao", "imzhaodong@gmail.com"
+]
+fileMessages(sourceFolders,zhao,"Inbox/symmetry/zhao")
+
+print("symmetry/risk")
+risk = [
+	"Graham Valentine"
+]
+fileMessages(sourceFolders,risk,"Inbox/symmetry/risk")
+
+
+print("symmetry/integration")
+integration = [
+	"Sven Haile", "Patrick Kemmis", "Brian Cheung", "Benjamin Morrell"
+]
+fileMessages(sourceFolders,integration,"Inbox/symmetry/integration")
+
+print("symmetry/alerts")
+fileAlertsHelper(folder,addresses,subject,destinationFolder) =>addresses |> mapa(address => searchQuery(session,folder,SearchQuery(fromContains:address,subjectContains:subject)).ids |> mapa(id => move(session, id, destinationFolder)))
+fileAlerts(checkFolders,addresses,subject,destinationFolder) => checkFolders |> mapa(folder => fileAlertsHelper(folder,addresses,subject,destinationFolder))
+
+alert_emails= [
+	"xzheng@symmetryinvestments.com",
+	"bcheung@symmetryinvestments.com",
+	"alin@symmetryinvestments.com"
+]
+
+alert_subjects = [
+	"DSI",
+	"Sharpe",
+	"[",
+	"Signal (",
+	"(China CTA)"
+]
+
+alert_subjects |> mapa(subject => fileAlerts(sourceFolders,alert_emails,subject,"Inbox/symmetry/z_alerts_trading"))
+fileAlerts(sourceFolders,["xzheng@symmetryinvestments.com"],"Performance Update","symmetry/research/reports")
+
+fileMessages(sourceFolders,["notifications@github.com"],"Inbox/symmetry/z_github")
+alerts = [
+	"noc@options-it.com","nagios@options-it.com","service@obsrvbl.com","ftp_alerts@financialcalendar.com","noreply@mxtoolbox.com",
+	"expiry@letsencrypt.org"
+]
+fileMessages(sourceFolders,alerts,"Inbox/symmetry/z_alerts")
+
+meetingrooms = [
+	"Symmetry.Boardroom", "meetingroomhk1", "meetingroomhk2", "meetingroomuk"
+]
+fileMessages(sourceFolders,meetingrooms,"Inbox/symmetry/z_meetingroom")
+
+
+print("symmetry/important")
+important = [
+	"flaviacymbalista","mrobinson@symmetryinvestments.com","fguo@symmetryinvestments.com"
+]
+//fileMessages(sourceFolders,important,"Inbox/symmetry/z_meetingroom")
+// results = results - kaleidic:is_older(60) - kaleidic:is_seen() - kaleidic:is_flagged()
+// results:mark_flagged()
+
+
+print("cycles")
+cycles = [
+	"Pythagoras", "galactictrader","ISAR","Mahendra Sharma","Grant Noble","Manfred Zimmel","ISAR","gornahoor.net","Mark Newton",
+	"Mark L Newton","Crucial Astro","Mark Rose", "Markus Rose","Robert Baxter","rjbcapital.com","NOY BURANAKUL","INSIIDE@aol.com",
+	"sacredscience.com","cosmoeconomics.com","sacredscienceinstitute@gmail.com","peterr@stillmont.bm","Crypto Damus",
+	"cyclesresearch@gmail.com","cyclesresearch.com","Bill Sarubbi","info@newtonadvisor.com","WeTransfer",
+	"grace@astroeconomics.com"
+]
+fileMessages(sourceFolders,cycles,"Archive/cycles")
+fileMessages(sourceFolders,["invitation-do-not-reply@trello.com"],"Inbox/kaleidic/z_alerts")
+fileMessages(sourceFolders,["charliemarkets"],"symmetry/colour")
+/+
+-- "forgotpassword@backblaze.com","helpme@backblaze.com"
+-- "bmi@bmiresearch.com"
+-- "aurelija.augulyte@nordea.com"
+-- "Barabara.Wokurka@quoniam.com"
+--	"gitlab@git.kaledic.io"
+--	"notifications@github.com",
+--	"sales@atlassian.com"
+--	"billing@atmail.com","sales@atmail.com"
+--	"xrabarclaysresearchr@barclays.com"
+--	"barney@daltons.net"
+--	"hit-reply@linkedin.com"
+--	"barry.cohen@charlssq.co.uk",
+--	"Bartt@globalcapitalacquisition.com"
+--	"billing@basecamp.com"
+--	"notifications@3.basecamp.com"
+--	"support@basecamp.com"
+--	"Sam.Baxter@options-it.com"
+--	"support@digicert.com"
+--	"ben.geleit@ivanti.com",
+--	"bgriffiths@mimecast.com"
+--	"bettina.mehne@gmail.com"
+--	"billing@microsoft.com"
+--	"billing@vultr.com"
+--	"cyclesresearch@gmail.com"
+--	"A.Bishop@warwick.ac.uk"
+-- dlang community
++/
+print("dlang")
+dlang = [
+	"andrei@erdani.com","mrsmith33@yandex.ru","atila.neves@gmail.com","contact@auburnsounds.com","Bastiaan@Veelo.net",
+	"bastiaan@veelo.net","benjamin_thaut@hotmail.com","dlang@d-ecke.de","Adam Wilson",
+	"jmdavisprog.com","destructionator@gmail.com","social@dlang.org","ilyayaroshenko@gmail.com",
+	"mihails.strasuns@gmail.com","aldacron@gmail.com","walter@digitalmars.com","seb@wilzba.ch",
+	"andyrsmith@gmail.com", "dmitry@olshansky.me","iamthewilsonator@hotmail.com","gooberman@gmail.com",
+	"JThompson@symmetryinvestments.com","schveiguy@gmail.com","james@inkblotsoftware.com",
+	"sludwig@rejectedsoftware.com","turkeyman@gmail.com","ibuclaw@gdcproject.org",
+	"acehreli@yahoo.com","dejan.lekic@gmail.com","code@dawg.eu","yannick@koechlin.info","yanick.koechlin@tamedia.ch",
+	"Walter Fil","wfil@symmetryinvestments.com"
+]
+fileMessages(sourceFolders,dlang,"Inbox/symmetry/dlang")
+
+print("economics")
+economics = [
+	"Luigi Buttiglione","dani9139@bloomberg.net","sg-cross-asset-research@sgcib.com","juliette.declerq@jdiresearch.com",
+	"macrostrategy.co.uk","jdiresearch.com", "santangels.com"
+]
+fileMessages(sourceFolders,economics,"newsletters/economics")
+
+print("newsletters")
+newsletters = [
+	"toptracker@toptal.com","truss@wasabi.com","uk@smartcells.com","umfrage@sentix-mail.de","upwork@e.upwork.com",
+	"@tableausoftware.com","VisualStudioTeamServices@microsoft.com","newsletter@asiafrontiercapital.com",
+	"newsletter@brainpickings.org","newsletter@comodosslstore.com","newsletter@contractorcalculator-mail.co.uk",
+	"newsletter@hashicorp.com","newsletter@joget.com","newsletter@klorctx.cf","newsletter@paloma.washingtonpost.com",
+	"newsletters@hashicorp.com","newsletters@mail1.euromoneyplc.net","newsletters@theatlnatic.com","newsletter@xm379.top",
+	"news@mail-sage.com","news@m.mindmeister.com","news@ndepend.com","news@revouninstaller.com","meetup-group",
+	"marketing@hso.co.uk","marketing@6point6.co.uk","marketing.info@voxsmart.com","marketing@marketing.darkwol.com",
+	"marketing@stocktwits.com","marketing@storagecraft.com","marketing@storagecraft.eu","marketing@symphony.direct",
+	"marketing@voxsmart.com","LunaJets@mail.vresp.com","NoReply@Quest.com","no-reply@researchgatemail.net","no-reply@ring.com",
+	"no-reply@segment.com","no-reply@stmtp.com","no-reply@termius.com","no-reply@three.co.uk","noreply@topcoder.com",
+	"no-reply@updates.coinbase.com","no-reply@updates.gdax.com","noreply@zervant.com","noresponse@interactivebrokers.com",
+	"noreply@kraken.com",
+	"sales@alpha-dream.com","info@arcstonecapital.com","ftresearch@ft.com","futureofdata-london-announce@meetup.com",
+	"Notes From Undergound","Patrick Curtis","Charlie Aitken","Richard L. Peterson",
+	"mathworks@go.mathworks.com","training@go.mathworks.com","MattMurray@email.dowjones.com",
+	"@lunajets.com","evalcenter@microsoft.com","microsoftoffice@email.office.com","info@marketing.ft.com",
+	"MicrosoftOffice365@email.office.com","Oliver Palethorpe","paperlesspost@paperlesspost.com",
+	"jesse@constellix.com","info@bodiesunderconstruction.com","laura.stewart@abetterlife.today",
+	"larissa.gomes@psmcoilandgas.com","kgill@eci.com","mhamilton@eci.com","sba@kpmg.co.uk","k.white@segment.com",
+	"KeplerNews@AstroSoftware.com","Kelsey Norris","KDDI/Telehouse",
+	"currencyfair@email-currencyfair.com","no-reply@stpaulsconnect.org","sharon@cumulusnetworks.com",
+	"ross.mayfield@pingpad.intercom-mail.com","marketing@orega.com","mark.cary@abetterlife.today",
+	"info@mail.glassdoor.com","email@email.ft.com","no-reply@exploreb2b.com","dani@teamsegment.co",
+	"letters@medium.com","CitiGPS@investmentresearch.citi.com","Fests@LearningStrategies.com","broadberry.co.uk",
+	"mailchimp@theologyofwork.org","SG-Rates@sgcib.com","Sage@go.sage.com","communications@rapid7.com",
+	"lists@puri.sm","emarketing@perforce.com","ir@panteracapital.com","Oliver.Boatfield@flextrade.com",
+	"natalie.mcgrath@flexoffices.com",
+	"info@avaron.com","lgen.idgconnect.com","cntnt.idgconnect.com","news@gitlab.com",
+	"team@mail.remarkable.com","pinbot@notifications.pinterest.com","jesse@constellix.com","newsletters-support@hedgeco.net",
+	"SG-Forex@sgcib.com","info@publicize.co","matrix-marketing@morganstanley.com",
+	"Expedia@uk.expediamail.com","Fests@LearningStrategies.com","EE@eemail.ee.co.uk","no-reply@dropbox.com",
+	"no-reply@amazonbusiness.eu","info@swedenborg.org.uk","community@stpaulsschool.org.uk",
+	"visualanalysis@data.tableau.com","newsletter@asiafrontiercaptal.com","postmaster@sentix-mail.de","Ray@behindeverycloud.co.uk",
+	"MSCI_Monthly@msci.com","michael.dubicki@flexioffices.com", "Maeve.Elliott@emm.ibmmail.com",
+	"marketing@emm.ibmmail.com","Innovate@symphony.com","Insight@Marketing.Refinitiv.com","data@pitchbook.com",
+	"monika@erlang-solutions.com","invite@eventbrite.com","info@alphaevents.com","intelconnect@plan.intel.com",
+	"meetup-group-gdpr-london-announce@meetup.com","contact@dantelabs.com","info@coreos.com","connect@quandl.com",
+	"news.ibis@accor-mail.com","EE@email-ee.co.uk","info@critten.co.uk","donotreply@stmarcelinitiative.com",
+	"noreply@email.kraken.com","paypal@mail.paypal.co.uk","news@indiadivine.org","info@swedenborg.org.uk",
+	"sales@prsgroup.com","Office365@email.microsoftonline.com","email@e.washingtonpost.com",
+	"contact@thepihut.com","phafez@ravenpack.com","respond@vocus.com","no-response@roh.org.uk","replies@e.lastpass.com",
+	"noreply@news.companieshouse.gov.uk","no-reply@slack.com",
+	"noreply@news.companieshouse.gov.uk","holidays@email.easyJet.com",
+	"gs-quickpoll@gs.com","updates@coronalabs.com","boom@oneplus.net","MSCI_Inc@msci.com","dontreply@stmarcelinitiative.com",
+	"Airbnb","AJ Bell Youinvest","enews@efinancialnews.com","email3.telegraph.co.uk","maillist.codeproject.com",
+	"Wells Fargo Global Fund Services","Voipfone Customer Services","Vodafone-Team","info@enews.vodafone.de",
+	"email@vmemail.virginmedia.com","Vincent Fichot","Veeam Webinars","Veeam Team","email@et.uber.com",
+	"Windows Insider Program","Windows for Business","Windows Server Team","White Hart Clinic",
+	"feedback@slack.com","SG-Technicals@sgcib.com","SG-Cross-Assets@sgcib.com","do-not-reply@trello.com",
+	"gearbest.com","SG-Global-Asset-Allocation@sgcib.com","explore.pinterest.com","cbinsights.com",
+	"ukminibreak.co.uk","no-reply@cloudways.com","ssctech.com","sumzero.com","do-not-reply-support@lastpass.com",
+	"announcements.markit.com","mongodbteam@mongodb.com","mharrington@alienvault.com","updates@alienvault.com",
+	"platformsolutions@symphony.com","reports@fastmaildmarc.com","generationeasyJet@email.easyJey.com","learn@codecademy.com",
+	"admin@pycoders.com","marketsgroupforums1.org","respond@vous.com","spitfire.co.uk","news@mimecast.com","janquart@fsj.org",
+	"mendeley@notification.elsevier.com","editors-picks@medium.com","editor@toptal.com",
+	"SG-Equity-Strategy@sgcib.com","p4events@perforce.com","newsletter@ovh.com","comment-reply@wordpress.com",
+	"webinar@symphony.com","digest@tx.spiceworks.com","hello@particle.io","reply@oreilly.com","mendeley@mail.elsevier.com",
+	"info@rjmg.co.uk","astrocryptoreport@gmail.com","pkginfo@ups.com","support@udacity.com","Telerik Team at Progress",
+	"GrantsInterestRateObserver@grantspub.com","europe@udacity.com","SG-Derivatives-Research@sgcib.com","announce@announce.puri.sm",
+	"join@cloudways.com","ovh@satisfaction.ovh.com","ByronWien'sCommentary@Blackstone.com",
+	"bartt@battleofthequants.com","Duo Security","SG-Emerging-Markets@sgcib.com","noreply@scaleway.com","no-reply@topcoder.com",
+	"taco@trello.com","no-reply@cs.helsinki.fi","mendeley@notifications.elsevier.com","westernmastery@gmail.com",
+	"info@ercouncil.org","Inspiration from Upwork","intel@plan.intel.com","SoftwareTools@plan.intel.com",
+	"email@washingtonpost.com","marketing@influxdb.com","Academia.edu","Adnan Patka","Alex Steeno","AliExpress",
+	"AlienValut","Anand Sanwal","Yubico","WSJ+","Wunderlist","CorporateTreasurer","CT Jobs Digest",
+	"apgainingtheedge.com","noreply@gdax.com","newsletter.gearbest.com","ringcentral.com","Indeed for Employers",
+	"message@ihs.com","message@ihsmarkit.com","mgtrainingworld.com","thalesians.com","safaribooksonline.com",
+	"investorsintelligence.com","InvestorPlace.com","info@ivanti.com","Webinarwednesday@ivanti.com","ja@aitkenadvisors.com",
+	"james@jamesaltucher.com","jbarnes@gavekal.com", "David Teed", "Humble Bundle",
+	"noreply@atlassian.com","do-not-reply@audible.com","info@avanta.co.uk","myavast@avast.com","mail.simpliv.com",
+	"b2contact@backblaze.com","B2newsletter@backblaze.com","newsletter@backblaze.com","Backbone.Connect.Ltd@dotmailer-email.com",
+	"datasolutions@barchart.com","thoughtleadership@mail2.euromoneyplc.net","betrand.besse@pressking.mail.intercom.io",
+	"Bhavesh.Pankhania@m24seven.com","Bhavesh.Pankhania@venus.co.uk","All-Hands-On-Devops-announce@meetup.com",
+	"do-not-reply@post.binance.com","BitTitanNews@BitTitan.com","Elevate@BitTitan.com","BitTitanNews@Bittitan.com",
+	"ProductNotifications@BitTitan.com","hello@bitwarden.com","no-reply@bloomberg.net","events@bluejeans.com",
+	"newsletter-mktg@bluejeansnet.com","success@bluejeans.com","trial@bluejeans.com","eros@bluejeans.com",
+	"info@bluesmatch.com","@bcg-email.com","bountysource.com","marktsgroupsforums1.org","tray.io",
+	"fibre.london","m24seven.com","go.mathsworks.com","email.ba.com","britishairwayscs.ba.com","sales@broadberry.co.uk",
+	"brockreport.com","ansonfunds.com","lists.techtarget.com","regus.com","carbonite.com","ihsmarkit.com","cloudflare.com",
+	"infoq.com","chemisdirect.co.uk","highrisehq.com","cloudwaysapps.com","techtarget.com",
+	"anne@flic.intercom-mail.com","anne@shortcutlabs.com","info@maven.co","news@connect.asana.com","newsletter@astro.com",
+	"promotion@aliexpress.com","support@highrisehq.com","info@meetup.com","marketing@symphony.com","al@symphony.com",
+	"noreply@eventbrite.com","messaging-digest-noreply@linkedin.com","noreply@mailer.atlassian.com", "noreply@dowjones.com",
+	"noreply@bittylicious.com","notifications-noreply@linkedin.com", "noreply@meraki.com","noreply@code42.com",
+	"noreply@curzon-news.com","noreply@dantelabs.com","noreply@dowjones.com","noreply@eventbrite.com",
+	"noreply@github.com","noreply@glassdoor.com","noreply@gumtree.co.za","noreply@mailer.subscription.co.uk",
+	"ads-noreply@indeed.com","noreply@infoq.com","noreply@jabber.at","noreply@lyftmail.com","noreply@marketing.lyftmail.com",
+	"noreply@joyent.com","noreply@marscouch.com","noreply@nytimes.com","noreply@polarisoffice.com","noreply@sageone.com",
+	"noreply@siteground.com","noreply@spiceworks.com","noreply@qemailserver.com","noreply@uber.com","noreply@ubuntu.com",
+	"noreply@ukminibrak.co.uk","noreply@remarkable.com","noreply@wable.com",
+	"Daniel Walter","email.hbr.org","Hays","elliottwave.com","Patreon","YouTube","Gallup","bcg.com","jainfamilyinstitute",
+	"foreignaffairs.com","AWeber","cio.co.uk","cxomedia.com","ciomedia.com","idg.co.uk","idgconnect-resources.com","kornferry.com",
+	"leanpub.com", "mail.simpliv.com", "futurelearn.com", "member@linkedin.com", "bmiresearch.com", "info@meetup.com",
+	"Cloudberry Lab","Cloud Digest",
+	"dabs.com","catholicity","Catholicity","CD Baby","Mans Johansson","Catherine McGavock","CatholicCulture.org",
+	"Caroline Abadir","Japan Society","acaplin1@bloomberg.net","acaplin2@bloomberg.net","Adam Smith Institute",
+	"Variant Perception","DreamHost","success@travis-ci.com","pherotruth.com","familyofficer.it","Michael Gayed",
+	"Pension Partners","LiveEdu","Chestertons","William Clarke","Code Academy","Codeacademy","Holly Penfield",
+	"Fantastic Services","Traditional Britain Group","Nikolaus Detzler","Barclays Research","Philippe Katz",
+	"Barnes Chiropractic","Tanya Sanyal","Murat Berk","William Michael","Sohn Conference","RMG Investments",
+	"James M. Kushiner","Science of Cycles","Foreign Affairs","The Atlantic","Ivo Varbanov","Alexandria Tech",
+	"Notes From Underground","Cato Institute","Institute of Economic Affairs","Samsung","Pimoroni","Brain Pickings",
+	"Economist","Merriman","Neowave","Backblaze","Santander","Joyent","Heartmath","TD FICM Strategy","Guinness Atkinson",
+	"Blue Microphones","Mehis Raud","TISGroup","LinkedIn","moneycorp","India Divine","Silent Circle","Intel FSI",
+	"Stratfor","Tenable","foodpanda","Richmond upon Thames","yourfriends@medium.com","Zapier","Evernote",
+	"Python Weekly","Diamond Feng Shui","Ottomans and Zionists","triyoga","DigitalOcean","Thomson Reuters",
+	"Paige Murphy","Sarah Kelly","ASW Member Services","Jana Boruta","Curzon Cinemas","Team Wirex", "Team Topcoder",
+	"Traders World","St Paul's School","Xing","Stack Overflow","Paper.li","Audible.co.uk","Crashplan", "Lufthansa",
+	"Elasticsearch","David Clulow","Flic Team","IHS Markit","Privatefly","Boston Consulting Group","High Calling",
+	"German-Foreign-Policy", "Nick Regan", "Steven Friedman", "WallStreetJournal@email.dowjones.com", "Tze Tan", "Historinhas",
+	"SearchStorage", "Love Scent", "A Better World", "thesocietyintl.com", "agi@goldratt.com", "update@mail.youinvest.co.uk",
+	"news@mail.youinvest.co.uk", "bulletins@atvnewsletter.com", "Albourne Village", "noreply@alumni.net", "Alumni.NET",
+	"newsletter@davidco.com", "David Allen Team", "Data Center Knowledge", "David Kotok", "David Fuller",
+	"Acronis", "popbitch", "ITNews Resources", "ITKnowledgeExchange.com", "Coursera", "Eagle Alpha", "Le Monde", "FinanceAsia",
+	"Teacher Stern", "Pacific Sun Advisors", "Kickstarter", "edge.org", "cfa-institute.info", "AWS Digest", "CloudApplication.com",
+	"O'Reilly Systems Engineering", "Bob Boas", "Alexandria Technology", "Y Combinator", "Xero Team", "Lufthansa",
+	 "Santander Macro Strategy", "Pocket", "neowave.com", "The Atlantic", "announce.deliveroo.co.uk", "Strategy@tdsecurities.com",
+	 "Gemma from Eurostar"
+]
+fileMessages(sourceFolders,newsletters,"newsletters")
+
+print("socialmedia")
+socialmedia = [
+	"YouTube","Twitter","Quora","drmardy","Samsung","Google","Pocket","Pukka","Reddit","Gab.ai","WordPress"
+]
+fileMessages(sourceFolders,newsletters,"Inbox/socialmedia")
+
+print("development")
+/+
+kaleidic:contain_from('nyfeeds@bloomberg.net'):move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from('Anacron'):move_messages(account['Inbox/kaleidic/z_alerts'])
+results = kaleidic:contain_from('Brian Cheung') * kaleidic:contain_subject("DSI at Close of")
+results:move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from('Cron Daemon'):move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from('notifications@github.com'):move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from('gitlab@git.kaleidic.io'):move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from('MxToolBox'):move_messages(account['Inbox/kaleidic/z_alerts'])
+inbox:contain_from("DevOps"):move_messages(account['Inbox/mailinglist'])
++/
+
+print("receipts")
+trivial_receipts = [
+	"Localphone","LocalPhone","tel2.co.uk","A J Bell","Uber Receipts","NameCheap.com",
+	"cloud2tel.co.uk",
+	"amazon.com","amazon.co.uk","billing@hetzner.com","billing@linode.com","Virgin Media",
+	"Addison Lee","billing@microsoft.com","billing@vultr.com","no-reply@uber.com",
+	"Afinilexpress","chemistdirect.co.uk","sales@demark.com","maccount@microsoft.com",
+	"msonlineservicesteam@email.microsoftonline.com"
+]
+fileMessages(sourceFolders,trivial_receipts,"Archive/receipts")
+
+receipts = [
+	"Transferwise","IB Trading Assistant","paypal.com","American Express","Allianz Worldwide","support@github.com",
+	"support@basecamp.com","support@digicert.com","Interactive Brokers Client Services","donotreply@interactivebrokers.com",
+	"DNS Made Easy Sales","service@paypal.co.uk"
+]
+
+// results = results + (kaleidic:contain_from(receipts[i]) - kaleidic:is_newer(10))
+// results:move_messages(account['Archive/receipts'])
+
+// kaleidic:contain_from("support@ovh.us"):contain_subject("[INVOICE"):move_messages(account["Archive/receipts"])
+// kaleidic:contain_from("customersupport@ovh.co.uk"):contain_subject("Renewal of your services"):move_messages(account["Archive/receipts"])
+
+print("spam")
+spam = [
+	"latam-investor", "decoraid", "Decoraid", "Yates Canipe", "Tapatalk","Julvinder Gill","Brett Friedberg",
+	"Anna Gallis", "Winsor Bishop", "SAGER AND WILDE", "Contractor Calculator","OurProperty.co.uk",
+	"Fests from Learning Strategies","marty secada","Jumer's Casino","LearningStrategiesFests",
+	"Cartridge King","Rachel Cahill","hlth.about.com","DIY Capitalism","theattractionforums.com",
+	"Alex Hardy", "Alex Smith-Ryland","Amazon Answers","Maneesh Sethi","Managed Services and Host",
+	"KT-Marketing","kt-marketing","jbowie@richmond.edu","whereareyounow","info@em.spiceworks.com",
+	"month millionaire","AccorHotels","straightforwardinc.com","5minutes Pro","Invest Connects",
+	"service@freedom-pharmacy.bz"
+]
+fileMessages(sourceFolders,trivial_receipts,"Junk")
+
+fileMessages(sourceFolders,["Interactive Brokers Webinars"],"Trash")

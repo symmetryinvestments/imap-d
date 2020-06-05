@@ -120,7 +120,7 @@ int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
 	enforce(session.socket,"not connected to server");
-	session.socketSecureWrite(data ~ "\r\n");
+	session.socketWrite(data ~ "\r\n");
 	//socketWrite(session, data ~ "\r\n");
 	return 1;
 }
@@ -191,11 +191,13 @@ ref Session login(ref Session session)
 
 	auto rg = session.check!responseGreeting();
 	version(Trace) stderr.writefln("got login first stage: %s",rg);
+	/+
 	if (session.options.debugMode)
 	{
 		t = session.check!sendRequest("NOOP");
 		session.check!responseGeneric(t);
 	}
+	+/
 	t = session.check!sendRequest("CAPABILITY");
 	version(Trace) stderr.writefln("sent capability request");
 	res = session.check!responseCapability(t);

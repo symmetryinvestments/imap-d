@@ -1,0 +1,39 @@
+import imap
+// PASSWORD is set in IMAP_PASS environmental variable
+login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS"))
+server = imap.ImapServer("imap.fastmail.com","993")
+
+session = imap.Session(server,login,true,false)
+session=imap.openConnection(session)
+print(session.socket)
+session = imap.login(session);
+
+print(session)
+//print(imap.socketSecureWrite(session,"HELLO"))
+//print(imap.socketSecureRead(session))
+
+INBOX =imap.Mailbox("INBOX/kaleidic","/",'/')
+imap.select(session,INBOX)
+kal=imap.search(session,"ALL")
+//print(`froms2 = kal.ids |> mapa(id => imap.fetchFields(session,text(id),"FROM").lines)`)
+//ids =(fold(kal.ids |> map(a=>text(a) ~ ","), (a,b) => a~b,"") |> strip)[0:$-1]
+//result=imap.fetchFields(session,ids,"FROM")
+//lines = result.lines |> mapa(l => [strip(l)])
+//writeCsv(lines,"remainers2.csv")
+//readText("remainers2.csv")
+
+// Get a list of the available mailboxes and folders
+folders = imap.list(session).entries |> mapa(f =>f.path)
+inbox = "INBOX"
+kaleidic = "Inbox/kaleidic"
+
+sourceFolders=[inbox,kaleidic]
+
+fileMessages(checkFolders,addresses,destinationFolder) => {
+    in checkFolders
+        |> mapa(folder => addresses |> mapa(address => searchQuery(session,folder,SearchQuery(fromContains:address)).ids
+                                                        |> mapa(id => move(session, id, destinationFolder))
+                                        )
+            )
+}
+

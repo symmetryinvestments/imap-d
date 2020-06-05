@@ -7,12 +7,12 @@ import imap.namespace;
 import imap.defines;
 import imap.auth;
 import imap.response;
-import imap.sildoc;
+import imap.sil : SILdoc;
 
 /// Every IMAP command is preceded with a unique string
 static int tag = 0x1000;
 
-///
+
 auto imapTry(alias F,Args...)(ref Session session, Args args)
 {
 	import std.traits : isInstanceOf;
@@ -92,9 +92,9 @@ int sendRequest(ref Session session, string value)
 	if (value.isLoginRequest)
 	{
 		if (session.options.debugMode) infof("sending command (%s):\n\n%s\n\n", session.socket,
-		    value.length - session.password.length - "\"\"\r\n".length, value);
+		    value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
 		if (session.options.debugMode) tracef("C (%s): %s\n", session.socket, value.length,
-				session.password.length - "\"\"\r\n".length,  value);
+				session.imapLogin.password.length - "\"\"\r\n".length,  value);
 	} else {
 		if (session.options.debugMode)
 		{
@@ -120,12 +120,13 @@ int sendContinuation(ref Session session, string data)
 {
 	import std.exception : enforce;
 	enforce(session.socket,"not connected to server");
-	session.socketSecureWrite(data ~ "\r\n");
+	session.socketWrite(data ~ "\r\n");
+	//socketWrite(session, data ~ "\r\n");
 	return 1;
 }
 
 
-@SILdoc("Reset any inactivity autologout timer on the server.")
+@SILdoc("Reset any inactivity autologout timer on the server")
 void noop(ref Session session)
 {
 	auto t = session.sendRequest("NOOP");
@@ -175,23 +176,28 @@ ref Session login(ref Session session)
 	int t;
 	ImapResult res;
 	ImapStatus rl = ImapStatus.unknown;
+	auto login = session.imapLogin;
 
 	scope(failure)
 		closeConnection(session);
-	if (!session.socket.isAlive())
+	if (session.socket is null || !session.socket.isAlive())
 	{
 		infof("login called with dead socket, so trying to reconnect");
 		session = openConnection(session);
+	 	if (session.useSSL && !session.options.startTLS)
+			 session = openSecureConnection(session);
 	}
 	enforce(session.socket.isAlive(), "not connected to server");
 
 	auto rg = session.check!responseGreeting();
 	version(Trace) stderr.writefln("got login first stage: %s",rg);
+	/+
 	if (session.options.debugMode)
 	{
 		t = session.check!sendRequest("NOOP");
 		session.check!responseGeneric(t);
 	}
+	+/
 	t = session.check!sendRequest("CAPABILITY");
 	version(Trace) stderr.writefln("sent capability request");
 	res = session.check!responseCapability(t);
@@ -231,8 +237,8 @@ ref Session login(ref Session session)
 			res = session.check!responseAuthenticate(t);
 			version(Trace) stderr.writefln("authenticate cram first response: %s",res);
 			enforce(res.status == ImapStatus.continue_, "login failure");
-			auto hash = authCramMD5(session.username,session.password,res.value.strip);
-			version(Trace) stderr.writefln("hash: %s",hash);
+			auto hash = authCramMD5(login.username,login.password,res.value.strip);
+			stderr.writefln("hhash: %s",hash);
 			t = session.check!sendContinuation(hash);
 			res = session.check!responseGeneric(t);
 			version(Trace) stderr.writefln("response: %s",res);
@@ -240,14 +246,14 @@ ref Session login(ref Session session)
 		}
 		if (rl != ImapStatus.ok)
 		{
-			t = session.check!sendRequest(format!"LOGIN \"%s\" \"%s\""(session.username, session.password));
+			t = session.check!sendRequest(format!"LOGIN \"%s\" \"%s\""(login.username, login.password));
 			res = session.check!responseGeneric(t);
 			rl = res.status;
 		}
 		if (rl == ImapStatus.no)
 		{
-			auto err = format!"username %s or password rejected at %s\n"(session.username, session.server);
-			errorf("username %s or password rejected at %s\n",session.username, session.server);
+			auto err = format!"username %s or password rejected at %s\n"(login.username, session.server);
+			errorf("username %s or password rejected at %s\n",login.username, session.server);
 			session.closeConnection();
             		throw new Exception(err);
 		}
@@ -266,8 +272,9 @@ ref Session login(ref Session session)
 	if (session.selected != Mailbox.init)
 	{
 		t = session.check!sendRequest(format!"SELECT \"%s\""(session.selected.applyNamespace()));
-		res = session.check!responseSelect(t);
-		rl = res.status;
+		auto selectResult = session.responseSelect(t);
+		enforce(selectResult.status == ImapStatus.ok);
+		rl = selectResult.status;
 	}
 
 	return session.setStatus(rl);
@@ -318,9 +325,8 @@ auto status(ref Session session, Mailbox mbox)
 	return session.responseStatus(id,mailbox);
 }
 
-
 @SILdoc("Open mailbox in read-write mode.")
-ImapResult select(ref Session session, Mailbox mailbox)
+auto select(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
 	auto request = format!`SELECT "%s"`(mailbox.toString);
@@ -332,7 +338,7 @@ ImapResult select(ref Session session, Mailbox mailbox)
 }
 
 
-@SILdoc("Close examined/selected mailbox.")
+@SILdoc("Close examined/selected mailbox")
 ImapResult raw(ref Session session, string command)
 {
 	auto id = sendRequest(session,command);
@@ -345,7 +351,7 @@ ImapResult raw(ref Session session, string command)
 	return response;
 }
 
-@SILdoc("Close examined/selected mailbox.")
+@SILdoc("Close examined/selected mailbox")
 ImapResult close(ref Session session)
 {
 	enum request = "CLOSE";
@@ -359,7 +365,7 @@ ImapResult close(ref Session session)
 	return response;
 }
 
-@SILdoc("Remove all messages marked for deletion from selected mailbox.")
+@SILdoc("Remove all messages marked for deletion from selected mailbox")
 ImapResult expunge(ref Session session)
 {
 	enum request = "EXPUNGE";
@@ -425,7 +431,7 @@ auto list(ref Session session, string referenceName="", string mailboxName="*")
 }
 
 
-@SILdoc("List subscribed mailboxes.")
+@SILdoc("List subscribed mailboxes")
 auto lsub(ref Session session, string refer, string name)
 {
 	import std.format : format;
@@ -434,7 +440,7 @@ auto lsub(ref Session session, string refer, string name)
 	return session.responseList(id);
 }
 
-@SILdoc("Search selected mailbox according to the supplied search criteria.")
+@SILdoc("Search selected mailbox according to the supplied search criteria")
 auto search(ref Session session, string criteria, string charset = null)
 {
 	import std.format : format;
@@ -614,7 +620,7 @@ auto fetchFields(ref Session session, string mesg, string headerFields)
 }
 
 
-@SILdoc("Fetch the specified message part, ie. BODY[<part>], of the messages.")
+@SILdoc("Fetch the specified message part, ie. BODY[<part>], of the messages")
 auto fetchPart(ref Session session, string mesg, string part)
 {
 	import std.format : format;
@@ -787,7 +793,7 @@ auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, stri
 }
 +/
 
-@SILdoc("Create the specified mailbox.")
+@SILdoc("Create the specified mailbox")
 auto create(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -797,7 +803,7 @@ auto create(ref Session session, Mailbox mailbox)
 }
 
 
-@SILdoc("Delete the specified mailbox.")
+@SILdoc("Delete the specified mailbox")
 auto delete_(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -806,7 +812,7 @@ auto delete_(ref Session session, Mailbox mailbox)
 	return session.responseGeneric(id);
 }
 
-@SILdoc("Rename a mailbox.")
+@SILdoc("Rename a mailbox")
 auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 {
 	import std.format : format;
@@ -815,7 +821,7 @@ auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox)
 	return session.responseGeneric(id);
 }
 
-@SILdoc("Subscribe to the specified mailbox.")
+@SILdoc("Subscribe to the specified mailbox")
 auto subscribe(ref Session session, Mailbox mailbox)
 {
 	import std.format : format;
@@ -864,5 +870,60 @@ auto idle(ref Session session)
 	stderr.writefln("returning %s",ri);
 
 	return ri;
+}
+
+///
+enum SearchField
+{
+    all,
+    and,
+    or,
+    not,
+    old,
+    answered,
+    deleted,
+    draft,
+    flagged,
+    header,
+    body_,
+    bcc,
+    cc,
+    from,
+    to,
+    subject,
+    text,
+    uid,
+    unanswered,
+    undeleted,
+    undraft,
+    unflagged,
+    unkeyword,
+    unseen,
+    larger,
+    smaller,
+    sentBefore,
+    sentOn,
+    sentSince,
+    keyword,
+    messageNumbers,
+	uidNumbers,
+	resultMin,
+	resultMax,
+	resultAll,
+	resultCount,
+	resultRemoveFrom,
+	resultPartial,
+	sourceMailbox,
+	sourceSubtree,
+	sourceTag,
+	sourceUidValidity,
+	contextCount,
+	context
+}
+
+struct SearchParameter
+{
+    string fieldName;
+    //Variable value;
 }
 

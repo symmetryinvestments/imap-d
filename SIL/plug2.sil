@@ -1,8 +1,9 @@
 import imap
 // PASSWORD is set in IMAP_PASS environmental variable
 login = imap.ImapLogin("laeeth@kaleidic.io",environment("IMAP_PASS"))
+options = imap.Options(debugMode:true)
+print(login)
 server = imap.ImapServer("imap.fastmail.com","993")
-
 session = imap.Session(server,login,true,imap.Options(debugMode:true))
 //print("1")
 session=imap.openConnection(session).returnValue

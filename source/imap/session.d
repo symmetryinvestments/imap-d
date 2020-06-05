@@ -2,6 +2,8 @@
 module imap.session;
 import imap.defines;
 import imap.socket;
+import imap.set;
+import imap.sil : SILdoc;
 
 import core.stdc.stdio;
 import core.stdc.string;
@@ -20,77 +22,6 @@ struct SSL_
 	alias handle this;
 }
 
-///
-struct Set(T)
-{
-	bool[T] values_;
-	alias values_ this;
-
-	this(T[] values)
-	{
-		import std.algorithm : each;
-		values.each!(value => values_[value]=true);
-	}
-	bool has(T value)
-	{
-		return (value in values_) !is null;
-	}
-
-	T[] values()
-	{
-		import std.algorithm : filter, map, sort;
-		import std.array : array;
-		import std.conv : to;
-		return values_.keys.filter!(c => values_[c])
-				.array
-				.sort()
-				.array;
-	}
-
-    string toString()
-    {
-        import std.format : format;
-        import std.algorithm : map, sort;
-        import std.array : array;
-        import std.string : join;
-        import std.conv : to;
-        return format!"[%s]"(values.map!(value => value.to!string).array.sort.array.join(","));
-    }
-	T[] opBinary(string op)(Set!T rhs)
-	if (op == "+" || op == "-")
-	{
-		static if(op == "+")
-		{
-			return addValues(this, rhs);
-		}
-		else static if (op == "-")
-		{
-			return removeValues(this,rhs);
-		}
-		else static assert(0, "only + and - implemented for set");
-	}
-}
-
-///
-Set!T add(T)(Set!T set, T value)
-{
-	import std.algorithm : each;
-	Set!T ret;
-	set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
-	ret.values_[value] = true;
-	return ret;
-}
-
-///
-Set!T remove(T)(Set!T set, T value)
-{
-	import std.algorithm : each;
-	Set!T ret;
-	set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
-	if (value in ret)
-		ret.remove(value);
-	return ret;
-}
 
 ///
 Set!T removeValues(T)(Set!T set, T[] values)
@@ -148,7 +79,10 @@ struct ImapServer
 ///
 struct  ImapLogin
 {
+	@SILdoc("User's name. It takes a string as a value.")
 	string username = "laeeth@kaleidic.io";
+
+	@SILdoc("User's secret keyword. If a password wasn't supplied the user will be asked to enter one interactively the first time it will be needed. It takes a string as a value.")
 	string password;
 
     string toString()
@@ -163,19 +97,30 @@ struct Options
 {
 	import core.time : Duration, seconds, minutes;
 
-	bool debugMode = false;
-	bool verboseOutput = false;
+	bool debugMode = true;
+	bool verboseOutput = true;
 	bool interactive = false;
 	bool namespace = false;
+
+	@SILdoc("When this option is enabled and the server supports the Challenge-Response Authentication Mechanism (specifically CRAM-MD5), this method will be used for user authentication instead of a plaintext password LOGIN. This variable takes a boolean as a value. Default is false")
 	bool cramMD5 = false;
+
 	bool startTLS = false;
 	bool tryCreate = false;
 	bool recoverAll = true;
 	bool recoverErrors = true;
+
+	@SILdoc("Normally, messages are marked for deletion and are actually deleted when the mailbox is closed. When this option is enabled, messages are expunged immediately after being marked deleted. This variable takes a boolean as a value. Default is false")
 	bool expunge = false;
+
+	@SILdoc("By enabling this option new mailboxes that were automatically created, get also subscribed; they are set active in order for IMAP clients to recognize them. This variable takes a boolean as a value. Default is false")
 	bool subscribe = false;
+
 	bool wakeOnAny = true;
-	Duration keepAlive = 60.minutes;
+
+	@SILdoc("The time in minutes before terminating and re-issuing the IDLE command, in order to keep alive the connection, by resetting the inactivity timeout of the server. A standards compliant server must have an inactivity timeout of at least 30 minutes. But it may happen that some IMAP servers don't respect that, or some intermediary network device has a shorter timeout. By setting this option the above problem can be worked around. This variable takes a number as a value. Default is 29 minutes. ")
+	Duration keepAlive = 29.minutes;
+
 	string logFile;
 	string configFile;
 	string oneline;
@@ -192,10 +137,12 @@ struct Session
 	Options options;
 	ImapStatus status_;
 	string server;
+
+	@SILdoc("The port to connect to. It takes a number as a value. Default is ''143'' for imap and ''993'' for imaps.")
 	string port;
+
 	package AddressInfo addressInfo;
-	string username;
-	string password;
+	ImapLogin imapLogin;
 	Socket socket;
 	ImapProtocol imapProtocol;
 	Set!Capability capabilities;
@@ -215,7 +162,7 @@ struct Session
         import std.format : format;
         import std.conv : to;
         Appender!string ret;
-        ret.put(format!"Session to %s:%s as user %s\n"(server,port,username));
+        ret.put(format!"Session to %s:%s as user %s\n"(server,port,imapLogin.username));
         ret.put(format!"- useSSL: %s\n"(useSSL.to!string));
         ret.put(format!"- startTLS: %s\n"(useSSL.to!string));
         ret.put(format!"- noCerts: %s\n"(noCerts.to!string));
@@ -227,16 +174,21 @@ struct Session
         return ret.data;
     }
 
-	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true, bool useStartTLS = false)
+	this(ImapServer imapServer,ImapLogin imapLogin, bool useSSL = true, Options options = Options.init)
 	{
 		import std.exception : enforce;
 		import std.process : environment;
+		this.options = options;
 		this.server = imapServer.server;
 		this.port = imapServer.port;
         this.useSSL = useSSL;
-		this.options.startTLS = useStartTLS;
-		this.username = imapLogin.username;
-		this.password = imapLogin.password;
+		this.imapLogin = imapLogin;
+	}
+
+	ref Session useStartTLS(bool useTLS = true)
+	{
+		this.options.startTLS = useTLS;
+		return this;
 	}
 
 	ref Session setSelected(Mailbox mailbox)

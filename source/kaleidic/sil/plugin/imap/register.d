@@ -166,9 +166,9 @@ void registerImap(ref Handlers handlers)
 		{
 			handlers.registerType!termios;
 			handlers.registerHandler!getTerminalAttributes;
-			handler.registerHandler!setTerminalAttributes;
-			handler.registerHandler!enableEcho;
-			handler.registerHandler!disableEcho;
+			handlers.registerHandler!setTerminalAttributes;
+			handlers.registerHandler!enableEcho;
+			handlers.registerHandler!disableEcho;
 		}
 
 		static foreach(T; AliasSeq!( AddressInfo, Socket,ImapServer,ImapLogin,File

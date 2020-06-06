@@ -1,5 +1,5 @@
 ///
-module kaleidic.sil.std.extra.imap.register;
+module kaleidic.sil.plugin.imap.register;
 import imap.set;
 version(SIL):
 

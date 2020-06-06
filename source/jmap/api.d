@@ -21,6 +21,7 @@ version(SIL)
 	}
 }
 
+version(SIL):
 
 Variable[] uniqBy(Variable[] input, Function f)
 {

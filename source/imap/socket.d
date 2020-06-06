@@ -13,7 +13,7 @@ import deimos.openssl.ssl;
 import deimos.openssl.err;
 import deimos.openssl.sha;
 
-
+alias ssize_t = ptrdiff_t;
 
 extern(C) @nogc nothrow
 {

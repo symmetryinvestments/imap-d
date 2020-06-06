@@ -11,7 +11,6 @@
  *    dmd dnstest -L-lresolv
  * 
  *******************************************************************/
-+/
 
 /* standard system headers */
 
@@ -27,14 +26,12 @@ enum ns_s_max = 4;
 extern(C) struct dst_key;
 
 /* resolver headers */
-/+
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <resolv.h>
 
 #include <netdb.h>
-+/
 alias fromCString = fromStringz;
 
 struct RecordSRV
@@ -888,4 +885,4 @@ int		ns_samename (const(char) *, const(char) *);
 //__END_DECLS
 
 // #include <arpa/nameser_compat.h>
-
++/

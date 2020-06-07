@@ -1,11 +1,12 @@
 module jmap.types;
 import std.datetime : SysTime;
+import core.time : seconds;
 import std.typecons : Nullable;
 
 version(SIL):
 import kaleidic.sil.lang.types : Variable,Function,SILdoc;
 import kaleidic.sil.lang.json : toVariable, toJsonString;
-
+import std.datetime : DateTime;
 import asdf;
 
 struct Credentials
@@ -115,6 +116,12 @@ struct Session
 	@serializationIgnoreIn Asdf[string] capabilities;
 	package Credentials credentials;
 	private string activeAccountId_;
+	private bool debugMode = false;
+
+	void setDebug(bool debugMode = true)
+	{
+		this.debugMode = debugMode;
+	}
 
 	private string activeAccountId()
 	{
@@ -190,11 +197,18 @@ struct Session
 	{
 		import asdf;
 	    import requests : Request, BasicAuthentication;
-		auto json = serializeToJson(request); // serializeToJsonPretty
+		import std.string : strip;
+		import std.stdio : writefln, stderr;
+		auto json = serializeToJsonPretty(request); // serializeToJsonPretty
+		if (debugMode)
+			stderr.writefln("post request to apiUrl (%s) with data: %s",apiUrl,json);
 	    auto req = Request();
+		req.timeout = 3 * 60.seconds;
 	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	    auto result = cast(string) req.post(apiUrl, json,"application/json").responseBody.data.idup;
-	    return parseJson(result);
+	    auto result = (cast(string) req.post(apiUrl, json,"application/json").responseBody.data.idup).strip;
+		if (debugMode)
+			stderr.writefln("response: %s",result);
+	    return (result.length == 0) ? Asdf.init : parseJson(result);
 	}
 
 	version(SIL)
@@ -261,7 +275,10 @@ struct Session
 		{
 			import std.algorithm : map;
 			import std.array : array;
+			import std.stdio : stderr, writefln;
 			auto invocationId = "12345678";
+			if (debugMode)
+				stderr.writefln("props: %s", toJsonString(properties));
 			auto props =  parseJson(toJsonString(properties));
 			auto invocation = Invocation.get(type,activeAccountId(), invocationId,ids, props,additionalArguments);
 			auto request = JmapRequest(listCapabilities(),[invocation],null);
@@ -352,6 +369,12 @@ struct Session
 		return setRaw(type,ifInState,create,update,destroy_,additionalArguments).toVariable;
 	}
 
+	Variable setEmail(string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init)
+	{
+		return set("Email",ifInState,create,update,destroy_,additionalArguments);
+	}
+
+
 	Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		import std.algorithm : map;
@@ -379,6 +402,21 @@ struct Session
 		auto invocation = Invocation.query(type,activeAccountId,invocationId,filterAsdf,sortAsdf,position,anchor,anchorOffset,limit,calculateTotal, additionalArguments);
 		auto request = JmapRequest(listCapabilities(),[invocation],null);
 		return post(request);
+	}
+
+	Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, Variable[string] additionalArguments = (Variable[string]).init)
+	{
+		import std.exception : enforce;
+		import std.stdio: stderr,writeln;
+		if (collapseThreads)
+			additionalArguments["collapseThreads"] = Variable(true);
+		auto o = cast(FilterOperator) filter;
+		auto c = cast(FilterCondition) filter;
+		enforce(o !is null || c !is null, "filter must be either an operator or a condition");
+		if (debugMode)
+			stderr.writeln((o !is null)? serializeToJsonPretty(o) : serializeToJsonPretty(c));
+		Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).toVariable : parseJson(serializeToJson(c)).toVariable;
+		return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit,calculateTotal,additionalArguments).toVariable;
 	}
 
 	Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
@@ -422,6 +460,90 @@ struct Email
 	ModSeq createdModSeq;
 	ModSeq updatedModSeq;
 	Nullable!SysTime deleted;
+}
+
+enum EmailProperty
+{
+	id,
+	blobId,
+	threadId,
+	mailboxIds,
+	keywords,
+	size,
+	receivedAt,
+	messageId,
+	headers,
+	inReplyTo,
+	references,
+	sender,
+	from,
+	to,
+	cc,
+	bcc,
+	replyTo,
+	subject,
+	sentAt,
+	hasAttachment,
+	preview,
+	bodyValues,
+	textBody,
+	htmlBody,
+	attachments,
+	//Raw,
+	//Text,
+	//Addresses,
+	//GroupedAddresses,
+	//URLs,
+}
+
+enum EmailBodyProperty
+{
+	partId,
+	blobId,
+	size,
+	name,
+	type,
+	charset,
+	disposition,
+	cid,
+	language,
+	location,
+	subParts,
+	bodyStructure,
+	bodyValues,
+	textBody,
+	htmlBody,
+	attachments,
+	hasAttachment,
+	preview,
+}
+
+struct EmailSubmission
+{
+	string id;
+	string identityId;
+	string emailId;
+	string threadId;
+	Nullable!Envelope envelope;
+	DateTime sendAt;
+	string undoStatus;
+	string deliveryStatus;
+	string[] dsnBlobIds;
+	string[] mdnBlobIds;
+}
+
+
+struct Envelope
+{
+	EmailAddress mailFrom;
+
+	EmailAddress rcptTo;
+}
+
+struct EmailAddress
+{
+	string email;
+	Nullable!(Variable[string]) parameters;
 }
 
 struct ThreadEmail
@@ -477,6 +599,67 @@ struct Mailbox
 	bool suppressDuplicates;
 	bool autoLearn;
 	MailboxSortProperty[] sort;
+}
+
+string[] allMailboxPaths(Mailbox[] mailboxes)
+{
+	import std.algorithm : map;
+	import std.array : array;
+	return mailboxes.map!(mb => mailboxPath(mailboxes,mb.id)).array;
+}
+
+string mailboxPath(Mailbox[] mailboxes, string id, string path = null)
+{
+	import std.algorithm : countUntil;
+	import std.format : format;
+	import std.exception : enforce;
+	import std.string : endsWith;
+	if (path.endsWith("/"))
+		path = path[0..$-1];
+	auto i = mailboxes.countUntil!(mailbox => mailbox.id == id);
+	if (i == -1)
+		return path;
+	path = (path == null) ? mailboxes[i].name : format!"%s/%s"(mailboxes[i].name,path);
+	return mailboxPath(mailboxes,mailboxes[i].parentId,path);
+}
+
+Nullable!Mailbox findMailboxPath(Mailbox[] mailboxes, string path)
+{
+	import std.algorithm : filter;
+	import std.string : split, join, endsWith;
+	import std.range : back;
+	import std.exception : enforce;
+
+	Nullable!Mailbox ret;
+	if (path.endsWith("/"))
+		path = path[0..$-1];
+	auto cols = path.split("/");
+	if (cols.length == 0)
+		return ret;
+
+	foreach(item; mailboxes.filter!(mailbox => mailbox.name == cols[$-1]))
+	{
+		if (item.parentId.length == 0)
+		{
+			if (cols.length <= 1)
+			{
+				ret = item;
+				break;
+			}
+			else continue;
+		}
+		auto parent = findMailboxPath(mailboxes,cols[0..$-1].join("/"));
+		if (parent.isNull)
+		{
+			continue;
+		}
+		else
+		{
+			ret = item;
+			break;
+		}
+	}
+	return ret;
 }
 
 struct MailboxSortProperty
@@ -815,12 +998,253 @@ interface Filter
 class FilterOperator : Filter
 {
 	FilterOperatorKind operator;
+	
 	Filter[] conditions;
+
+	this(FilterOperatorKind operator, Filter[] conditions)
+	{
+		this.operator = operator;
+		this.conditions = conditions;
+	}
+
+	void serialize(S)(ref S serializer)
+	{
+		import std.exception : enforce;
+		import std.format : format;
+		import std.conv : to;
+		import std.string : toUpper;
+
+		auto o = serializer.objectBegin();
+		serializer.putKey("operator");
+		serializer.putValue(operator.to!string.toUpper());
+		serializer.putKey("conditions");
+		auto o2 = serializer.arrayBegin();
+		foreach(i,condition;conditions)
+		{
+			serializer.elemBegin();
+			auto f = cast(FilterOperator) condition;
+			auto c = cast(FilterCondition) condition;
+			enforce(f !is null || c !is null, format!"condition #%s must be FilterOperator or FilterCondition!"(i));
+			if (f !is null)
+				serializer.serializeValue(f);
+			else if (c !is null)
+				serializer.serializeValue(c);
+		}
+		serializer.arrayEnd(o2);
+		serializer.objectEnd(o);
+	}
+}
+
+
+package enum NullString = (Nullable!string).init;
+package enum NullStringArray = (Nullable!(string[])).init;
+package enum NullUint = (Nullable!uint).init;
+package enum NullDateTime = (Nullable!DateTime).init;
+
+FilterCondition filterCondition(	Nullable!string inMailbox = NullString,
+			Nullable!(string[]) inMailboxOtherThan = NullStringArray,
+			Nullable!string before = NullString,
+			Nullable!string after = NullString,
+			Nullable!uint minSize = NullUint,
+			Nullable!uint maxSize = NullUint,
+			Nullable!string allInThreadHaveKeyword = NullString,
+			Nullable!string someInThreadHaveKeyword = NullString,
+			Nullable!string noneInThreadHaveKeyword = NullString,
+			Nullable!string hasKeyword = NullString,
+			Nullable!string notKeyword = NullString,
+			Nullable!string text = NullString,
+			Nullable!string from = NullString,
+			Nullable!string to = NullString,
+			Nullable!string cc = NullString,
+			Nullable!string bcc = NullString,
+			Nullable!string subject = NullString,
+			Nullable!string body_ = NullString,
+			Nullable!(string[]) header = NullStringArray, )
+{
+	return new FilterCondition(inMailbox,inMailboxOtherThan,before,after,minSize,
+			maxSize,allInThreadHaveKeyword,someInThreadHaveKeyword,noneInThreadHaveKeyword,
+			hasKeyword,notKeyword,text,from,to,cc,bcc,subject,body_,header);
+}
+
+private void doSerialize(S,T)(ref S serializer, T t)
+{
+	import std.traits : hasUDA, getUDAs, isCallable, isInstanceOf;
+	auto o = serializer.objectBegin;
+	static foreach(i,M;T.tupleof)
+	{{
+		 static if (!isCallable!M)
+		 {
+			 static if (hasUDA!(M,"serializationKeys"))
+				 enum name = getUDAs!(M,"serializationKeys")[0].value;
+			 else
+				 enum name = __traits(identifier,M);
+			 mixin("auto value = t." ~ __traits(identifier,M) ~ ";");
+			 static if (isInstanceOf!(Nullable,typeof(value)))
+			 {
+				 if (!value.isNull)
+				 {
+					//static if (is(typeof(value.get.result) == typeof(Variable)))
+					//		serializeAsAsdf(value.get.result);
+					//else static if is(Unqual!
+					//		doSerialize(serializer,value.get.result);
+					 serializer.serializeAsdf(serializeToAsdf(value.get));
+				 }
+				 else
+				 {
+					 serializer.putValue(null);
+				 }
+			 }
+			 else
+			 {
+				 serializer.serializeAsdf(serializeToAsdf(result));
+			 }
+		 }
+	}}
+}
+
+string toUTCDate(Nullable!DateTime dt)
+{
+	import std.exception : enforce;
+	enforce(!dt.isNull,"datetime must not be null");
+	return toUTCDate(dt.get);
+}
+
+//"2014-10-30T06:12:00Z"
+string toUTCDate(DateTime dt)
+{
+	import std.string : format;
+	return format!"%04d-%02d-%02dT%02d:%02d:%02dZ"(
+			dt.date.year,
+			dt.date.month,
+			dt.date.day,
+			dt.timeOfDay.hour,
+			dt.timeOfDay.minute,
+			dt.timeOfDay.second,
+	);
 }
 
 class FilterCondition : Filter
 {
-	Variable filterCondition;
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string inMailbox;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!(string[]) inMailboxOtherThan;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	@serializationTransformOut!toUTCDate
+	Nullable!DateTime before;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	@serializationTransformOut!toUTCDate
+	Nullable!DateTime after;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!uint minSize;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!uint maxSize;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string allInThreadHaveKeyword;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string someInThreadHaveKeyword;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string noneInThreadHaveKeyword;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string hasKeyword;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string notKeyword;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string text;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string from;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string to;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string cc;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string bcc;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!string subject;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	@serializationKeys("body")
+	Nullable!string body_;
+
+	@serializationIgnoreOutIf!`a.isNull`
+	Nullable!(string[]) header;
+
+	override string toString()
+	{
+		import asdf : jsonSerializer;
+		import std.array : appender;
+		return serializeToJson(this).idup;
+		/+
+		auto app = appender!(char[]);
+		auto ser = jsonSerializer!("\t")((const(char)[] chars) => app.put(chars));
+		serialize(ser);
+		ser.flush;
+		return cast(string)(app.data); +/
+	}
+/+
+	void serialize(S)(ref S serializer)
+	{
+		doSerialize(serializer,this);
+	}
++/
+
+	this(	Nullable!string inMailbox = NullString,
+			Nullable!(string[]) inMailboxOtherThan = NullStringArray,
+			Nullable!string before = NullString,
+			Nullable!string after = NullString,
+			Nullable!uint minSize = NullUint,
+			Nullable!uint maxSize = NullUint,
+			Nullable!string allInThreadHaveKeyword = NullString,
+			Nullable!string someInThreadHaveKeyword = NullString,
+			Nullable!string noneInThreadHaveKeyword = NullString,
+			Nullable!string hasKeyword = NullString,
+			Nullable!string notKeyword = NullString,
+			Nullable!string text = NullString,
+			Nullable!string from = NullString,
+			Nullable!string to = NullString,
+			Nullable!string cc = NullString,
+			Nullable!string bcc = NullString,
+			Nullable!string subject = NullString,
+			Nullable!string body_ = NullString,
+			Nullable!(string[]) header = NullStringArray, )
+	{
+		this.inMailbox = inMailbox;
+		this.inMailboxOtherThan = inMailboxOtherThan;
+		if (!before.isNull)
+			this.before = DateTime.fromISOExtString(before.get);
+		if (!after.isNull)
+			this.after = DateTime.fromISOExtString(after.get);
+		this.minSize = minSize;
+		this.maxSize = maxSize;
+		this.allInThreadHaveKeyword = allInThreadHaveKeyword;
+		this.someInThreadHaveKeyword = someInThreadHaveKeyword;
+		this.hasKeyword = hasKeyword;
+		this.notKeyword = notKeyword;
+		this.text = text;
+		this.from = from;
+		this.to = to;
+		this.cc = cc;
+		this.bcc = bcc;
+		this.subject = subject;
+		this.body_ = body_;
+		this.header = header;
+	}
 }
 
 Filter operatorAsFilter(FilterOperator filterOperator)
@@ -870,8 +1294,7 @@ struct ResultReference
 	string path;
 }
 
-
-struct Address
+struct ContactAddress
 {
 	string type;
 	string label; // Nullable!string label;
@@ -918,7 +1341,7 @@ struct Contact
 	ContactInformation[] emails;
 	ContactInformation[] phones;
 	ContactInformation[] online;
-	Address[] addresses;
+	ContactAddress[] addresses;
 	string notes;
 }
 
@@ -938,4 +1361,104 @@ string uriEncode(const(char)[] s)
 			.replace("-","%2D").replace(".","%2E").replace("/","%2F").replace(":","%3A").replace(";","%3B")
 			.replace("=","%3D").replace("?","%3F").replace("@","%40").replace("[","%5B").replace("]","%5D")
 			.idup;
+}
+
+private void serializeAsAsdf(S)(Variable v, ref S serializer)
+{
+	import std.range : iota;
+	import kaleidic.sil.lang.types : SilVariant, KindEnum;
+	import kaleidic.sil.lang.builtins : fnArray;
+
+	final switch(v.kind)
+	{
+		case KindEnum.void_:
+			serializer.putValue(null);
+			return;
+
+		case KindEnum.object:
+			auto var = v.get!SilVariant;
+			auto acc = var.type.objAccessor;
+			if (acc is null)
+			{
+				serializer.putValue("object");
+				return;
+			}
+			auto obj = serializer.objectBegin();
+			foreach(member; acc.listMembers)
+			{
+				serializer.putKey(member);
+				serializeAsAsdf(acc.readProperty(member,var),serializer);
+			}
+			serializer.objectEnd(obj);
+			return;
+
+		case KindEnum.variable:
+			serializeAsAsdf(v.get!Variable, serializer);
+			return;
+
+		case KindEnum.function_:
+			serializer.putValue("function"); // FIXME
+			return;
+
+		case KindEnum.boolean:
+			serializer.putValue(v.get!bool);
+			return;
+
+		case KindEnum.char_:
+			serializer.putValue([(v.get!char)].idup);
+			return;
+
+		case KindEnum.integer:
+			serializer.putValue(v.get!long);
+			return;
+
+		case KindEnum.number:
+			import std.format : singleSpec;
+			import kaleidic.sil.lang.util : fullPrecisionFormatSpec;
+			enum spec = singleSpec(fullPrecisionFormatSpec!double);
+			serializer.putNumberValue(v.get!double, spec);
+			return;
+
+		case KindEnum.string_:
+			serializer.putValue(v.get!string);
+			return;
+
+		case KindEnum.table:
+			auto obj = serializer.objectBegin();
+			foreach(ref kv; v.get!(Variable[string]).byKeyValue)
+			{
+				serializer.putKey(kv.key);
+				serializeAsAsdf(kv.value, serializer);
+			}
+			serializer.objectEnd(obj);
+			return;
+
+		case KindEnum.array:
+			auto v2 = v.getAssume!(Variable[]);
+			auto arr = serializer.arrayBegin();
+			foreach(elem; v2)
+			{
+				serializer.elemBegin;
+				serializeAsAsdf(elem, serializer);
+			}
+			serializer.arrayEnd(arr);
+			return;
+
+		case KindEnum.arrayOf:
+			auto v2 = v.getAssume!(KindEnum.arrayOf);
+			auto arr = serializer.arrayBegin();
+			foreach(i; v2.getLength().iota)
+			{
+				serializer.elemBegin;
+				Variable elem = v2.getElement(i);
+				serializeAsAsdf(elem, serializer);
+			}
+			serializer.arrayEnd(arr);
+			return;
+
+		case KindEnum.rangeOf:
+			serializeAsAsdf(fnArray(v), serializer);
+			return;
+	}
+	assert(0);
 }

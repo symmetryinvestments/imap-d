@@ -94,7 +94,7 @@ ref Session openSecureConnection(ref Session session)
 	session.sslConnection = SSL_new(session.sslContext);
 	enforce(session.sslConnection !is null, "unable to create new SSL connection");
 	enforce(session.socket.isAlive, "trying to secure a disconnected socket");
-	SSL_set_fd(session.sslConnection, cast(ptrdiff_t)session.socket.handle);
+	SSL_set_fd(session.sslConnection, cast(int)session.socket.handle);
 	scope(failure)
 		session.sslConnection = null;
 	r = SSL_connect(session.sslConnection);
@@ -457,7 +457,7 @@ auto socketSecureWrite(ref Session session, string buf)
 				if (e == 0 && r == 0)
 					throw new Exception("writing data through SSL; EOF in violation of the protocol");
 				enforce( !(e==0 && r == -1),format!"writing data through SSL; %s\n"(strerror(errno).fromStringz.idup));
-				enforce(true,format!"writing data through SSL; %s"(ERR_error_string(cast(size_t)e, null).fromStringz.idup));
+				enforce(true,format!"writing data through SSL; %s"(ERR_error_string(cast(uint)e, null).fromStringz.idup));
 				break;
 			case SSL_ERROR_SSL:
 				enforce(true,format!"writing data through SSL; %s"(ERR_error_string(ERR_get_error(), null).fromStringz.idup));

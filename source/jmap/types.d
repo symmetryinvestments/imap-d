@@ -424,7 +424,7 @@ struct Session
 		return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit,calculateTotal,additionalArguments).toVariable;
 	}
 
-	Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
+	package Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		import std.algorithm : map;
 		import std.array : array;
@@ -436,7 +436,7 @@ struct Session
 		return post(request);
 	}
 
-	Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState,Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
+	package Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState,Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		return queryChangesRaw(type, filter, sort, sinceQueryState,maxChanges,upToId,calculateTotal,additionalArguments).toVariable;
 	}

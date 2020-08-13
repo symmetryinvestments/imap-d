@@ -164,8 +164,11 @@ void registerImap(ref Handlers handlers)
 			handlers.registerHandler!F;
 		handlers.registerType!Socket;
 
-		import jmap : registerHandlersJmap;
-		handlers.registerHandlersJmap();
+		version(UseJmap)
+		{
+			import jmap : registerHandlersJmap;
+			handlers.registerHandlersJmap();
+		}
 	}
 	/+
 	{

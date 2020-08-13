@@ -14,7 +14,8 @@ version(SIL)
 		handlers.openModule("jmap");
 		scope(exit) handlers.closeModule();
 
-		static foreach(T; AliasSeq!(Credentials, JmapSessionParams, Session,Mailbox,MailboxRights,MailboxSortProperty,Filter,FilterOperator,FilterOperatorKind,FilterCondition,Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError,EmailProperty,EmailBodyProperty,Maybe))
+		static foreach(T; AliasSeq!(Credentials, JmapSessionParams, Session,
+			Mailbox,MailboxRights,MailboxSortProperty,Filter,FilterOperator,FilterOperatorKind,FilterCondition,Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError,EmailProperty,EmailBodyProperty,Maybe))
 	handlers.registerType!T;
 
 		static foreach(F; AliasSeq!(getSession, getSessionJson, wellKnownJmap,operatorAsFilter,filterCondition,addQuotes,uniqBy,mailboxPath,allMailboxPaths,

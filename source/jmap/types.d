@@ -1036,7 +1036,6 @@ class FilterOperator : Filter
 }
 
 
-<<<<<<< jmap-finally
 package enum nullArray = (Nullable!(string[])).init;
 package enum NullUint = (Nullable!uint).init;
 package enum NullDateTime = (Nullable!DateTime).init;
@@ -1145,42 +1144,6 @@ class FilterCondition : Filter
 	@serializationIgnoreOutIf!`a.isNull`
 	Nullable!uint maxSize;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string allInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string someInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string noneInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string hasKeyword;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string notKeyword;
-
-	@serializationIgnoreOutIf!`a.length == 0 `
-	string text;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string from;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string to;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string cc;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string bcc;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	string subject;
-
-	@serializationIgnoreOutIf!`a.length == 0`
-	@serializationKeys("body")
-	string body_;
 
 	@serializationIgnoreOutIf!`a.isNull`
 	Nullable!(string[]) header;

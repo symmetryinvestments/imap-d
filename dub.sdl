@@ -7,7 +7,7 @@ dependency "requests" version="*"
 license "MIT"
 
 versions "SSL" "OPENSSL_NO_SRP"
-libs "ssl" "crypto" 
+libs "ssl" "crypto" platform="posix"
 
 configuration "default" {
 	targetType "library"

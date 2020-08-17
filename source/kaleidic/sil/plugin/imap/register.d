@@ -23,7 +23,7 @@ import core.stdc.string;
 import core.stdc.errno;
 import std.socket;
 import core.time : Duration;
-import std.datetime : Date, SysTime, TimeZone;
+import std.datetime : Date, DateTime, SysTime, TimeZone;
 
 import deimos.openssl.ssl;
 import deimos.openssl.err;
@@ -131,6 +131,8 @@ void registerImap(ref Handlers handlers)
 	import arsd.email : IncomingEmailMessage,RelayInfo,ToType,EmailMessage,MimePart;
 
 	{
+		handlers.openModule("dates");
+		handlers.registerHandler!add;
 		handlers.openModule("imap");
 		scope(exit) handlers.closeModule();
 		handlers.registerGrammar();
@@ -480,4 +482,7 @@ string extractAddress(string arg)
 	return arg[i+1 .. j];
 }
 
-
+Variable add(Variable date, Duration dur)
+{
+	return Variable(date.get!DateTime + dur);
+}

@@ -424,7 +424,7 @@ struct Session
 		return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit,calculateTotal,additionalArguments).toVariable;
 	}
 
-	Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
+	Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		import std.algorithm : map;
 		import std.array : array;
@@ -436,7 +436,7 @@ struct Session
 		return post(request);
 	}
 
-	Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState,Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
+	Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState,Nullable!uint maxChanges = (Nullable!uint).init,  string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		return queryChangesRaw(type, filter, sort, sinceQueryState,maxChanges,upToId,calculateTotal,additionalArguments).toVariable;
 	}
@@ -962,7 +962,7 @@ struct Invocation
 		return ret;
 	}
 
-	static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, Nullable!string upToId = (Nullable!string).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
+	static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init,  string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
 	{
 		auto arguments = AsdfNode("{}".parseJson);
 		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
@@ -1036,30 +1036,29 @@ class FilterOperator : Filter
 }
 
 
-package enum NullString = (Nullable!string).init;
-package enum NullStringArray = (Nullable!(string[])).init;
+package enum nullArray = (Nullable!(string[])).init;
 package enum NullUint = (Nullable!uint).init;
 package enum NullDateTime = (Nullable!DateTime).init;
 
-FilterCondition filterCondition(	Nullable!string inMailbox = NullString,
-			Nullable!(string[]) inMailboxOtherThan = NullStringArray,
-			Nullable!string before = NullString,
-			Nullable!string after = NullString,
+FilterCondition filterCondition(	 string inMailbox = null,
+			Nullable!(string[]) inMailboxOtherThan = nullArray,
+			string before = null,
+			string after = null,
 			Nullable!uint minSize = NullUint,
 			Nullable!uint maxSize = NullUint,
-			Nullable!string allInThreadHaveKeyword = NullString,
-			Nullable!string someInThreadHaveKeyword = NullString,
-			Nullable!string noneInThreadHaveKeyword = NullString,
-			Nullable!string hasKeyword = NullString,
-			Nullable!string notKeyword = NullString,
-			Nullable!string text = NullString,
-			Nullable!string from = NullString,
-			Nullable!string to = NullString,
-			Nullable!string cc = NullString,
-			Nullable!string bcc = NullString,
-			Nullable!string subject = NullString,
-			Nullable!string body_ = NullString,
-			Nullable!(string[]) header = NullStringArray, )
+			string allInThreadHaveKeyword = null,
+			string someInThreadHaveKeyword = null,
+			string noneInThreadHaveKeyword = null,
+			string hasKeyword = null,
+			string notKeyword = null,
+			string text = null,
+			string from = null,
+			string to = null,
+			string cc = null,
+			string bcc = null,
+			string subject = null,
+			string body_ = null,
+			Nullable!(string[]) header = nullArray, )
 {
 	return new FilterCondition(inMailbox,inMailboxOtherThan,before,after,minSize,
 			maxSize,allInThreadHaveKeyword,someInThreadHaveKeyword,noneInThreadHaveKeyword,
@@ -1125,8 +1124,8 @@ string toUTCDate(DateTime dt)
 
 class FilterCondition : Filter
 {
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string inMailbox;
+	@serializationIgnoreOutIf!`a.length == 0`
+	string inMailbox;
 
 	@serializationIgnoreOutIf!`a.isNull`
 	Nullable!(string[]) inMailboxOtherThan;
@@ -1145,42 +1144,6 @@ class FilterCondition : Filter
 	@serializationIgnoreOutIf!`a.isNull`
 	Nullable!uint maxSize;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string allInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string someInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string noneInThreadHaveKeyword;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string hasKeyword;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string notKeyword;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string text;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string from;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string to;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string cc;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string bcc;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!string subject;
-
-	@serializationIgnoreOutIf!`a.isNull`
-	@serializationKeys("body")
-	Nullable!string body_;
 
 	@serializationIgnoreOutIf!`a.isNull`
 	Nullable!(string[]) header;
@@ -1204,32 +1167,32 @@ class FilterCondition : Filter
 	}
 +/
 
-	this(	Nullable!string inMailbox = NullString,
-			Nullable!(string[]) inMailboxOtherThan = NullStringArray,
-			Nullable!string before = NullString,
-			Nullable!string after = NullString,
+	this(	 	string inMailbox = null,
+			Nullable!(string[]) inMailboxOtherThan = nullArray,
+			string before = null,
+			string after = null,
 			Nullable!uint minSize = NullUint,
 			Nullable!uint maxSize = NullUint,
-			Nullable!string allInThreadHaveKeyword = NullString,
-			Nullable!string someInThreadHaveKeyword = NullString,
-			Nullable!string noneInThreadHaveKeyword = NullString,
-			Nullable!string hasKeyword = NullString,
-			Nullable!string notKeyword = NullString,
-			Nullable!string text = NullString,
-			Nullable!string from = NullString,
-			Nullable!string to = NullString,
-			Nullable!string cc = NullString,
-			Nullable!string bcc = NullString,
-			Nullable!string subject = NullString,
-			Nullable!string body_ = NullString,
-			Nullable!(string[]) header = NullStringArray, )
+			string allInThreadHaveKeyword = null,
+			string someInThreadHaveKeyword = null,
+			string noneInThreadHaveKeyword = null,
+			string hasKeyword = null,
+			string notKeyword = null,
+			string text = null,
+			string from = null,
+			string to = null,
+			string cc = null,
+			string bcc = null,
+			string subject = null,
+			string body_ = null,
+			Nullable!(string[]) header = nullArray, )
 	{
 		this.inMailbox = inMailbox;
 		this.inMailboxOtherThan = inMailboxOtherThan;
-		if (!before.isNull)
-			this.before = DateTime.fromISOExtString(before.get);
-		if (!after.isNull)
-			this.after = DateTime.fromISOExtString(after.get);
+		if (before.length > 0)
+			this.before = DateTime.fromISOExtString(before);
+		if (after.length > 0)
+			this.after = DateTime.fromISOExtString(after);
 		this.minSize = minSize;
 		this.maxSize = maxSize;
 		this.allInThreadHaveKeyword = allInThreadHaveKeyword;
@@ -1297,7 +1260,7 @@ struct ResultReference
 struct ContactAddress
 {
 	string type;
-	string label; // Nullable!string label;
+	string label; //  label;
 	string street;
 	string locality;
 	string region;

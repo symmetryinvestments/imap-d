@@ -24,7 +24,7 @@ configuration "sil-library" {
 // dub insists on looking for sil-lang even if building
 // the default configuration!
 configuration "plugin" {
-dependency "sil-lang" path="../../lang"
+        dependency "sil-lang" version="*" optional=true
 	dependency "pegged" version="*" optional=true
 	targetType "dynamicLibrary"
 	versions "SIL_Plugin" "SIL" "MoveSanity"  //"Trace"

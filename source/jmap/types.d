@@ -1036,6 +1036,7 @@ class FilterOperator : Filter
 }
 
 
+<<<<<<< jmap-finally
 package enum nullArray = (Nullable!(string[])).init;
 package enum NullUint = (Nullable!uint).init;
 package enum NullDateTime = (Nullable!DateTime).init;

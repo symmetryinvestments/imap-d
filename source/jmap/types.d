@@ -45,7 +45,7 @@ enum EmailQuerySortOption
 	subject,
 	size,
 
-	@serializationKeys("header.x-spam-score")
+	@serdeKeys("header.x-spam-score")
 	headerXSpamScore,
 }
 
@@ -68,17 +68,17 @@ struct SubmissionParams
 
 struct AccountCapabilities
 {
-	@serializationKeys("urn:ietf:params:jmap:mail")
+	@serdeKeys("urn:ietf:params:jmap:mail")
 	AccountParams accountParams;
 
-	@serializationKeys("urn:ietf:params:jmap:submission")
+	@serdeKeys("urn:ietf:params:jmap:submission")
 	SubmissionParams submissionParams;
 
-	//@serializationIgnoreIn Asdf vacationResponseParams;
+	//@serdeIgnoreIn Asdf vacationResponseParams;
 
 	version(SIL)
 	{
-		@serializationIgnoreIn Variable[string] allAccountCapabilities;
+		@serdeIgnoreIn Variable[string] allAccountCapabilities;
 
 		void finalizeDeserialization(Asdf data)
 		{
@@ -113,7 +113,7 @@ struct Session
 	Url uploadUrl;
 	Url eventSourceUrl;
 	string state;
-	@serializationIgnoreIn Asdf[string] capabilities;
+	@serdeIgnoreIn Asdf[string] capabilities;
 	package Credentials credentials;
 	private string activeAccountId_;
 	private bool debugMode = false;
@@ -1073,8 +1073,8 @@ private void doSerialize(S,T)(ref S serializer, T t)
 	{{
 		 static if (!isCallable!M)
 		 {
-			 static if (hasUDA!(M,"serializationKeys"))
-				 enum name = getUDAs!(M,"serializationKeys")[0].value;
+			 static if (hasUDA!(M,"serdeKeys"))
+				 enum name = getUDAs!(M,"serdeKeys")[0].value;
 			 else
 				 enum name = __traits(identifier,M);
 			 mixin("auto value = t." ~ __traits(identifier,M) ~ ";");
@@ -1178,7 +1178,7 @@ class FilterCondition : Filter
 	string subject;
 
 	@serializationIgnoreOutIf!`a.length == 0`
-	@serializationKeys("body")
+	@serdeKeys("body")
 	string body_;
 
 	@serializationIgnoreOutIf!`a.isNull`

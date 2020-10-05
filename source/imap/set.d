@@ -1,27 +1,23 @@
 module imap.set;
 
 ///
-struct Set(T)
-{
+struct Set(T) {
     bool[T] values_;
     alias values_ this;
 
-    bool has(T value)
-    {
+    bool has(T value) {
         return (value in values_) !is null;
     }
 
-    T[] values()
-    {
+    T[] values() {
         import std.algorithm : filter, map;
         import std.array : array;
         import std.conv : to;
         return values_.keys.filter!(c => values_[c])
-                .array;
+               .array;
     }
 
-    string toString()
-    {
+    string toString() {
         import std.format : format;
         import std.algorithm : map, sort;
         import std.array : array;
@@ -32,8 +28,7 @@ struct Set(T)
 }
 
 ///
-Set!T add(T)(Set!T set, T value)
-{
+Set!T add(T)(Set!T set, T value) {
     import std.algorithm : each;
     Set!T ret;
     set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);
@@ -42,8 +37,7 @@ Set!T add(T)(Set!T set, T value)
 }
 
 ///
-Set!T remove(T)(Set!T set, T value)
-{
+Set!T remove(T)(Set!T set, T value) {
     import std.algorithm : each;
     Set!T ret;
     set.values_.byKeyValue.each!(entry => ret[entry.key] = entry.value);

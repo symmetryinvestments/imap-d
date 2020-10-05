@@ -2,22 +2,21 @@
 module imap.grammar;
 
 /++
-	This code is not currently used or required.  An experiment with replacing custom parsing code by
-	a PEG grammer.
+    This code is not currently used or required.  An experiment with replacing custom parsing code by
+    a PEG grammer.
 +/
 
-version(SIL):
-import pegged.grammar;
+version (SIL) :
+    import pegged.grammar;
 
 
 ///
-public PT tee(PT)(PT p)
-{
-	import std.stdio;
-	writeln("****");
-	writeln(p);
-	writeln("****");
-	return p;
+public PT tee(PT)(PT p) {
+    import std.stdio;
+    writeln("****");
+    writeln(p);
+    writeln("****");
+    return p;
 }
 
 
@@ -29,7 +28,7 @@ Imap:
 	plus			<-	"+"
 	colon			<-	":"
 	comma			<-	","
-	bang 			<-	"!"
+	bang            <-	"!"
 	star			<-	"*"
 	percent			<-	"%"
 	LParens			<-	"("
@@ -49,10 +48,10 @@ Imap:
 	Base64Char		<-	[a-zA-Z0-9\+\/]
 	Base64Terminal	<-	(Base64Char Base64Char "==") / (Base64Char Base64Char Base64Char "=")
 	Base64			<~	Base64Char Base64Char Base64Char Base64Char Base64Terminal
-	StrChar     	<~ backslash doublequote
-	             		/ backslash backslash
-	             		/ backslash [abfnrtv]
-	             		/ (!doublequote .)
+	StrChar         <~ backslash doublequote
+	                    / backslash backslash
+	                    / backslash [abfnrtv]
+	                    / (!doublequote .)
 	CRLF			<-	"\r" "\n"
 	TextChar		<-	!CRLF .
 	Text			<-	Text+
@@ -184,7 +183,7 @@ Imap:
 	RespTextCode	<-	"ALERT" / 
 						"BADCHARSET" (space LParens Astring (space Astring)* RParens )? /
 						CapabilityData /
-					   	"PARSE" /
+					    "PARSE" /
 						"PERMANENTFLAGS" space LParens (FlagPerm (space FlagPerm))* RParens /
 						"READ-ONLY" /
 						"READ-WRITE" /

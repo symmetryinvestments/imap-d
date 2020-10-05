@@ -3,16 +3,15 @@ import std.datetime : SysTime;
 import core.time : seconds;
 import std.typecons : Nullable;
 
-version(SIL):
-import kaleidic.sil.lang.types : Variable,Function,SILdoc;
+version (SIL) :
+    import kaleidic.sil.lang.types : Variable, Function, SILdoc;
 import kaleidic.sil.lang.json : toVariable, toJsonString;
 import std.datetime : DateTime;
 import asdf;
 
-struct Credentials
-{
-	string user;
-	string pass;
+struct Credentials {
+    string user;
+    string pass;
 }
 
 alias Url = string;
@@ -23,693 +22,619 @@ alias ModSeq = ulong;
 alias Set = string[bool];
 
 @("urn:ietf:params:jmap:core")
-struct SessionCoreCapabilities
-{
-	uint maxSizeUpload;
-	uint maxConcurrentUpload;	
-	uint maxSizeRequest;
-	uint maxConcurrentRequests;
-	uint maxCallsInRequest;
-	uint maxObjectsInGet;
-	uint maxObjectsInSet;
-	string[] collationAlgorithms;
+struct SessionCoreCapabilities {
+    uint maxSizeUpload;
+    uint maxConcurrentUpload;
+    uint maxSizeRequest;
+    uint maxConcurrentRequests;
+    uint maxCallsInRequest;
+    uint maxObjectsInGet;
+    uint maxObjectsInSet;
+    string[] collationAlgorithms;
 }
-																															    
-															 
+
+
 @("urn:ietf:params:jmap:mail")
-enum EmailQuerySortOption
-{
-	receivedAt,
-	from,
-	to,
-	subject,
-	size,
+enum EmailQuerySortOption {
+    receivedAt,
+    from,
+    to,
+    subject,
+    size,
 
-	@serdeKeys("header.x-spam-score")
-	headerXSpamScore,
+    @serdeKeys("header.x-spam-score")
+    headerXSpamScore,
 }
 
-struct AccountParams
-{
-	//EmailQuerySortOption[] emailQuerySortOptions;
-	string[] emailQuerySortOptions;
-	Nullable!int maxMailboxDepth;
-	Nullable!int maxMailboxesPerEmail;
-	Nullable!int maxSizeAttachmentsPerEmail;
-	Nullable!int maxSizeMailboxName;
-	bool mayCreateTopLevelMailbox;
+struct AccountParams {
+    // EmailQuerySortOption[] emailQuerySortOptions;
+    string[] emailQuerySortOptions;
+    Nullable!int maxMailboxDepth;
+    Nullable!int maxMailboxesPerEmail;
+    Nullable!int maxSizeAttachmentsPerEmail;
+    Nullable!int maxSizeMailboxName;
+    bool mayCreateTopLevelMailbox;
 }
 
-struct SubmissionParams
-{
-   int maxDelayedSend;
-   string[] submissionExtensions;
+struct SubmissionParams {
+    int maxDelayedSend;
+    string[] submissionExtensions;
 }
 
-struct AccountCapabilities
-{
-	@serdeKeys("urn:ietf:params:jmap:mail")
-	AccountParams accountParams;
+struct AccountCapabilities {
+    @serdeKeys("urn:ietf:params:jmap:mail")
+    AccountParams accountParams;
 
-	@serdeKeys("urn:ietf:params:jmap:submission")
-	SubmissionParams submissionParams;
+    @serdeKeys("urn:ietf:params:jmap:submission")
+    SubmissionParams submissionParams;
 
-	//@serdeIgnoreIn Asdf vacationResponseParams;
+    // @serdeIgnoreIn Asdf vacationResponseParams;
 
-	version(SIL)
-	{
-		@serdeIgnoreIn Variable[string] allAccountCapabilities;
+    version (SIL) {
+        @serdeIgnoreIn Variable[string] allAccountCapabilities;
 
-		void finalizeDeserialization(Asdf data)
-		{
-			import asdf : deserialize, Asdf;
+        void finalizeDeserialization(Asdf data) {
+            import asdf : deserialize, Asdf;
 
-			foreach(el;data.byKeyValue)
-				allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
-		}
-	}
+            foreach (el; data.byKeyValue)
+                allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
+        }
+    }
 }
 
-struct Account
-{
-	string name;
-	bool isPersonal;
-	bool isReadOnly;
+struct Account {
+    string name;
+    bool isPersonal;
+    bool isReadOnly;
 
-	bool isArchiveUser = false;
-	AccountCapabilities accountCapabilities;
-	string[string] primaryAccounts;
+    bool isArchiveUser = false;
+    AccountCapabilities accountCapabilities;
+    string[string] primaryAccounts;
 }
 
-struct Session
-{
-	SessionCoreCapabilities coreCapabilities;
+struct Session {
+    SessionCoreCapabilities coreCapabilities;
 
-	Account[string] accounts;
-	string[string] primaryAccounts;
-	string username;
-	Url apiUrl;
-	Url downloadUrl;
-	Url uploadUrl;
-	Url eventSourceUrl;
-	string state;
-	@serdeIgnoreIn Asdf[string] capabilities;
-	package Credentials credentials;
-	private string activeAccountId_;
-	private bool debugMode = false;
+    Account[string] accounts;
+    string[string] primaryAccounts;
+    string username;
+    Url apiUrl;
+    Url downloadUrl;
+    Url uploadUrl;
+    Url eventSourceUrl;
+    string state;
+    @serdeIgnoreIn Asdf[string] capabilities;
+    package Credentials credentials;
+    private string activeAccountId_;
+    private bool debugMode = false;
 
-	void setDebug(bool debugMode = true)
-	{
-		this.debugMode = debugMode;
-	}
+    void setDebug(bool debugMode = true) {
+        this.debugMode = debugMode;
+    }
 
-	private string activeAccountId()
-	{
-		import std.format : format;
-		import std.exception : enforce;
-		import std.string : join;
-		import std.range : front;
-		import std.algorithm : canFind;
+    private string activeAccountId() {
+        import std.format : format;
+        import std.exception : enforce;
+        import std.string : join;
+        import std.range : front;
+        import std.algorithm : canFind;
 
-		if (activeAccountId_.length == 0)
-		{
-			enforce(accounts.keys.length == 1,
-					format!"multiple accounts - [%s] - and you must call setActiveAccount to pick one"
-						(accounts.keys.join(",")));
-			this.activeAccountId_ = accounts.keys.front;
-		}
+        if (activeAccountId_.length == 0) {
+            enforce(accounts.keys.length == 1,
+                    format!"multiple accounts - [%s] - and you must call setActiveAccount to pick one"
+                    (accounts.keys.join(",")));
+            this.activeAccountId_ = accounts.keys.front;
+        }
 
-		enforce(accounts.keys.canFind(activeAccountId_,
-					format!"active account ID is set to %s but it is not found amongst account IDs: [%s]"
-						(activeAccountId_, accounts.keys.join(","))));
-		return activeAccountId_;
-	}
+        enforce(accounts.keys.canFind(activeAccountId_,
+                format!"active account ID is set to %s but it is not found amongst account IDs: [%s]"
+                (activeAccountId_, accounts.keys.join(","))));
+        return activeAccountId_;
+    }
 
-	string[] listCapabilities()
-	{
-		return capabilities.keys;
-	}
+    string[] listCapabilities() {
+        return capabilities.keys;
+    }
 
-	string[] listAccounts()
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		return accounts.keys.map!(key => accounts[key].name).array;
-	}
+    string[] listAccounts() {
+        import std.algorithm : map;
+        import std.array : array;
+        return accounts.keys.map!(key => accounts[key].name).array;
+    }
 
-	Account getActiveAccountInfo()
-	{
-		import std.exception : enforce;
-		auto p = activeAccountId() in accounts;
-		enforce(p !is null, "no currently active account");
-		return *p;
-	}
+    Account getActiveAccountInfo() {
+        import std.exception : enforce;
+        auto p = activeAccountId() in accounts;
+        enforce(p !is null, "no currently active account");
+        return *p;
+    }
 
-	@SILdoc("set active account - name is the account name, not the id")
-	Session setActiveAccount(string name)
-	{
-		import std.format : format;
-		import std.exception : enforce;
-		import std.format : format;
+    @SILdoc("set active account - name is the account name, not the id")
+    Session setActiveAccount(string name) {
+        import std.format : format;
+        import std.exception : enforce;
+        import std.format : format;
 
-		foreach(kv; accounts.byKeyValue)
-		{
-			if (kv.value.name == name)
-			{
-				this.activeAccountId_ = kv.key;
-				return this;
-			}
-		}
-		throw new Exception(format!"account %s not found"(name));
-	}
+        foreach (kv; accounts.byKeyValue) {
+            if (kv.value.name == name) {
+                this.activeAccountId_ = kv.key;
+                return this;
+            }
+        }
+        throw new Exception(format!"account %s not found"(name));
+    }
 
 
-	void finalizeDeserialization(Asdf data)
-	{
-		import asdf : deserialize, Asdf;
+    void finalizeDeserialization(Asdf data) {
+        import asdf : deserialize, Asdf;
 
-		foreach(el;data["capabilities"].byKeyValue)
-			capabilities[el.key] = el.value.get!Asdf(Asdf.init);
-		this.coreCapabilities = deserialize!SessionCoreCapabilities(capabilities["urn:ietf:params:jmap:core"]);
-	}
+        foreach (el; data["capabilities"].byKeyValue)
+            capabilities[el.key] = el.value.get!Asdf(Asdf.init);
+        this.coreCapabilities = deserialize!SessionCoreCapabilities(capabilities["urn:ietf:params:jmap:core"]);
+    }
 
-	private Asdf post(JmapRequest request)
-	{
-		import asdf;
-	    import requests : Request, BasicAuthentication;
-		import std.string : strip;
-		import std.stdio : writefln, stderr;
-		auto json = serializeToJsonPretty(request); // serializeToJsonPretty
-		if (debugMode)
-			stderr.writefln("post request to apiUrl (%s) with data: %s",apiUrl,json);
-	    auto req = Request();
-		req.timeout = 3 * 60.seconds;
-	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	    auto result = (cast(string) req.post(apiUrl, json,"application/json").responseBody.data.idup).strip;
-		if (debugMode)
-			stderr.writefln("response: %s",result);
-	    return (result.length == 0) ? Asdf.init : parseJson(result);
-	}
+    private Asdf post(JmapRequest request) {
+        import asdf;
+        import requests : Request, BasicAuthentication;
+        import std.string : strip;
+        import std.stdio : writefln, stderr;
+        auto json = serializeToJsonPretty(request); // serializeToJsonPretty
+        if (debugMode)
+            stderr.writefln("post request to apiUrl (%s) with data: %s", apiUrl, json);
+        auto req = Request();
+        req.timeout = 3 * 60.seconds;
+        req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
+        auto result = (cast(string) req.post(apiUrl, json, "application/json").responseBody.data.idup).strip;
+        if (debugMode)
+            stderr.writefln("response: %s", result);
+        return (result.length == 0) ? Asdf.init : parseJson(result);
+    }
 
-	version(SIL)
-	{
-		Variable uploadBinary(string data, string type = "application/binary")
-		{
-			import std.string : replace;
-			import asdf;
-			import requests : Request, BasicAuthentication;
-			auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
-			auto req = Request();
-			req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-			auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
-			return parseJson(result).toVariable;
-		}
-	}
-	else
-	{
-		Asdf uploadBinary(string data, string type = "application/binary")
-		{
-			import std.string : replace;
-			import asdf;
-			import requests : Request, BasicAuthentication;
-			auto uri = this.uploadUrl.replace("{accountId}",this.activeAccountId());
-			auto req = Request();
-			req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-			auto result = cast(string) req.post(uploadUrl, data,type).responseBody.data.idup;
-			return parseJson(result);
-		}
-	}
+    version (SIL) {
+        Variable uploadBinary(string data, string type = "application/binary") {
+            import std.string : replace;
+            import asdf;
+            import requests : Request, BasicAuthentication;
+            auto uri = this.uploadUrl.replace("{accountId}", this.activeAccountId());
+            auto req = Request();
+            req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
+            auto result = cast(string) req.post(uploadUrl, data, type).responseBody.data.idup;
+            return parseJson(result).toVariable;
+        }
+    } else {
+        Asdf uploadBinary(string data, string type = "application/binary") {
+            import std.string : replace;
+            import asdf;
+            import requests : Request, BasicAuthentication;
+            auto uri = this.uploadUrl.replace("{accountId}", this.activeAccountId());
+            auto req = Request();
+            req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
+            auto result = cast(string) req.post(uploadUrl, data, type).responseBody.data.idup;
+            return parseJson(result);
+        }
+    }
 
 
-	string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl=null)
-	{
-		import std.string : replace;
-		import asdf;
-	    import requests : Request, BasicAuthentication;
-		import std.algorithm : canFind;
+    string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl = null) {
+        import std.string : replace;
+        import asdf;
+        import requests : Request, BasicAuthentication;
+        import std.algorithm : canFind;
 
-		downloadUrl = (downloadUrl.length == 0) ? this.downloadUrl : downloadUrl;
-		downloadUrl = downloadUrl
-						.replace("{accountId}",this.activeAccountId().uriEncode)
-						.replace("{blobId}",blobId.uriEncode)
-						.replace("{type}",type.uriEncode)
-						.replace("{name}",name.uriEncode);
+        downloadUrl = (downloadUrl.length == 0) ? this.downloadUrl : downloadUrl;
+        downloadUrl = downloadUrl
+            .replace("{accountId}", this.activeAccountId().uriEncode)
+            .replace("{blobId}", blobId.uriEncode)
+            .replace("{type}", type.uriEncode)
+            .replace("{name}", name.uriEncode);
 
-		downloadUrl = downloadUrl ~  "&accept=" ~ type.uriEncode;
-	    auto req = Request();
-	    req.authenticator = new BasicAuthentication(credentials.user,credentials.pass);
-	    auto result = cast(string) req.get(downloadUrl).responseBody.data.idup;
-		return result;
-	}
-	
+        downloadUrl = downloadUrl ~  "&accept=" ~ type.uriEncode;
+        auto req = Request();
+        req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
+        auto result = cast(string) req.get(downloadUrl).responseBody.data.idup;
+        return result;
+    }
 
 
-	version(SIL)
-	{
-		Variable get(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
-		{
-			return getRaw(type,ids,properties, additionalArguments).toVariable;
-		}
+    version (SIL) {
+        Variable get(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init) {
+            return getRaw(type, ids, properties, additionalArguments).toVariable;
+        }
 
-		Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init)
-		{
-			import std.algorithm : map;
-			import std.array : array;
-			import std.stdio : stderr, writefln;
-			auto invocationId = "12345678";
-			if (debugMode)
-				stderr.writefln("props: %s", toJsonString(properties));
-			auto props =  parseJson(toJsonString(properties));
-			auto invocation = Invocation.get(type,activeAccountId(), invocationId,ids, props,additionalArguments);
-			auto request = JmapRequest(listCapabilities(),[invocation],null);
-			return post(request);
-		}
-	}
+        Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init) {
+            import std.algorithm : map;
+            import std.array : array;
+            import std.stdio : stderr, writefln;
+            auto invocationId = "12345678";
+            if (debugMode)
+                stderr.writefln("props: %s", toJsonString(properties));
+            auto props =  parseJson(toJsonString(properties));
+            auto invocation = Invocation.get(type, activeAccountId(), invocationId, ids, props, additionalArguments);
+            auto request = JmapRequest(listCapabilities(), [invocation], null);
+            return post(request);
+        }
+    }
 
 
-	Mailbox[] getMailboxes()
-	{
-		import std.range : front, dropOne;
-		auto asdf = getRaw("Mailbox",null);
-		return deserialize!(Mailbox[])(asdf["methodResponses"].byElement.front.byElement.dropOne.front["list"]);
-	}
+    Mailbox[] getMailboxes() {
+        import std.range : front, dropOne;
+        auto asdf = getRaw("Mailbox", null);
+        return deserialize!(Mailbox[])(asdf["methodResponses"].byElement.front.byElement.dropOne.front["list"]);
+    }
 
-	Variable getContact(string[] ids, Variable properties = Variable([]), Variable[string] additionalArguments =(Variable[string]).init)
-	{
-		import std.range : front, dropOne;
-		return Variable(
-				this.get("Contact",ids,properties, additionalArguments)
-				.get!(Variable[string])
-				["methodResponses"]
-				.get!(Variable[])
-				.front
-				.get!(Variable[])
-				.front
-				.get!(Variable[])
-				.dropOne
-				.front
-		);
-	}
+    Variable getContact(string[] ids, Variable properties = Variable([]), Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.range : front, dropOne;
+        return Variable(
+                this.get("Contact", ids, properties, additionalArguments)
+                .get!(Variable[string])
+                ["methodResponses"]
+                .get!(Variable[])
+                .front
+                .get!(Variable[])
+                .front
+                .get!(Variable[])
+                .dropOne
+                .front);
+    }
 
-	Variable getEmails(string[] ids, Variable properties = Variable([ "id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments" ]), Variable bodyProperties = Variable(["all"]),
-			bool fetchTextBodyValues = true, bool fetchHTMLBodyValues = true, bool fetchAllBodyValues = true)
-	{
-		import std.range : front, dropOne;
-		return Variable(
-				this.get(
-					"Email",ids,properties, [
-						"bodyProperties":bodyProperties,
-						"fetchTextBodyValues":fetchTextBodyValues.Variable,
-						"fetchAllBodyValues":fetchAllBodyValues.Variable,
-						"fetchHTMLBodyValues": fetchHTMLBodyValues.Variable,
-					]
-				)
-				.get!(Variable[string])
-				["methodResponses"] //,(Variable[]).init)
-				.get!(Variable[])
-				.front
-				.get!(Variable[])
-				.dropOne
-				.front
-				.get!(Variable[string])
-				["list"]
-		);
-	}
+    Variable getEmails(string[] ids, Variable properties = Variable(["id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments"]), Variable bodyProperties = Variable(["all"]),
+            bool fetchTextBodyValues = true, bool fetchHTMLBodyValues = true, bool fetchAllBodyValues = true) {
+        import std.range : front, dropOne;
+        return Variable(
+                this.get(
+                        "Email", ids, properties, [
+                            "bodyProperties" : bodyProperties,
+                            "fetchTextBodyValues" : fetchTextBodyValues.Variable,
+                            "fetchAllBodyValues" : fetchAllBodyValues.Variable,
+                            "fetchHTMLBodyValues" : fetchHTMLBodyValues.Variable,
+                        ])
+                .get!(Variable[string])
+                ["methodResponses"] // ,(Variable[]).init)
+                .get!(Variable[])
+                .front
+                .get!(Variable[])
+                .dropOne
+                .front
+                .get!(Variable[string])
+                ["list"]);
+    }
 
 
-	Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto invocation = Invocation.changes(type,activeAccountId(), invocationId,sinceState,maxChanges,additionalArguments);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
-	}
+    Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.algorithm : map;
+        import std.array : array;
+        auto invocationId = "12345678";
+        auto invocation = Invocation.changes(type, activeAccountId(), invocationId, sinceState, maxChanges, additionalArguments);
+        auto request = JmapRequest(listCapabilities(), [invocation], null);
+        return post(request);
+    }
 
-	Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = null)
-	{
-		return changesRaw(type,sinceState,maxChanges,additionalArguments).toVariable;
-	}
+    Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = null) {
+        return changesRaw(type, sinceState, maxChanges, additionalArguments).toVariable;
+    }
 
-	Asdf setRaw(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto createAsdf = parseJson(toJsonString(Variable(create)));
-		auto updateAsdf = parseJson(toJsonString(Variable(update)));
-		auto invocation = Invocation.set(type,activeAccountId(), invocationId,ifInState,createAsdf,updateAsdf,destroy_,additionalArguments);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
-	}
+    Asdf setRaw(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.algorithm : map;
+        import std.array : array;
+        auto invocationId = "12345678";
+        auto createAsdf = parseJson(toJsonString(Variable(create)));
+        auto updateAsdf = parseJson(toJsonString(Variable(update)));
+        auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, createAsdf, updateAsdf, destroy_, additionalArguments);
+        auto request = JmapRequest(listCapabilities(), [invocation], null);
+        return post(request);
+    }
 
-	Variable set(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		return setRaw(type,ifInState,create,update,destroy_,additionalArguments).toVariable;
-	}
+    Variable set(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        return setRaw(type, ifInState, create, update, destroy_, additionalArguments).toVariable;
+    }
 
-	Variable setEmail(string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		return set("Email",ifInState,create,update,destroy_,additionalArguments);
-	}
+    Variable setEmail(string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        return set("Email", ifInState, create, update, destroy_, additionalArguments);
+    }
 
 
-	Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto createAsdf = parseJson(toJsonString(Variable(create)));
-		auto invocation = Invocation.copy(type,fromAccountId, invocationId,ifFromInState,activeAccountId,ifInState,createAsdf,onSuccessDestroyOriginal,destroyFromIfInState);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
-	}
+    Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.algorithm : map;
+        import std.array : array;
+        auto invocationId = "12345678";
+        auto createAsdf = parseJson(toJsonString(Variable(create)));
+        auto invocation = Invocation.copy(type, fromAccountId, invocationId, ifFromInState, activeAccountId, ifInState, createAsdf, onSuccessDestroyOriginal, destroyFromIfInState);
+        auto request = JmapRequest(listCapabilities(), [invocation], null);
+        return post(request);
+    }
 
-	Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		return copyRaw(type,fromAccountId,ifFromInState,ifInState,create,onSuccessDestroyOriginal,destroyFromIfInState,additionalArguments).toVariable;
-	}
+    Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        return copyRaw(type, fromAccountId, ifFromInState, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState, additionalArguments).toVariable;
+    }
 
 
-	Asdf queryRaw(string type, Variable filter, Variable sort, int position, string anchor=null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto filterAsdf = parseJson(toJsonString(filter));
-		auto sortAsdf = parseJson(toJsonString(sort));
-		auto invocation = Invocation.query(type,activeAccountId,invocationId,filterAsdf,sortAsdf,position,anchor,anchorOffset,limit,calculateTotal, additionalArguments);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
-	}
+    Asdf queryRaw(string type, Variable filter, Variable sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.algorithm : map;
+        import std.array : array;
+        auto invocationId = "12345678";
+        auto filterAsdf = parseJson(toJsonString(filter));
+        auto sortAsdf = parseJson(toJsonString(sort));
+        auto invocation = Invocation.query(type, activeAccountId, invocationId, filterAsdf, sortAsdf, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
+        auto request = JmapRequest(listCapabilities(), [invocation], null);
+        return post(request);
+    }
 
-	Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.exception : enforce;
-		import std.stdio: stderr,writeln;
-		if (collapseThreads)
-			additionalArguments["collapseThreads"] = Variable(true);
-		auto o = cast(FilterOperator) filter;
-		auto c = cast(FilterCondition) filter;
-		enforce(o !is null || c !is null, "filter must be either an operator or a condition");
-		if (debugMode)
-			stderr.writeln((o !is null)? serializeToJsonPretty(o) : serializeToJsonPretty(c));
-		Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).toVariable : parseJson(serializeToJson(c)).toVariable;
-		return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit,calculateTotal,additionalArguments).toVariable;
-	}
+    Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.exception : enforce;
+        import std.stdio : stderr, writeln;
+        if (collapseThreads)
+            additionalArguments["collapseThreads"] = Variable(true);
+        auto o = cast(FilterOperator) filter;
+        auto c = cast(FilterCondition) filter;
+        enforce(o !is null || c !is null, "filter must be either an operator or a condition");
+        if (debugMode)
+            stderr.writeln((o !is null) ? serializeToJsonPretty(o) : serializeToJsonPretty(c));
+        Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).toVariable : parseJson(serializeToJson(c)).toVariable;
+        return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
+    }
 
-	Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit,calculateTotal,additionalArguments).toVariable;
-	}
+    Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
+    }
 
-	Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		import std.algorithm : map;
-		import std.array : array;
-		auto invocationId = "12345678";
-		auto filterAsdf = parseJson(toJsonString(filter));
-		auto sortAsdf = parseJson(toJsonString(sort));
-		auto invocation = Invocation.queryChanges(type,activeAccountId,invocationId,filterAsdf,sortAsdf,sinceQueryState,maxChanges,upToId,calculateTotal,additionalArguments);
-		auto request = JmapRequest(listCapabilities(),[invocation],null);
-		return post(request);
-	}
+    Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        import std.algorithm : map;
+        import std.array : array;
+        auto invocationId = "12345678";
+        auto filterAsdf = parseJson(toJsonString(filter));
+        auto sortAsdf = parseJson(toJsonString(sort));
+        auto invocation = Invocation.queryChanges(type, activeAccountId, invocationId, filterAsdf, sortAsdf, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments);
+        auto request = JmapRequest(listCapabilities(), [invocation], null);
+        return post(request);
+    }
 
-	Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState,Nullable!uint maxChanges = (Nullable!uint).init,  string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		return queryChangesRaw(type, filter, sort, sinceQueryState,maxChanges,upToId,calculateTotal,additionalArguments).toVariable;
-	}
+    Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        return queryChangesRaw(type, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments).toVariable;
+    }
 }
 
-struct Email
-{
-	string id;
-	string blobId;
-	string threadId;
-	Set mailboxIds;
-	Set keywords;
-	Emailer[] from;
-	Emailer[] to;
-	string subject;
-	SysTime date;
-	int size;
-	string preview;
-	Attachment[] attachments;
+struct Email {
+    string id;
+    string blobId;
+    string threadId;
+    Set mailboxIds;
+    Set keywords;
+    Emailer[] from;
+    Emailer[] to;
+    string subject;
+    SysTime date;
+    int size;
+    string preview;
+    Attachment[] attachments;
 
-	ModSeq createdModSeq;
-	ModSeq updatedModSeq;
-	Nullable!SysTime deleted;
+    ModSeq createdModSeq;
+    ModSeq updatedModSeq;
+    Nullable!SysTime deleted;
 }
 
-enum EmailProperty
-{
-	id,
-	blobId,
-	threadId,
-	mailboxIds,
-	keywords,
-	size,
-	receivedAt,
-	messageId,
-	headers,
-	inReplyTo,
-	references,
-	sender,
-	from,
-	to,
-	cc,
-	bcc,
-	replyTo,
-	subject,
-	sentAt,
-	hasAttachment,
-	preview,
-	bodyValues,
-	textBody,
-	htmlBody,
-	attachments,
-	//Raw,
-	//Text,
-	//Addresses,
-	//GroupedAddresses,
-	//URLs,
+enum EmailProperty {
+    id,
+    blobId,
+    threadId,
+    mailboxIds,
+    keywords,
+    size,
+    receivedAt,
+    messageId,
+    headers,
+    inReplyTo,
+    references,
+    sender,
+    from,
+    to,
+    cc,
+    bcc,
+    replyTo,
+    subject,
+    sentAt,
+    hasAttachment,
+    preview,
+    bodyValues,
+    textBody,
+    htmlBody,
+    attachments,
+    // Raw,
+    // Text,
+    // Addresses,
+    // GroupedAddresses,
+    // URLs,
 }
 
-enum EmailBodyProperty
-{
-	partId,
-	blobId,
-	size,
-	name,
-	type,
-	charset,
-	disposition,
-	cid,
-	language,
-	location,
-	subParts,
-	bodyStructure,
-	bodyValues,
-	textBody,
-	htmlBody,
-	attachments,
-	hasAttachment,
-	preview,
+enum EmailBodyProperty {
+    partId,
+    blobId,
+    size,
+    name,
+    type,
+    charset,
+    disposition,
+    cid,
+    language,
+    location,
+    subParts,
+    bodyStructure,
+    bodyValues,
+    textBody,
+    htmlBody,
+    attachments,
+    hasAttachment,
+    preview,
 }
 
-struct EmailSubmission
-{
-	string id;
-	string identityId;
-	string emailId;
-	string threadId;
-	Nullable!Envelope envelope;
-	DateTime sendAt;
-	string undoStatus;
-	string deliveryStatus;
-	string[] dsnBlobIds;
-	string[] mdnBlobIds;
+struct EmailSubmission {
+    string id;
+    string identityId;
+    string emailId;
+    string threadId;
+    Nullable!Envelope envelope;
+    DateTime sendAt;
+    string undoStatus;
+    string deliveryStatus;
+    string[] dsnBlobIds;
+    string[] mdnBlobIds;
 }
 
 
-struct Envelope
-{
-	EmailAddress mailFrom;
+struct Envelope {
+    EmailAddress mailFrom;
 
-	EmailAddress rcptTo;
+    EmailAddress rcptTo;
 }
 
-struct EmailAddress
-{
-	string email;
-	Nullable!(Variable[string]) parameters;
+struct EmailAddress {
+    string email;
+    Nullable!(Variable[string])parameters;
 }
 
-struct ThreadEmail
-{
-	string id;
-	string[] mailboxIds;
-	bool isUnread;
-	bool isFlagged;
+struct ThreadEmail {
+    string id;
+    string[] mailboxIds;
+    bool isUnread;
+    bool isFlagged;
 }
 
-struct Thread
-{
-	string id;
-	ThreadEmail[] emails;
-	ModSeq createdModSeq;
-	ModSeq updatedModSeq;
-	Nullable!SysTime deleted;
+struct Thread {
+    string id;
+    ThreadEmail[] emails;
+    ModSeq createdModSeq;
+    ModSeq updatedModSeq;
+    Nullable!SysTime deleted;
 }
 
-struct MailboxRights
-{
-	bool mayReadItems;
-	bool mayAddItems;
-	bool mayRemoveItems;
-	bool mayCreateChild;
-	bool mayRename;
-	bool mayDelete;
-	bool maySetKeywords;
-	bool maySubmit;
-	bool mayAdmin;
-	bool maySetSeen;
+struct MailboxRights {
+    bool mayReadItems;
+    bool mayAddItems;
+    bool mayRemoveItems;
+    bool mayCreateChild;
+    bool mayRename;
+    bool mayDelete;
+    bool maySetKeywords;
+    bool maySubmit;
+    bool mayAdmin;
+    bool maySetSeen;
 }
 
-struct Mailbox
-{
-	string id;
-	string name;
-	string parentId;
-	string role;
-	int sortOrder;
-	int totalEmails;
-	int unreadEmails;
-	int totalThreads;
-	int unreadThreads;
-	MailboxRights myRights;
-	bool autoPurge;
-	int hidden;
-	string identityRef;
-	bool learnAsSpam;
-	int purgeOlderThanDays;
-	bool isCollapsed;
-	bool isSubscribed;
-	bool suppressDuplicates;
-	bool autoLearn;
-	MailboxSortProperty[] sort;
+struct Mailbox {
+    string id;
+    string name;
+    string parentId;
+    string role;
+    int sortOrder;
+    int totalEmails;
+    int unreadEmails;
+    int totalThreads;
+    int unreadThreads;
+    MailboxRights myRights;
+    bool autoPurge;
+    int hidden;
+    string identityRef;
+    bool learnAsSpam;
+    int purgeOlderThanDays;
+    bool isCollapsed;
+    bool isSubscribed;
+    bool suppressDuplicates;
+    bool autoLearn;
+    MailboxSortProperty[] sort;
 }
 
-string[] allMailboxPaths(Mailbox[] mailboxes)
-{
-	import std.algorithm : map;
-	import std.array : array;
-	return mailboxes.map!(mb => mailboxPath(mailboxes,mb.id)).array;
+string[] allMailboxPaths(Mailbox[] mailboxes) {
+    import std.algorithm : map;
+    import std.array : array;
+    return mailboxes.map!(mb => mailboxPath(mailboxes, mb.id)).array;
 }
 
-string mailboxPath(Mailbox[] mailboxes, string id, string path = null)
-{
-	import std.algorithm : countUntil;
-	import std.format : format;
-	import std.exception : enforce;
-	import std.string : endsWith;
-	if (path.endsWith("/"))
-		path = path[0..$-1];
-	auto i = mailboxes.countUntil!(mailbox => mailbox.id == id);
-	if (i == -1)
-		return path;
-	path = (path == null) ? mailboxes[i].name : format!"%s/%s"(mailboxes[i].name,path);
-	return mailboxPath(mailboxes,mailboxes[i].parentId,path);
+string mailboxPath(Mailbox[] mailboxes, string id, string path = null) {
+    import std.algorithm : countUntil;
+    import std.format : format;
+    import std.exception : enforce;
+    import std.string : endsWith;
+    if (path.endsWith("/"))
+        path = path[0 .. $ - 1];
+    auto i = mailboxes.countUntil!(mailbox => mailbox.id == id);
+    if (i == -1)
+        return path;
+    path = (path == null) ? mailboxes[i].name : format!"%s/%s"(mailboxes[i].name, path);
+    return mailboxPath(mailboxes, mailboxes[i].parentId, path);
 }
 
-Nullable!Mailbox findMailboxPath(Mailbox[] mailboxes, string path)
-{
-	import std.algorithm : filter;
-	import std.string : split, join, endsWith;
-	import std.range : back;
-	import std.exception : enforce;
+Nullable!Mailbox findMailboxPath(Mailbox[] mailboxes, string path) {
+    import std.algorithm : filter;
+    import std.string : split, join, endsWith;
+    import std.range : back;
+    import std.exception : enforce;
 
-	Nullable!Mailbox ret;
-	if (path.endsWith("/"))
-		path = path[0..$-1];
-	auto cols = path.split("/");
-	if (cols.length == 0)
-		return ret;
+    Nullable!Mailbox ret;
+    if (path.endsWith("/"))
+        path = path[0 .. $ - 1];
+    auto cols = path.split("/");
+    if (cols.length == 0)
+        return ret;
 
-	foreach(item; mailboxes.filter!(mailbox => mailbox.name == cols[$-1]))
-	{
-		if (item.parentId.length == 0)
-		{
-			if (cols.length <= 1)
-			{
-				ret = item;
-				break;
-			}
-			else continue;
-		}
-		auto parent = findMailboxPath(mailboxes,cols[0..$-1].join("/"));
-		if (parent.isNull)
-		{
-			continue;
-		}
-		else
-		{
-			ret = item;
-			break;
-		}
-	}
-	return ret;
+    foreach (item; mailboxes.filter!(mailbox => mailbox.name == cols[$ - 1])) {
+        if (item.parentId.length == 0) {
+            if (cols.length <= 1) {
+                ret = item;
+                break;
+            } else { continue; }
+        }
+        auto parent = findMailboxPath(mailboxes, cols[0 .. $ - 1].join("/"));
+        if (parent.isNull) {
+            continue;
+        } else {
+            ret = item;
+            break;
+        }
+    }
+    return ret;
 }
 
-struct MailboxSortProperty
-{
-	string property;
-	bool isAscending;
+struct MailboxSortProperty {
+    string property;
+    bool isAscending;
 }
 
 
-struct MailboxEmailList
-{
-	string id;
-	string messageId;
-	string threadId;
-	ModSeq updatedModSeq;
-	SysTime created;
-	Nullable!SysTime deleted;
+struct MailboxEmailList {
+    string id;
+    string messageId;
+    string threadId;
+    ModSeq updatedModSeq;
+    SysTime created;
+    Nullable!SysTime deleted;
 }
 
-struct EmailChangeLogEntry
-{
-	string id;
-	string[] created;
-	string[] updated;
-	string[] destroyed;
+struct EmailChangeLogEntry {
+    string id;
+    string[] created;
+    string[] updated;
+    string[] destroyed;
 }
 
-struct ThreadChangeLogEntry
-{
-	string id;
-	string[] created;
-	string[] updated;
-	string[] destroyed;
+struct ThreadChangeLogEntry {
+    string id;
+    string[] created;
+    string[] updated;
+    string[] destroyed;
 }
 
-struct ThreadRef
-{
-	string id;
-	string threadId;
-	SysTime lastSeen;
+struct ThreadRef {
+    string id;
+    string threadId;
+    SysTime lastSeen;
 }
 
-struct HighLowModSeqCache
-{
-	ModSeq highModSeq;
-	ModSeq highModSeqEmail;
-	ModSeq highModSeqThread;
-	ModSeq lowModSeqEmail;
-	ModSeq lowModSeqThread;
-	ModSeq lowModSeqMailbox;
+struct HighLowModSeqCache {
+    ModSeq highModSeq;
+    ModSeq highModSeqEmail;
+    ModSeq highModSeqThread;
+    ModSeq lowModSeqEmail;
+    ModSeq lowModSeqThread;
+    ModSeq lowModSeqMailbox;
 }
 
 /+
@@ -777,262 +702,241 @@ struct HighLowModSeqCache
 }
 +/
 
-void serializeAsdf(S)(ref S ser, AsdfNode node) pure
-{
-	if (node.isLeaf())
-		serializeAsdf(ser,node.data);
+void serializeAsdf(S)(ref S ser, AsdfNode node) pure {
+    if (node.isLeaf())
+        serializeAsdf(ser, node.data);
 
-	auto objState = ser.objectBegin();
-	foreach(kv;node.children.byKeyValue)
-	{
-		ser.putKey(kv.key);
-		serializeAsdf(ser,kv.value);
-	}
-	ser.objectEnd(objState);
+    auto objState = ser.objectBegin();
+    foreach (kv; node.children.byKeyValue) {
+        ser.putKey(kv.key);
+        serializeAsdf(ser, kv.value);
+    }
+    ser.objectEnd(objState);
 }
 
-void serializeAsdf(S)(ref S ser, Asdf el) pure
-{
-	final switch(el.kind)
-	{
-		case Asdf.Kind.null_:
-			ser.putValue(null);
-			break;
+void serializeAsdf(S)(ref S ser, Asdf el) pure {
+    final switch (el.kind) {
+        case Asdf.Kind.null_:
+            ser.putValue(null);
+            break;
 
-		case Asdf.Kind.true_:
-			ser.putValue(true);
-			break;
+        case Asdf.Kind.true_:
+            ser.putValue(true);
+            break;
 
-		case Asdf.Kind.false_:
-			ser.putValue(false);
-			break;
+        case Asdf.Kind.false_:
+            ser.putValue(false);
+            break;
 
-		case Asdf.Kind.number:
-			ser.putValue(el.get!double(double.nan));
-			break;
+        case Asdf.Kind.number:
+            ser.putValue(el.get!double (double.nan));
+            break;
 
-		case Asdf.Kind.string:
-			ser.putValue(el.get!string(null));
-			break;
+        case Asdf.Kind.string:
+            ser.putValue(el.get!string(null));
+            break;
 
-		case Asdf.Kind.array:
-			auto arrayState = ser.arrayBegin();
-			foreach(arrEl;el.byElement)
-			{
-				ser.elemBegin();
-				serializeAsdf(ser,arrEl);
-			}
-			ser.arrayEnd(arrayState);
-			break;
+        case Asdf.Kind.array:
+            auto arrayState = ser.arrayBegin();
+            foreach (arrEl; el.byElement) {
+                ser.elemBegin();
+                serializeAsdf(ser, arrEl);
+            }
+            ser.arrayEnd(arrayState);
+            break;
 
-		case Asdf.Kind.object:
-			auto objState = ser.objectBegin();
-			foreach(kv;el.byKeyValue)
-			{
-				ser.putKey(kv.key);
-				serializeAsdf(ser,kv.value);
-			}
-			ser.objectEnd(objState);
-			break;
-	}
+        case Asdf.Kind.object:
+            auto objState = ser.objectBegin();
+            foreach (kv; el.byKeyValue) {
+                ser.putKey(kv.key);
+                serializeAsdf(ser, kv.value);
+            }
+            ser.objectEnd(objState);
+            break;
+    }
 }
 
 
+struct Invocation {
+    string name;
+    Asdf arguments;
+    string id;
 
-struct Invocation
-{
-	string name;
-	Asdf arguments;
-	string id;
-
-	void serialize(S)(ref S ser) pure
-	{
-		auto outerState = ser.arrayBegin();
-		ser.elemBegin();
-		ser.putValue(name);
-		ser.elemBegin();
-		auto state = ser.objectBegin();
-		foreach(el;arguments.byKeyValue)
-		{
-			ser.putKey(el.key);
-			serializeAsdf(ser,el.value);
-		}
-		ser.objectEnd(state);
-		ser.elemBegin();
-		ser.putValue(id);
-		ser.arrayEnd(outerState);
-	}
+    void serialize(S)(ref S ser) pure {
+        auto outerState = ser.arrayBegin();
+        ser.elemBegin();
+        ser.putValue(name);
+        ser.elemBegin();
+        auto state = ser.objectBegin();
+        foreach (el; arguments.byKeyValue) {
+            ser.putKey(el.key);
+            serializeAsdf(ser, el.value);
+        }
+        ser.objectEnd(state);
+        ser.elemBegin();
+        ser.putValue(id);
+        ser.arrayEnd(outerState);
+    }
 
 
-	static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, Asdf properties = Asdf.init, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["ids"] = AsdfNode(ids.serializeToAsdf);
-		arguments["properties"] = AsdfNode(properties);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, Asdf properties = Asdf.init, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["ids"] = AsdfNode(ids.serializeToAsdf);
+        arguments["properties"] = AsdfNode(properties);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/get",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/get",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 
-	static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["sinceState"] = AsdfNode(sinceState.serializeToAsdf);
-		arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["sinceState"] = AsdfNode(sinceState.serializeToAsdf);
+        arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/changes",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/changes",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 
 
-	static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, Asdf create = Asdf.init, Asdf update = Asdf.init, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
-		arguments["create"] = AsdfNode(create);
-		arguments["update"] = AsdfNode(update);
-		arguments["destroy"] = AsdfNode(destroy_.serializeToAsdf);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, Asdf create = Asdf.init, Asdf update = Asdf.init, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
+        arguments["create"] = AsdfNode(create);
+        arguments["update"] = AsdfNode(update);
+        arguments["destroy"] = AsdfNode(destroy_.serializeToAsdf);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/set",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/set",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 
-	static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, Asdf create = Asdf.init, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["fromAccountId"] =AsdfNode(fromAccountId.serializeToAsdf);
-		arguments["ifFromInState"] = AsdfNode(ifFromInState.serializeToAsdf);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
-		arguments["create"] = AsdfNode(create);
-		arguments["onSuccessDestroyOriginal"] = AsdfNode(onSuccessDestroyOriginal.serializeToAsdf);
-		arguments["destroyFromIfInState"] = AsdfNode(destroyFromIfInState.serializeToAsdf);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, Asdf create = Asdf.init, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["fromAccountId"] = AsdfNode(fromAccountId.serializeToAsdf);
+        arguments["ifFromInState"] = AsdfNode(ifFromInState.serializeToAsdf);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
+        arguments["create"] = AsdfNode(create);
+        arguments["onSuccessDestroyOriginal"] = AsdfNode(onSuccessDestroyOriginal.serializeToAsdf);
+        arguments["destroyFromIfInState"] = AsdfNode(destroyFromIfInState.serializeToAsdf);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/copy",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/copy",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 
-	static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor=null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["filter"] = AsdfNode(filter);
-		arguments["sort"] = AsdfNode(sort);
-		arguments["position"] = AsdfNode(position.serializeToAsdf);
-		arguments["anchor"] = AsdfNode(anchor.serializeToAsdf);
-		arguments["anchorOffset"] = AsdfNode(anchorOffset.serializeToAsdf);
-		arguments["limit"] = AsdfNode(limit.serializeToAsdf);
-		arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["filter"] = AsdfNode(filter);
+        arguments["sort"] = AsdfNode(sort);
+        arguments["position"] = AsdfNode(position.serializeToAsdf);
+        arguments["anchor"] = AsdfNode(anchor.serializeToAsdf);
+        arguments["anchorOffset"] = AsdfNode(anchorOffset.serializeToAsdf);
+        arguments["limit"] = AsdfNode(limit.serializeToAsdf);
+        arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/query",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/query",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 
-	static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init,  string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init)
-	{
-		auto arguments = AsdfNode("{}".parseJson);
-		arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-		arguments["filter"] = AsdfNode(filter);
-		arguments["sort"] = AsdfNode(sort);
-		arguments["sinceQueryState"] = AsdfNode(sinceQueryState.serializeToAsdf);
-		arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
-		arguments["upToId"] = AsdfNode(upToId.serializeToAsdf);
-		arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
-		foreach(kv;additionalArguments.byKeyValue)
-			arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
+    static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
+        auto arguments = AsdfNode("{}".parseJson);
+        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
+        arguments["filter"] = AsdfNode(filter);
+        arguments["sort"] = AsdfNode(sort);
+        arguments["sinceQueryState"] = AsdfNode(sinceQueryState.serializeToAsdf);
+        arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
+        arguments["upToId"] = AsdfNode(upToId.serializeToAsdf);
+        arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
+        foreach (kv; additionalArguments.byKeyValue)
+            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
 
-		Invocation ret = {
-			name: type ~ "/queryChanges",
-			arguments: cast(Asdf) arguments,
-			id: invocationId,
-		};
-		return ret;
-	}
+        Invocation ret = {
+            name : type ~ "/queryChanges",
+            arguments : cast(Asdf) arguments,
+            id : invocationId,
+        };
+        return ret;
+    }
 }
 
-enum FilterOperatorKind
-{
-	and,
-	or,
-	not,
+enum FilterOperatorKind {
+    and,
+    or,
+    not,
 }
 
-interface Filter
-{
+interface Filter {
 }
 
-class FilterOperator : Filter
-{
-	FilterOperatorKind operator;
-	
-	Filter[] conditions;
+class FilterOperator : Filter {
+    FilterOperatorKind operator;
 
-	this(FilterOperatorKind operator, Filter[] conditions)
-	{
-		this.operator = operator;
-		this.conditions = conditions;
-	}
+    Filter[] conditions;
 
-	void serialize(S)(ref S serializer)
-	{
-		import std.exception : enforce;
-		import std.format : format;
-		import std.conv : to;
-		import std.string : toUpper;
+    this(FilterOperatorKind operator, Filter[] conditions) {
+        this.operator = operator;
+        this.conditions = conditions;
+    }
 
-		auto o = serializer.objectBegin();
-		serializer.putKey("operator");
-		serializer.putValue(operator.to!string.toUpper());
-		serializer.putKey("conditions");
-		auto o2 = serializer.arrayBegin();
-		foreach(i,condition;conditions)
-		{
-			serializer.elemBegin();
-			auto f = cast(FilterOperator) condition;
-			auto c = cast(FilterCondition) condition;
-			enforce(f !is null || c !is null, format!"condition #%s must be FilterOperator or FilterCondition!"(i));
-			if (f !is null)
-				serializer.serializeValue(f);
-			else if (c !is null)
-				serializer.serializeValue(c);
-		}
-		serializer.arrayEnd(o2);
-		serializer.objectEnd(o);
-	}
+    void serialize(S)(ref S serializer) {
+        import std.exception : enforce;
+        import std.format : format;
+        import std.conv : to;
+        import std.string : toUpper;
+
+        auto o = serializer.objectBegin();
+        serializer.putKey("operator");
+        serializer.putValue(operator.to!string.toUpper());
+        serializer.putKey("conditions");
+        auto o2 = serializer.arrayBegin();
+        foreach (i, condition; conditions) {
+            serializer.elemBegin();
+            auto f = cast(FilterOperator) condition;
+            auto c = cast(FilterCondition) condition;
+            enforce(f !is null || c !is null, format!"condition #%s must be FilterOperator or FilterCondition!"(i));
+            if (f !is null) {
+                serializer.serializeValue(f);
+            } else if (c !is null) {
+                serializer.serializeValue(c);
+            }
+        }
+        serializer.arrayEnd(o2);
+        serializer.objectEnd(o);
+    }
 }
 
 
@@ -1040,424 +944,392 @@ package enum nullArray = (Nullable!(string[])).init;
 package enum NullUint = (Nullable!uint).init;
 package enum NullDateTime = (Nullable!DateTime).init;
 
-FilterCondition filterCondition(	 string inMailbox = null,
-			Nullable!(string[]) inMailboxOtherThan = nullArray,
-			string before = null,
-			string after = null,
-			Nullable!uint minSize = NullUint,
-			Nullable!uint maxSize = NullUint,
-			string allInThreadHaveKeyword = null,
-			string someInThreadHaveKeyword = null,
-			string noneInThreadHaveKeyword = null,
-			string hasKeyword = null,
-			string notKeyword = null,
-			string text = null,
-			string from = null,
-			string to = null,
-			string cc = null,
-			string bcc = null,
-			string subject = null,
-			string body_ = null,
-			Nullable!(string[]) header = nullArray, )
-{
-	return new FilterCondition(inMailbox,inMailboxOtherThan,before,after,minSize,
-			maxSize,allInThreadHaveKeyword,someInThreadHaveKeyword,noneInThreadHaveKeyword,
-			hasKeyword,notKeyword,text,from,to,cc,bcc,subject,body_,header);
+FilterCondition filterCondition(string inMailbox = null,
+        Nullable!(string[])inMailboxOtherThan = nullArray,
+        string before = null,
+        string after = null,
+        Nullable!uint minSize = NullUint,
+        Nullable!uint maxSize = NullUint,
+        string allInThreadHaveKeyword = null,
+        string someInThreadHaveKeyword = null,
+        string noneInThreadHaveKeyword = null,
+        string hasKeyword = null,
+        string notKeyword = null,
+        string text = null,
+        string from = null,
+        string to = null,
+        string cc = null,
+        string bcc = null,
+        string subject = null,
+        string body_ = null,
+        Nullable!(string[])header = nullArray, ) {
+    return new FilterCondition(inMailbox, inMailboxOtherThan, before, after, minSize,
+            maxSize, allInThreadHaveKeyword, someInThreadHaveKeyword, noneInThreadHaveKeyword,
+            hasKeyword, notKeyword, text, from, to, cc, bcc, subject, body_, header);
 }
 
-private void doSerialize(S,T)(ref S serializer, T t)
-{
-	import std.traits : hasUDA, getUDAs, isCallable, isInstanceOf;
-	auto o = serializer.objectBegin;
-	static foreach(i,M;T.tupleof)
-	{{
-		 static if (!isCallable!M)
-		 {
-			 static if (hasUDA!(M,"serdeKeys"))
-				 enum name = getUDAs!(M,"serdeKeys")[0].value;
-			 else
-				 enum name = __traits(identifier,M);
-			 mixin("auto value = t." ~ __traits(identifier,M) ~ ";");
-			 static if (isInstanceOf!(Nullable,typeof(value)))
-			 {
-				 if (!value.isNull)
-				 {
-					//static if (is(typeof(value.get.result) == typeof(Variable)))
-					//		serializeAsAsdf(value.get.result);
-					//else static if is(Unqual!
-					//		doSerialize(serializer,value.get.result);
-					 serializer.serializeAsdf(serializeToAsdf(value.get));
-				 }
-				 else
-				 {
-					 serializer.putValue(null);
-				 }
-			 }
-			 else
-			 {
-				 serializer.serializeAsdf(serializeToAsdf(result));
-			 }
-		 }
-	}}
+private void doSerialize(S, T)(ref S serializer, T t) {
+    import std.traits : hasUDA, getUDAs, isCallable, isInstanceOf;
+    auto o = serializer.objectBegin;
+    static foreach (i, M; T.tupleof) {
+        {
+            static if (!isCallable!M) {
+                static if (hasUDA!(M, "serdeKeys")) {
+                    enum name = getUDAs!(M, "serdeKeys")[0].value;
+                } else {
+                    enum name = __traits(identifier, M);
+                }
+                mixin("auto value = t." ~ __traits(identifier, M) ~ ";");
+                static if (isInstanceOf!(Nullable, typeof(value))) {
+                    if (!value.isNull) {
+                        // static if (is(typeof(value.get.result) == typeof(Variable)))
+                        //      serializeAsAsdf(value.get.result);
+                        // else static if is(Unqual!
+                        //      doSerialize(serializer,value.get.result);
+                        serializer.serializeAsdf(serializeToAsdf(value.get));
+                    } else {
+                        serializer.putValue(null);
+                    }
+                } else {
+                    serializer.serializeAsdf(serializeToAsdf(result));
+                }
+            }
+        }
+    }
 }
 
-string toUTCDate(Nullable!DateTime dt)
-{
-	import std.exception : enforce;
-	enforce(!dt.isNull,"datetime must not be null");
-	return toUTCDate(dt.get);
+string toUTCDate(Nullable!DateTime dt) {
+    import std.exception : enforce;
+    enforce(!dt.isNull, "datetime must not be null");
+    return toUTCDate(dt.get);
 }
 
-//"2014-10-30T06:12:00Z"
-string toUTCDate(DateTime dt)
-{
-	import std.string : format;
-	return format!"%04d-%02d-%02dT%02d:%02d:%02dZ"(
-			dt.date.year,
-			dt.date.month,
-			dt.date.day,
-			dt.timeOfDay.hour,
-			dt.timeOfDay.minute,
-			dt.timeOfDay.second,
-	);
+// "2014-10-30T06:12:00Z"
+string toUTCDate(DateTime dt) {
+    import std.string : format;
+    return format!"%04d-%02d-%02dT%02d:%02d:%02dZ"(
+        dt.date.year,
+        dt.date.month,
+        dt.date.day,
+        dt.timeOfDay.hour,
+        dt.timeOfDay.minute,
+        dt.timeOfDay.second,
+    );
 }
 
-class FilterCondition : Filter
-{
-	@serializationIgnoreOutIf!`a.length == 0`
-	string inMailbox;
+class FilterCondition : Filter {
+    @serializationIgnoreOutIf!`a.length == 0`
+    string inMailbox;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!(string[]) inMailboxOtherThan;
+    @serializationIgnoreOutIf!`a.isNull`
+    Nullable!(string[])inMailboxOtherThan;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	@serializationTransformOut!toUTCDate
-	Nullable!DateTime before;
+    @serializationIgnoreOutIf!`a.isNull`
+    @serializationTransformOut!toUTCDate
+    Nullable!DateTime before;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	@serializationTransformOut!toUTCDate
-	Nullable!DateTime after;
+    @serializationIgnoreOutIf!`a.isNull`
+    @serializationTransformOut!toUTCDate
+    Nullable!DateTime after;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!uint minSize;
+    @serializationIgnoreOutIf!`a.isNull`
+    Nullable!uint minSize;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!uint maxSize;
+    @serializationIgnoreOutIf!`a.isNull`
+    Nullable!uint maxSize;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string allInThreadHaveKeyword;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string allInThreadHaveKeyword;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string someInThreadHaveKeyword;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string someInThreadHaveKeyword;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string noneInThreadHaveKeyword;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string noneInThreadHaveKeyword;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string hasKeyword;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string hasKeyword;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string notKeyword;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string notKeyword;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string text;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string text;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string from;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string from;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string to;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string to;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string cc;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string cc;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string bcc;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string bcc;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	string subject;
+    @serializationIgnoreOutIf!`a.length == 0`
+    string subject;
 
-	@serializationIgnoreOutIf!`a.length == 0`
-	@serdeKeys("body")
-	string body_;
+    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeKeys("body")
+    string body_;
 
-	@serializationIgnoreOutIf!`a.isNull`
-	Nullable!(string[]) header;
+    @serializationIgnoreOutIf!`a.isNull`
+    Nullable!(string[])header;
 
-	override string toString()
-	{
-		import asdf : jsonSerializer;
-		import std.array : appender;
-		return serializeToJson(this).idup;
-		/+
-		auto app = appender!(char[]);
-		auto ser = jsonSerializer!("\t")((const(char)[] chars) => app.put(chars));
-		serialize(ser);
-		ser.flush;
-		return cast(string)(app.data); +/
-	}
+    override string toString() {
+        import asdf : jsonSerializer;
+        import std.array : appender;
+        return serializeToJson(this).idup;
+        /+
+        auto app = appender!(char[]);
+        auto ser = jsonSerializer!("\t")((const(char)[] chars) => app.put(chars));
+        serialize(ser);
+        ser.flush;
+        return cast(string)(app.data); +/
+    }
 /+
-	void serialize(S)(ref S serializer)
-	{
-		doSerialize(serializer,this);
-	}
+    void serialize(S)(ref S serializer)
+    {
+        doSerialize(serializer,this);
+    }
 +/
 
-	this(	 	string inMailbox = null,
-			Nullable!(string[]) inMailboxOtherThan = nullArray,
-			string before = null,
-			string after = null,
-			Nullable!uint minSize = NullUint,
-			Nullable!uint maxSize = NullUint,
-			string allInThreadHaveKeyword = null,
-			string someInThreadHaveKeyword = null,
-			string noneInThreadHaveKeyword = null,
-			string hasKeyword = null,
-			string notKeyword = null,
-			string text = null,
-			string from = null,
-			string to = null,
-			string cc = null,
-			string bcc = null,
-			string subject = null,
-			string body_ = null,
-			Nullable!(string[]) header = nullArray, )
-	{
-		this.inMailbox = inMailbox;
-		this.inMailboxOtherThan = inMailboxOtherThan;
-		if (before.length > 0)
-			this.before = DateTime.fromISOExtString(before);
-		if (after.length > 0)
-			this.after = DateTime.fromISOExtString(after);
-		this.minSize = minSize;
-		this.maxSize = maxSize;
-		this.allInThreadHaveKeyword = allInThreadHaveKeyword;
-		this.someInThreadHaveKeyword = someInThreadHaveKeyword;
-		this.hasKeyword = hasKeyword;
-		this.notKeyword = notKeyword;
-		this.text = text;
-		this.from = from;
-		this.to = to;
-		this.cc = cc;
-		this.bcc = bcc;
-		this.subject = subject;
-		this.body_ = body_;
-		this.header = header;
-	}
+    this(string inMailbox = null,
+            Nullable!(string[])inMailboxOtherThan = nullArray,
+            string before = null,
+            string after = null,
+            Nullable!uint minSize = NullUint,
+            Nullable!uint maxSize = NullUint,
+            string allInThreadHaveKeyword = null,
+            string someInThreadHaveKeyword = null,
+            string noneInThreadHaveKeyword = null,
+            string hasKeyword = null,
+            string notKeyword = null,
+            string text = null,
+            string from = null,
+            string to = null,
+            string cc = null,
+            string bcc = null,
+            string subject = null,
+            string body_ = null,
+            Nullable!(string[])header = nullArray, ) {
+        this.inMailbox = inMailbox;
+        this.inMailboxOtherThan = inMailboxOtherThan;
+        if (before.length > 0)
+            this.before = DateTime.fromISOExtString(before);
+        if (after.length > 0)
+            this.after = DateTime.fromISOExtString(after);
+        this.minSize = minSize;
+        this.maxSize = maxSize;
+        this.allInThreadHaveKeyword = allInThreadHaveKeyword;
+        this.someInThreadHaveKeyword = someInThreadHaveKeyword;
+        this.hasKeyword = hasKeyword;
+        this.notKeyword = notKeyword;
+        this.text = text;
+        this.from = from;
+        this.to = to;
+        this.cc = cc;
+        this.bcc = bcc;
+        this.subject = subject;
+        this.body_ = body_;
+        this.header = header;
+    }
 }
 
-Filter operatorAsFilter(FilterOperator filterOperator)
-{
-	return cast(Filter) filterOperator;
+Filter operatorAsFilter(FilterOperator filterOperator) {
+    return cast(Filter) filterOperator;
 }
 
-Filter conditionAsFilter(FilterCondition filterCondition)
-{
-	return cast(Filter) filterCondition;
+Filter conditionAsFilter(FilterCondition filterCondition) {
+    return cast(Filter) filterCondition;
 }
 
 
-struct Comparator
-{
-	string property;
-	bool isAscending = true;
-	string collation = null;
-}
-
-	
-struct JmapRequest
-{
-	string[] using;
-	Invocation[] methodCalls;
-	string[string] createdIds = null;
-}
-
-struct JmapResponse
-{
-	Invocation[] methodResponses;
-	string[string] createdIds;
-	string sessionState;
-}
-
-struct JmapResponseError
-{
-	string type;
-	int status;
-	string detail;
-}
-
-struct ResultReference
-{
-	string resultOf;
-	string name;
-	string path;
-}
-
-struct ContactAddress
-{
-	string type;
-	string label; //  label;
-	string street;
-	string locality;
-	string region;
-	string postcode;
-	string country;
-	bool isDefault;
-}
-
-struct JmapFile
-{
-	string blobId;
-	string type;
-	string name;
-	Nullable!uint size;
-}
-
-struct ContactInformation
-{
-	string type;
-	string label;
-	string value;
-	bool isDefault;
+struct Comparator {
+    string property;
+    bool isAscending = true;
+    string collation = null;
 }
 
 
-struct Contact
-{
-	string id;
-	bool isFlagged;
-	JmapFile avatar;
-	string prefix;
-	string firstName;
-	string lastName;
-	string suffix;
-	string nickname;
-	string birthday;
-	string anniversary;
-	string company;
-	string department;
-	string jobTitle;
-	ContactInformation[] emails;
-	ContactInformation[] phones;
-	ContactInformation[] online;
-	ContactAddress[] addresses;
-	string notes;
+struct JmapRequest {
+    string[] using;
+    Invocation[] methodCalls;
+    string[string] createdIds = null;
 }
 
-struct ContactGroup
-{
-	string id;
-	string name;
-	string[] ids;
+struct JmapResponse {
+    Invocation[] methodResponses;
+    string[string] createdIds;
+    string sessionState;
 }
 
-string uriEncode(const(char)[] s)
-{
-	import std.string : replace;
-
-	return  s.replace("!","%21").replace("#","%23").replace("$","%24").replace("&","%26").replace("'","%27")
-			.replace("(","%28").replace(")","%29").replace("*","%2A").replace("+","%2B").replace(",","%2C")
-			.replace("-","%2D").replace(".","%2E").replace("/","%2F").replace(":","%3A").replace(";","%3B")
-			.replace("=","%3D").replace("?","%3F").replace("@","%40").replace("[","%5B").replace("]","%5D")
-			.idup;
+struct JmapResponseError {
+    string type;
+    int status;
+    string detail;
 }
 
-private void serializeAsAsdf(S)(Variable v, ref S serializer)
-{
-	import std.range : iota;
-	import kaleidic.sil.lang.types : SilVariant, KindEnum;
-	import kaleidic.sil.lang.builtins : fnArray;
+struct ResultReference {
+    string resultOf;
+    string name;
+    string path;
+}
 
-	final switch(v.kind)
-	{
-		case KindEnum.void_:
-			serializer.putValue(null);
-			return;
+struct ContactAddress {
+    string type;
+    string label; //  label;
+    string street;
+    string locality;
+    string region;
+    string postcode;
+    string country;
+    bool isDefault;
+}
 
-		case KindEnum.object:
-			auto var = v.get!SilVariant;
-			auto acc = var.type.objAccessor;
-			if (acc is null)
-			{
-				serializer.putValue("object");
-				return;
-			}
-			auto obj = serializer.objectBegin();
-			foreach(member; acc.listMembers)
-			{
-				serializer.putKey(member);
-				serializeAsAsdf(acc.readProperty(member,var),serializer);
-			}
-			serializer.objectEnd(obj);
-			return;
+struct JmapFile {
+    string blobId;
+    string type;
+    string name;
+    Nullable!uint size;
+}
 
-		case KindEnum.variable:
-			serializeAsAsdf(v.get!Variable, serializer);
-			return;
+struct ContactInformation {
+    string type;
+    string label;
+    string value;
+    bool isDefault;
+}
 
-		case KindEnum.function_:
-			serializer.putValue("function"); // FIXME
-			return;
 
-		case KindEnum.boolean:
-			serializer.putValue(v.get!bool);
-			return;
+struct Contact {
+    string id;
+    bool isFlagged;
+    JmapFile avatar;
+    string prefix;
+    string firstName;
+    string lastName;
+    string suffix;
+    string nickname;
+    string birthday;
+    string anniversary;
+    string company;
+    string department;
+    string jobTitle;
+    ContactInformation[] emails;
+    ContactInformation[] phones;
+    ContactInformation[] online;
+    ContactAddress[] addresses;
+    string notes;
+}
 
-		case KindEnum.char_:
-			serializer.putValue([(v.get!char)].idup);
-			return;
+struct ContactGroup {
+    string id;
+    string name;
+    string[] ids;
+}
 
-		case KindEnum.integer:
-			serializer.putValue(v.get!long);
-			return;
+string uriEncode(const(char)[] s) {
+    import std.string : replace;
 
-		case KindEnum.number:
-			import std.format : singleSpec;
-			import kaleidic.sil.lang.util : fullPrecisionFormatSpec;
-			enum spec = singleSpec(fullPrecisionFormatSpec!double);
-			serializer.putNumberValue(v.get!double, spec);
-			return;
+    return s.replace("!", "%21").replace("#", "%23").replace("$", "%24").replace("&", "%26").replace("'", "%27")
+           .replace("(", "%28").replace(")", "%29").replace("*", "%2A").replace("+", "%2B").replace(",", "%2C")
+           .replace("-", "%2D").replace(".", "%2E").replace("/", "%2F").replace(":", "%3A").replace(";", "%3B")
+           .replace("=", "%3D").replace("?", "%3F").replace("@", "%40").replace("[", "%5B").replace("]", "%5D")
+           .idup;
+}
 
-		case KindEnum.string_:
-			serializer.putValue(v.get!string);
-			return;
+private void serializeAsAsdf(S)(Variable v, ref S serializer) {
+    import std.range : iota;
+    import kaleidic.sil.lang.types : SilVariant, KindEnum;
+    import kaleidic.sil.lang.builtins : fnArray;
 
-		case KindEnum.table:
-			auto obj = serializer.objectBegin();
-			foreach(ref kv; v.get!(Variable[string]).byKeyValue)
-			{
-				serializer.putKey(kv.key);
-				serializeAsAsdf(kv.value, serializer);
-			}
-			serializer.objectEnd(obj);
-			return;
+    final switch (v.kind) {
+        case KindEnum.void_:
+            serializer.putValue(null);
+            return;
 
-		case KindEnum.array:
-			auto v2 = v.getAssume!(Variable[]);
-			auto arr = serializer.arrayBegin();
-			foreach(elem; v2)
-			{
-				serializer.elemBegin;
-				serializeAsAsdf(elem, serializer);
-			}
-			serializer.arrayEnd(arr);
-			return;
+        case KindEnum.object:
+            auto var = v.get!SilVariant;
+            auto acc = var.type.objAccessor;
+            if (acc is null) {
+                serializer.putValue("object");
+                return;
+            }
+            auto obj = serializer.objectBegin();
+            foreach (member; acc.listMembers) {
+                serializer.putKey(member);
+                serializeAsAsdf(acc.readProperty(member, var), serializer);
+            }
+            serializer.objectEnd(obj);
+            return;
 
-		case KindEnum.arrayOf:
-			auto v2 = v.getAssume!(KindEnum.arrayOf);
-			auto arr = serializer.arrayBegin();
-			foreach(i; v2.getLength().iota)
-			{
-				serializer.elemBegin;
-				Variable elem = v2.getElement(i);
-				serializeAsAsdf(elem, serializer);
-			}
-			serializer.arrayEnd(arr);
-			return;
+        case KindEnum.variable:
+            serializeAsAsdf(v.get!Variable, serializer);
+            return;
 
-		case KindEnum.rangeOf:
-			serializeAsAsdf(fnArray(v), serializer);
-			return;
-	}
-	assert(0);
+        case KindEnum.function_:
+            serializer.putValue("function"); // FIXME
+            return;
+
+        case KindEnum.boolean:
+            serializer.putValue(v.get!bool);
+            return;
+
+        case KindEnum.char_:
+            serializer.putValue([(v.get!char)].idup);
+            return;
+
+        case KindEnum.integer:
+            serializer.putValue(v.get!long);
+            return;
+
+        case KindEnum.number:
+            import std.format : singleSpec;
+            import kaleidic.sil.lang.util : fullPrecisionFormatSpec;
+            enum spec = singleSpec(fullPrecisionFormatSpec!double);
+            serializer.putNumberValue(v.get!double, spec);
+            return;
+
+        case KindEnum.string_:
+            serializer.putValue(v.get!string);
+            return;
+
+        case KindEnum.table:
+            auto obj = serializer.objectBegin();
+            foreach (ref kv; v.get!(Variable[string]).byKeyValue) {
+                serializer.putKey(kv.key);
+                serializeAsAsdf(kv.value, serializer);
+            }
+            serializer.objectEnd(obj);
+            return;
+
+        case KindEnum.array:
+            auto v2 = v.getAssume!(Variable[]);
+            auto arr = serializer.arrayBegin();
+            foreach (elem; v2) {
+                serializer.elemBegin;
+                serializeAsAsdf(elem, serializer);
+            }
+            serializer.arrayEnd(arr);
+            return;
+
+        case KindEnum.arrayOf:
+            auto v2 = v.getAssume!(KindEnum.arrayOf);
+            auto arr = serializer.arrayBegin();
+            foreach (i; v2.getLength().iota) {
+                serializer.elemBegin;
+                Variable elem = v2.getElement(i);
+                serializeAsAsdf(elem, serializer);
+            }
+            serializer.arrayEnd(arr);
+            return;
+
+        case KindEnum.rangeOf:
+            serializeAsAsdf(fnArray(v), serializer);
+            return;
+    }
+    assert(0);
 }

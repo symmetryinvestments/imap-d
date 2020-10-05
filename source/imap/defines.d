@@ -6,218 +6,216 @@ import imap.socket;
 import imap.sil : SILdoc;
 import core.sys.posix.sys.stat;
 
-static if (is(size_t==uint))
-    alias ssize_t=int;
-else 
-    alias ssize_t=long;
+static if (is(size_t == uint)) {
+    alias ssize_t = int;
+} else {
+    alias ssize_t = long;
+}
 
 
 @SILdoc("IMAP protocol supported by the server")
-enum ImapProtocol
-{
+enum ImapProtocol {
     none = 0,
     imap4Rev1 = 1,
     imap4 = 2,
 }
 
 @SILdoc("Capabilities of mail server")
-enum Capability
-{
-	none = 0x00,
+enum Capability {
+    none = 0x00,
 
-	@("NAMESPACE")
+    @("NAMESPACE")
     namespace = 0x01,
 
-	@("AUTH=CRAM-MD5")
+    @("AUTH=CRAM-MD5")
     cramMD5 = 0x02,
 
-	@("STARTTLS")
+    @("STARTTLS")
     startTLS = 0x04,
 
-	@("CHILDREN")
+    @("CHILDREN")
     children = 0x08,
 
-	@("IDLE")
+    @("IDLE")
     idle = 0x10,
 
-	@("IMAP4rev1")
-	imap4Rev1,
+    @("IMAP4rev1")
+    imap4Rev1,
 
-	@("IMAP4")
-	imap4,
+    @("IMAP4")
+    imap4,
 
-	@("LITERAL+")
-	literalPlus,
+    @("LITERAL+")
+    literalPlus,
 
-	@("ID")
-	id,
+    @("ID")
+    id,
 
-	@("ENABLE")
-	enable,
+    @("ENABLE")
+    enable,
 
-	@("ACL")
-	acl,
+    @("ACL")
+    acl,
 
-	@("RIGHTS=kxten")
-	rightsKxTen,
+    @("RIGHTS=kxten")
+    rightsKxTen,
 
-	@("QUOTA")
-	quota,
+    @("QUOTA")
+    quota,
 
-	@("MAILBOX-REFERRALS")
-	mailboxReferrals,
+    @("MAILBOX-REFERRALS")
+    mailboxReferrals,
 
-	@("UIDPLUS")
-	uidPlus,
+    @("UIDPLUS")
+    uidPlus,
 
-	@("NO_ATOMIC_RENAME")
-	noAtomicRename,
+    @("NO_ATOMIC_RENAME")
+    noAtomicRename,
 
-	@("UNSELECT")
-	unselect,
+    @("UNSELECT")
+    unselect,
 
-	@("MULTIAPPEND")
-	multiAppend,
+    @("MULTIAPPEND")
+    multiAppend,
 
-	@("MULTISEARCH")
-	multiSearch,
+    @("MULTISEARCH")
+    multiSearch,
 
-	@("BINARY")
-	binary,
+    @("BINARY")
+    binary,
 
-	@("CATENATE")
-	catenate,
+    @("CATENATE")
+    catenate,
 
-	@("CONDSTORE")
-	condStore,
+    @("CONDSTORE")
+    condStore,
 
-	@("ESEARCH")
-	esearch,
+    @("ESEARCH")
+    esearch,
 
-	@("SEARCH=FUZZY")
-	fuzzySearch,
+    @("SEARCH=FUZZY")
+    fuzzySearch,
 
-	@("SORT")
-	sort,
+    @("SORT")
+    sort,
 
-	@("SORT=MODSEQ")
-	sortModSeq,
+    @("SORT=MODSEQ")
+    sortModSeq,
 
-	@("SORT=DISPLAY")
-	sortDisplay,
+    @("SORT=DISPLAY")
+    sortDisplay,
 
-	@("SORT=UID")
-	sortUID,
+    @("SORT=UID")
+    sortUID,
 
-	@("THREAD=ORDEREDSUBJECT")
-	threadOrderedSubject,
+    @("THREAD=ORDEREDSUBJECT")
+    threadOrderedSubject,
 
-	@("THREAD=REFERENCES")
-	threadReferences,
+    @("THREAD=REFERENCES")
+    threadReferences,
 
-	@("THREAD=REFS")
-	threadRefs,
+    @("THREAD=REFS")
+    threadRefs,
 
-	@("ANNOTATE-EXPERIMENT-1")
-	annotateExperiment1,
+    @("ANNOTATE-EXPERIMENT-1")
+    annotateExperiment1,
 
-	@("METADATA")
-	metadata,
+    @("METADATA")
+    metadata,
 
-	@("LIST-EXTENDED")
-	listExtended,
+    @("LIST-EXTENDED")
+    listExtended,
 
-	@("LIST-STATUS")
-	listStatus,
+    @("LIST-STATUS")
+    listStatus,
 
-	@("LIST-MYRIGHTS")
-	listMyRights,
+    @("LIST-MYRIGHTS")
+    listMyRights,
 
-	@("LIST-METADATA")
-	listMetadata,
+    @("LIST-METADATA")
+    listMetadata,
 
-	@("WITHIN")
-	within,
+    @("WITHIN")
+    within,
 
-	@("QRESYNC")
-	qResync,
+    @("QRESYNC")
+    qResync,
 
-	@("SCAN")
-	scan,
+    @("SCAN")
+    scan,
 
-	@("XLIST")
-	xlist,
+    @("XLIST")
+    xlist,
 
-	@("MOVE")
-	move,
+    @("MOVE")
+    move,
 
-	@("SPECIAL-USE")
-	specialUse,
+    @("SPECIAL-USE")
+    specialUse,
 
-	@("CREATE-SPECIAL-USE")
-	createSpecialUse,
+    @("CREATE-SPECIAL-USE")
+    createSpecialUse,
 
-	@("DIGEST=SHA1")
-	digestSHA1,
+    @("DIGEST=SHA1")
+    digestSHA1,
 
-	@("X-REPLICATION")
-	xReplication,
+    @("X-REPLICATION")
+    xReplication,
 
-	@("STATUS=SIZE")
-	statusSize,
+    @("STATUS=SIZE")
+    statusSize,
 
-	@("OBJECTID")
-	objectID,
+    @("OBJECTID")
+    objectID,
 
-	@("SAVEDATE")
-	saveDate,
+    @("SAVEDATE")
+    saveDate,
 
-	@("X-CREATEDMODSEQ")
-	xCreatedModSeq,
+    @("X-CREATEDMODSEQ")
+    xCreatedModSeq,
 
-	@("PREVIEW=FUZZY")
-	previewFuzzy,
+    @("PREVIEW=FUZZY")
+    previewFuzzy,
 
-	@("XAPPLEPUSHSERVICE")
-	xApplePushService,
+    @("XAPPLEPUSHSERVICE")
+    xApplePushService,
 
-	@("LOGINDISABLED")
-	loginDisabled,
+    @("LOGINDISABLED")
+    loginDisabled,
 
-	@("XCONVERSATIONS")
-	xConversations,
+    @("XCONVERSATIONS")
+    xConversations,
 
-	@("COMPRESS=DEFLATE")
-	compressDeflate,
+    @("COMPRESS=DEFLATE")
+    compressDeflate,
 
-	@("X-QUOTA=STORAGE")
-	xQuoteStorage,
+    @("X-QUOTA=STORAGE")
+    xQuoteStorage,
 
-	@("X-QUOTA=MESSAGE")
-	xQuotaMessage,
+    @("X-QUOTA=MESSAGE")
+    xQuotaMessage,
 
-	@("X-QUOTA=X-ANNOTATION-STORAGE")
-	xQuotaXAnnotationStorage,
+    @("X-QUOTA=X-ANNOTATION-STORAGE")
+    xQuotaXAnnotationStorage,
 
-	@("X-QUOTA=X-NUM-FOLDERS")
-	xQuotaXNumFolders,
+    @("X-QUOTA=X-NUM-FOLDERS")
+    xQuotaXNumFolders,
 
-	@("XMOVE")
-	xMove,
+    @("XMOVE")
+    xMove,
 }
 
 @SILdoc("Status responses and response codes")
-enum ImapStatus
-{
+enum ImapStatus {
     none = 0,
 
-	@("OK")
+    @("OK")
     ok = 1,
 
-	@("NO")
+    @("NO")
     no = 2,
 
-	@("BAD")
+    @("BAD")
     bad = 3,
 
     untagged = 4,
@@ -227,27 +225,24 @@ enum ImapStatus
     readOnly = 8,
     tryCreate = 9,
     timeout = 10,
-	unknown = -1,
+    unknown = -1,
 }
 
 ///
-enum ImapFlag
-{
-	@(`\Seen`)
-	seen,
+enum ImapFlag {
+    @(`\Seen`)
+    seen,
 
-	@(`\Answered`)
-	answered,
+    @(`\Answered`)
+    answered,
 
-	@(`\Flagged`)
-	flagged,
+    @(`\Flagged`)
+    flagged,
 
-	@(`\Deleted`)
-	deleted,
+    @(`\Deleted`)
+    deleted,
 
-	@(`\Draft`)
-	draft,
+    @(`\Draft`)
+    draft,
 }
-
-
 

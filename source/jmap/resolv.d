@@ -3,13 +3,13 @@
 *******************************************************************
  * Test DNS SRV lookups
  * copyright Gerald Carter <jerry@samba.org>  2006
- * 
+ *
  * For some bizarre reason the ns_initparse(), et. al. routines
  * are not available in the shared version of libresolv.so.
- * 
+ *
  * To compile, run
  *    dmd dnstest -L-lresolv
- * 
+ *
  *******************************************************************/
 
 /* standard system headers */
@@ -36,85 +36,85 @@ alias fromCString = fromStringz;
 
 struct RecordSRV
 {
-	string name;
-	string address;
+    string name;
+    string address;
 }
 
 
 void main(string[] args)
 {
-	auto records = getRecordsSRV(args[1]);
-	foreach(record;records)
-		writeln(record);
+    auto records = getRecordsSRV(args[1]);
+    foreach(record;records)
+        writeln(record);
 }
 
 RecordSRV[] getRecordsSRV(string hostname)
 {
-	ns_msg h;
-	ns_rr rr;
+    ns_msg h;
+    ns_rr rr;
 
-	RecordSRV[] records;
+    RecordSRV[] records;
 
-	char[NS_PACKETSZ] buffer;
-	// send the request
+    char[NS_PACKETSZ] buffer;
+    // send the request
 
-	int resp_len = res_query(cast(char*) hostname.toStringz, NSClass.in_, NSType.srv, buffer.ptr, buffer.sizeof);
-	enforce(resp_len >=0, format!"Query for %s failed"(hostname));
-	writefln("resp = %s",buffer);
-	// now do the parsing
-	auto result = ns_initparse( cast(const(char)*) buffer.ptr, resp_len, &h );
-	enforce (!result, "Failed to parse response buffer");
+    int resp_len = res_query(cast(char*) hostname.toStringz, NSClass.in_, NSType.srv, buffer.ptr, buffer.sizeof);
+    enforce(resp_len >=0, format!"Query for %s failed"(hostname));
+    writefln("resp = %s",buffer);
+    // now do the parsing
+    auto result = ns_initparse( cast(const(char)*) buffer.ptr, resp_len, &h );
+    enforce (!result, "Failed to parse response buffer");
 
-	int numAnswerRecords = ns_msg_count(h, NSSect.an);
-	writefln("num an Records = %s",numAnswerRecords);
+    int numAnswerRecords = ns_msg_count(h, NSSect.an);
+    writefln("num an Records = %s",numAnswerRecords);
 
-	foreach(recordNum; 0 .. numAnswerRecords)
-	{
-		result = ns_parserr( &h, NSSect.an, recordNum, &rr );
-		if(result)
-		{
-			stderr.writefln("ns_parserr: %s, %s" ,result,strerror(errno).fromStringz);
-			continue;
-		}
+    foreach(recordNum; 0 .. numAnswerRecords)
+    {
+        result = ns_parserr( &h, NSSect.an, recordNum, &rr );
+        if(result)
+        {
+            stderr.writefln("ns_parserr: %s, %s" ,result,strerror(errno).fromStringz);
+            continue;
+        }
 
-		if ( ns_rr_type(rr) == NSType.srv ) {
-			char[4096] name;
-			in_addr ip;
+        if ( ns_rr_type(rr) == NSType.srv ) {
+            char[4096] name;
+            in_addr ip;
 
-			//int ret = dn_expand( cast(const(char)*) ns_msg_base(h), cast(const(char)*) ns_msg_end(h), cast(const(char)*) ns_rr_rdata(rr)+6, name.ptr, name.sizeof);
-			int ret = dn_expand( cast(char*) ns_msg_base(h), cast(char*) ns_msg_end(h), cast(char*) ns_rr_rdata(rr)+6, name.ptr, name.sizeof);
-			enforce(ret >=0, format!"Failed to uncompress name (%s)"(ret));
-			tracef("%s",name);
-			records ~= RecordSRV(name.ptr.fromStringz.idup,"");
-		}
-	}
+            //int ret = dn_expand( cast(const(char)*) ns_msg_base(h), cast(const(char)*) ns_msg_end(h), cast(const(char)*) ns_rr_rdata(rr)+6, name.ptr, name.sizeof);
+            int ret = dn_expand( cast(char*) ns_msg_base(h), cast(char*) ns_msg_end(h), cast(char*) ns_rr_rdata(rr)+6, name.ptr, name.sizeof);
+            enforce(ret >=0, format!"Failed to uncompress name (%s)"(ret));
+            tracef("%s",name);
+            records ~= RecordSRV(name.ptr.fromStringz.idup,"");
+        }
+    }
 
-	numAnswerRecords = ns_msg_count(h, NSSect.ar);
-	writefln("num ar Records = %s",numAnswerRecords);
+    numAnswerRecords = ns_msg_count(h, NSSect.ar);
+    writefln("num ar Records = %s",numAnswerRecords);
 
-	foreach(recordNum; 0 .. numAnswerRecords)
-	{
-		writefln("%s",ns_rr_type(rr));
-		result = ns_parserr( &h, NSSect.ar, recordNum, &rr );
-		if(result)
-		{
-			stderr.writefln("ns_parserr: %s" ,strerror(errno).fromStringz);
-			continue;
-		}
+    foreach(recordNum; 0 .. numAnswerRecords)
+    {
+        writefln("%s",ns_rr_type(rr));
+        result = ns_parserr( &h, NSSect.ar, recordNum, &rr );
+        if(result)
+        {
+            stderr.writefln("ns_parserr: %s" ,strerror(errno).fromStringz);
+            continue;
+        }
 
-		if ( ns_rr_type(rr) == NSType.a ) {
-			import std.conv : to;
-			char*[1024] name;
-			in_addr ip;
-			//const(char)** p = ns_rr_rdata(rr);
-			auto p = ns_rr_rdata(rr);
-			writeln("%s",p);
-			ip.s_addr = (p[3].to!int << 24) | (p[2].to!int << 16) | (p[1].to!int << 8) | p[0].to!int;
-			records ~= RecordSRV(ns_rr_name(rr).idup, inet_ntoa(ip).fromStringz.idup);
-		}
-	}
-	
-	return records;
+        if ( ns_rr_type(rr) == NSType.a ) {
+            import std.conv : to;
+            char*[1024] name;
+            in_addr ip;
+            //const(char)** p = ns_rr_rdata(rr);
+            auto p = ns_rr_rdata(rr);
+            writeln("%s",p);
+            ip.s_addr = (p[3].to!int << 24) | (p[2].to!int << 16) | (p[1].to!int << 8) | p[0].to!int;
+            records ~= RecordSRV(ns_rr_name(rr).idup, inet_ntoa(ip).fromStringz.idup);
+        }
+    }
+
+    return records;
 }
 
 extern(C) @system:
@@ -166,8 +166,8 @@ extern(C) @system:
  */
 
 /*
- *	@(#)resolv.h	8.1 (Berkeley) 6/2/93
- *	$BINDId: resolv.h,v 8.31 2000/03/30 20:16:50 vixie Exp $
+ *  @(#)resolv.h    8.1 (Berkeley) 6/2/93
+ *  $BINDId: resolv.h,v 8.31 2000/03/30 20:16:50 vixie Exp $
  */
 
 /+
@@ -182,20 +182,20 @@ extern(C) @system:
 /*
  * Global defines and variables for resolver stub.
  */
-enum LOCALDOMAINPARTS	= 2;	/* min levels in name that is "local" */
+enum LOCALDOMAINPARTS   = 2;    /* min levels in name that is "local" */
 
 enum ResolverCode
 {
-	timeout = 5,				// min. seconds between retries
-	maxNDots = 15, 				// should reflect bit field size
-	maxRetrans = 30, 			// only for resolv.conf/RES_OPTIONS 
-	maxRetry = 5, 				// only for resolv.conf/RES_OPTIONS
-	defaultTries = 2,			// Default tries
-	maxTime = 65535, 			// Infinity, in milliseconds
+    timeout = 5,                // min. seconds between retries
+    maxNDots = 15,              // should reflect bit field size
+    maxRetrans = 30,            // only for resolv.conf/RES_OPTIONS
+    maxRetry = 5,               // only for resolv.conf/RES_OPTIONS
+    defaultTries = 2,           // Default tries
+    maxTime = 65535,            // Infinity, in milliseconds
 }
 
 
-//alias nsaddr = nsaddr_list[0];		/* for backward compatibility */
+//alias nsaddr = nsaddr_list[0];        /* for backward compatibility */
 
 /*
  * Revision information.  This is the release date in YYYYMMDD format.
@@ -205,7 +205,7 @@ enum ResolverCode
  * is new enough to contain a certain feature.
  */
 
-enum __RES	= 19991006;
+enum __RES  = 19991006;
 
 /*
  * Resolver configuration file.
@@ -217,9 +217,9 @@ enum _PATH_RESCONF = "/etc/resolv.conf";
 
 struct res_sym
 {
-	int	number;		/* Identifying number, like T_MX */
-	char** name;		/* Its symbolic name, like "MX" */
-	char** humanname;	/* Its fun name, like "mail exchanger" */
+    int number;     /* Identifying number, like T_MX */
+    char** name;        /* Its symbolic name, like "MX" */
+    char** humanname;   /* Its fun name, like "mail exchanger" */
 }
 
 /*
@@ -227,29 +227,29 @@ struct res_sym
  */
 enum ResolverOption
 {
-	init = 0x00000001,			// address initialized
- 	debugMessages = 0x00000002, // print debug messages
- 	aaOnly = 0x00000004,
- 	useVirtualCircuit = 0x00000008,		// use virtual circuit
-	primary = 0x00000010,
- 	ignoreTruncationErrors = 0x00000020,	// ignore trucation errors
- 	recurse = 0x00000040, 					// recursion desired
- 	defaultDomainName = 0x00000080,			// use default domain name
- 	keepTCPSocketOPen = 0x00000100,			// Keep TCP socket open
- 	searchUpLocalDomainTree = 0x00000200, 	// search up local domain tree
-	shutOffHostAliases = 0x00001000,		// shuts off HOSTALIASES feature
- 	rotateNSListAfterEachQuery = 0x00004000, //	rotate ns list after each query
- 	noCheckName =  0x00008000,
-  	keepTSig = 0x00010000,
-	blast = 0x00020000,
- 	useEDNS0 = 0x00100000,					// Use EDNS0.
-	singleKUp = 0x00200000,					// one outstanding request at a time
-	singleKUpReop = 0x00400000,				//  -"-, but open new socket for each request
-	useDNSSEC =  0x00800000,				// use DNSSEC using OK bit in OPT
-	notLDQuery = 0x01000000,				// 	Do not look up unqualified name as a TLD
-	noReload = 0x02000000, 					// No automatic configuration reload
-	trustAD = 0x04000000, 					// Request AD bit, keep it in responses
-	default_ = ResolverOption.recurse | ResolverOption.defaultDomainName | ResolverOption.searchUpLocalDomainTree,
+    init = 0x00000001,          // address initialized
+    debugMessages = 0x00000002, // print debug messages
+    aaOnly = 0x00000004,
+    useVirtualCircuit = 0x00000008,     // use virtual circuit
+    primary = 0x00000010,
+    ignoreTruncationErrors = 0x00000020,    // ignore trucation errors
+    recurse = 0x00000040,                   // recursion desired
+    defaultDomainName = 0x00000080,         // use default domain name
+    keepTCPSocketOPen = 0x00000100,         // Keep TCP socket open
+    searchUpLocalDomainTree = 0x00000200,   // search up local domain tree
+    shutOffHostAliases = 0x00001000,        // shuts off HOSTALIASES feature
+    rotateNSListAfterEachQuery = 0x00004000, // rotate ns list after each query
+    noCheckName =  0x00008000,
+    keepTSig = 0x00010000,
+    blast = 0x00020000,
+    useEDNS0 = 0x00100000,                  // Use EDNS0.
+    singleKUp = 0x00200000,                 // one outstanding request at a time
+    singleKUpReop = 0x00400000,             //  -"-, but open new socket for each request
+    useDNSSEC =  0x00800000,                // use DNSSEC using OK bit in OPT
+    notLDQuery = 0x01000000,                //  Do not look up unqualified name as a TLD
+    noReload = 0x02000000,                  // No automatic configuration reload
+    trustAD = 0x04000000,                   // Request AD bit, keep it in responses
+    default_ = ResolverOption.recurse | ResolverOption.defaultDomainName | ResolverOption.searchUpLocalDomainTree,
 }
 
 /*
@@ -272,129 +272,129 @@ enum PfCode
  query = 0x00001000,
  reply = 0x00002000,
  init = 0x00004000,
-/*			0x00008000	*/
+/*          0x00008000  */
 }
 
 /* Things involving an internal (static) resolver context. */
 //__res_state* __res_state(); //
 
-void		fp_nquery (const(char)* *, int, FILE *);
-void		fp_query (const(char)* *, FILE *);
-const(char* )* 	hostalias (const(char* )* );
-void		p_query (const(char)* *);
-void		res_close();
-int		res_init();
-int		res_isourserver (const sockaddr_in *);
-int		res_mkquery (int, const(char* )* , int, int, const(char)* *, int, const(char)* *, char* *, int);
+void        fp_nquery (const(char)* *, int, FILE *);
+void        fp_query (const(char)* *, FILE *);
+const(char* )*  hostalias (const(char* )* );
+void        p_query (const(char)* *);
+void        res_close();
+int     res_init();
+int     res_isourserver (const sockaddr_in *);
+int     res_mkquery (int, const(char* )* , int, int, const(char)* *, int, const(char)* *, char* *, int);
 //int res_query(char*, int, int, char*, int);
 int __res_query(char*, int, int, char*, int);
 alias res_query = __res_query;
-//extern(C) int		res_query (const(char)* , int, int, char*, int) ;
-int		res_querydomain (const(char* )* , const(char* )* , int, int, char* *, int);
-int		res_search (const(char* )* , int, int, char* *, int) ;
-int		res_send (const(char)* *, int, char* *, int) ;
+//extern(C) int     res_query (const(char)* , int, int, char*, int) ;
+int     res_querydomain (const(char* )* , const(char* )* , int, int, char* *, int);
+int     res_search (const(char* )* , int, int, char* *, int) ;
+int     res_send (const(char)* *, int, char* *, int) ;
 
 
-int		res_hnok (const(char* )* );
-int		res_ownok (const(char* )* );
-int		res_mailok (const(char* )* );
-int		res_dnok (const(char* )* );
-int		sym_ston (const res_sym *, const(char* )* , int *);
-const(char* )* 	sym_ntos (const res_sym *, int, int *);
-const(char* )* 	sym_ntop (const res_sym *, int, int *);
-int		b64_ntop (const(char)* *, size_t, char* *, size_t);
-int		b64_pton (char**, char**, size_t);
-int		loc_aton (const(char* )* __ascii, char** __binary);
-const(char* )* 	loc_ntoa (const(char)* *__binary, char* *__ascii);
-int		dn_skipname (const(char)* *, const(char)* *) ;
+int     res_hnok (const(char* )* );
+int     res_ownok (const(char* )* );
+int     res_mailok (const(char* )* );
+int     res_dnok (const(char* )* );
+int     sym_ston (const res_sym *, const(char* )* , int *);
+const(char* )*  sym_ntos (const res_sym *, int, int *);
+const(char* )*  sym_ntop (const res_sym *, int, int *);
+int     b64_ntop (const(char)* *, size_t, char* *, size_t);
+int     b64_pton (char**, char**, size_t);
+int     loc_aton (const(char* )* __ascii, char** __binary);
+const(char* )*  loc_ntoa (const(char)* *__binary, char* *__ascii);
+int     dn_skipname (const(char)* *, const(char)* *) ;
 void putlong(uint, char**);
 void putshort (ushort, char* *);
-const(char* )* 	p_class (int);
-const(char* )* 	p_time (ushort);
-const(char* )* 	p_type (int);
-const(char* )* 	p_rcode (int);
+const(char* )*  p_class (int);
+const(char* )*  p_time (ushort);
+const(char* )*  p_type (int);
+const(char* )*  p_rcode (int);
 const(char)** p_cdnname (const(char)* *, const(char)* *, int, FILE *);
 const(char)** p_cdname (const(char)* *, const(char)* *, FILE *);
 const(char)** p_fqnname (const(char)* *__cp, const(char)* *__msg, int, char* *, int);
 const(char)** p_fqname (const(char)* *, const(char)* *, FILE *);
 const(char)** p_option (ulong __option);
-int		dn_count_labels (const(char* )* );
-int		dn_comp (const(char* )* , char* *, int, char* **, char* **);
-// int	dn_expand(const(char)* msg, const(char)* eomorig, const(char)* comp_dn, char* exp_dn, int length);
-//int	dn_expand(char* msg, char* eomorig, char* comp_dn, char* exp_dn, int length);
-int	__dn_expand(char* msg, char* eomorig, char* comp_dn, char* exp_dn, int length);
+int     dn_count_labels (const(char* )* );
+int     dn_comp (const(char* )* , char* *, int, char* **, char* **);
+// int  dn_expand(const(char)* msg, const(char)* eomorig, const(char)* comp_dn, char* exp_dn, int length);
+//int   dn_expand(char* msg, char* eomorig, char* comp_dn, char* exp_dn, int length);
+int __dn_expand(char* msg, char* eomorig, char* comp_dn, char* exp_dn, int length);
 alias dn_expand = __dn_expand;
-uint	res_randomid();
-int		res_nameinquery (const(char* )* , int, int, const(char)* *, const(char)* *);
-int		res_queriesmatch (const(char)* *, const(char)* *, const(char)* *, const(char)* *);
+uint    res_randomid();
+int     res_nameinquery (const(char* )* , int, int, const(char)* *, const(char)* *);
+int     res_queriesmatch (const(char)* *, const(char)* *, const(char)* *, const(char)* *);
 /* Things involving a resolver context. */
-int		res_ninit (res_state);
-void		fp_resstat (const res_state, FILE *);
-const(char* )* 	res_hostalias (const res_state, const(char* )* , char* *, size_t);
-int	res_nquery (res_state, const(char* )* , int, int, char* *, int);
-int	res_nsearch (res_state, const(char* )* , int, int, char* *, int);
-int	res_nquerydomain (res_state, const(char* )* , const(char* )* , int, int, char* *, int);
-int	res_nmkquery (res_state, int, const(char* )* , int, int, const(char)* *, int, const(char)* *, char* *, int);
-int	res_nsend (res_state, const(char)* *, int, char* *, int);
-void	res_nclose (res_state);
+int     res_ninit (res_state);
+void        fp_resstat (const res_state, FILE *);
+const(char* )*  res_hostalias (const res_state, const(char* )* , char* *, size_t);
+int res_nquery (res_state, const(char* )* , int, int, char* *, int);
+int res_nsearch (res_state, const(char* )* , int, int, char* *, int);
+int res_nquerydomain (res_state, const(char* )* , const(char* )* , int, int, char* *, int);
+int res_nmkquery (res_state, int, const(char* )* , int, int, const(char)* *, int, const(char)* *, char* *, int);
+int res_nsend (res_state, const(char)* *, int, char* *, int);
+void    res_nclose (res_state);
 
 // #include <sys/types.h>
 // #include <netinet/in.h>
 
 /* res_state: the global state used by the resolver stub.  */
-enum MAXNS			=3;	/* max # name servers we'll track */
-enum MAXDFLSRCH		=3;	/* # default domain levels to try */
-enum MAXDNSRCH	=	6;	/* max # domains in search path */
-enum MAXRESOLVSORT=		10;	/* number of net to sort on */
+enum MAXNS          =3; /* max # name servers we'll track */
+enum MAXDFLSRCH     =3; /* # default domain levels to try */
+enum MAXDNSRCH  =   6;  /* max # domains in search path */
+enum MAXRESOLVSORT=     10; /* number of net to sort on */
 
 struct res_state
 {
-	import std.bitmanip : bitfields;
-	int	retrans;		/* retransmition time interval */
-	int	retry;			/* number of times to retransmit */
-	ulong options;		/* option flags - see below. */
-	int	nscount;		/* number of name servers */
-	sockaddr_in[MAXNS] nsaddr_list;	/* address of name server */
-	ushort id;		/* current message id */
-	/* 2 byte hole here.  */
-	char*[MAXDNSRCH+1] dnsrch;	/* components of domain to search */
-	char[256]	defdname;		/* default domain (deprecated) */
-	ulong pfcode;		/* RES_PRF_ flags - see below. */
+    import std.bitmanip : bitfields;
+    int retrans;        /* retransmition time interval */
+    int retry;          /* number of times to retransmit */
+    ulong options;      /* option flags - see below. */
+    int nscount;        /* number of name servers */
+    sockaddr_in[MAXNS] nsaddr_list; /* address of name server */
+    ushort id;      /* current message id */
+    /* 2 byte hole here.  */
+    char*[MAXDNSRCH+1] dnsrch;  /* components of domain to search */
+    char[256]   defdname;       /* default domain (deprecated) */
+    ulong pfcode;       /* RES_PRF_ flags - see below. */
 
-	mixin(bitfields!(
-				uint, "ndots", 4,		// threshold for initial abs. query
-				uint, "nsort", 4,		// number of elements in sort_list[]
-				uint,"ipv6_unavail",1, // connecting to IPv6 server failed
-				uint, "unused",23,
-	));
-	struct SortListEntry
-	{
-		in_addr	addr;
-		uint mask;
-	}
-	SortListEntry [MAXRESOLVSORT] sort_list;
-	/* 4 byte hole here on 64-bit architectures.  */
-	void * __glibc_unused_qhook;
-	void * __glibc_unused_rhook;
-	int	res_h_errno;		/* last one set for this context */
-	int	_vcsock;		/* PRIVATE: for res_send VC i/o */
-	uint _flags;		/* PRIVATE: see below */
-	/* 4 byte hole here on 64-bit architectures.  */
-	union U
-	{
-		char[52] pad;	/* On an i386 this means 512b total. */
-		struct Ext
-		{
-			ushort nscount;
-			ushort[MAXNS] nsmap;
-			int[MAXNS] nssocks;
-			ushort nscount6;
-			ushort nsinit;
-			sockaddr_in6*[MAXNS] nsaddrs;
-			uint[2]	__glibc_reserved;
-		}
-	   Ext _ext;
-	}
+    mixin(bitfields!(
+                uint, "ndots", 4,       // threshold for initial abs. query
+                uint, "nsort", 4,       // number of elements in sort_list[]
+                uint,"ipv6_unavail",1, // connecting to IPv6 server failed
+                uint, "unused",23,
+    ));
+    struct SortListEntry
+    {
+        in_addr addr;
+        uint mask;
+    }
+    SortListEntry [MAXRESOLVSORT] sort_list;
+    /* 4 byte hole here on 64-bit architectures.  */
+    void * __glibc_unused_qhook;
+    void * __glibc_unused_rhook;
+    int res_h_errno;        /* last one set for this context */
+    int _vcsock;        /* PRIVATE: for res_send VC i/o */
+    uint _flags;        /* PRIVATE: see below */
+    /* 4 byte hole here on 64-bit architectures.  */
+    union U
+    {
+        char[52] pad;   /* On an i386 this means 512b total. */
+        struct Ext
+        {
+            ushort nscount;
+            ushort[MAXNS] nsmap;
+            int[MAXNS] nssocks;
+            ushort nscount6;
+            ushort nsinit;
+            sockaddr_in6*[MAXNS] nsaddrs;
+            uint[2] __glibc_reserved;
+        }
+       Ext _ext;
+    }
    U _u;
 };
 
@@ -453,35 +453,35 @@ struct res_state
 /*
  * Define constants based on RFC 883, RFC 1034, RFC 1035
  */
-enum NS_PACKETSZ	=512;	/*%< default UDP packet size */
-enum NS_MAXDNAME	=1025;	/*%< maximum domain name */
-enum NS_MAXMSG	=65535;		// %< maximum message size
-enum NS_MAXCDNAME	=255;	// %< maximum compressed domain name */
-enum NS_MAXLABEL	=63;		// 	%< maximum length of domain label */
-enum NS_HFIXEDSZ	=12;		//	/*%< #/bytes of fixed data in header */
-enum NS_QFIXEDSZ	=4;		//	/*%< #/bytes of fixed data in query */
-enum NS_RRFIXEDSZ	=10;	/*%< #/bytes of fixed data in r record */
-enum NS_INT32SZ	=4;	/*%< #/bytes of data in a uint32_t */
-enum NS_INT16SZ	=2;	/*%< #/bytes of data in a uint16_t */
-enum NS_INT8SZ	=1;	/*%< #/bytes of data in a uint8_t */
-enum NS_INADDRSZ	=4;	/*%< IPv4 T_A */
-enum NS_IN6ADDRSZ	=16;	/*%< IPv6 T_AAAA */
-enum NS_CMPRSFLGS	=0xc0;	/*%< Flag bits indicating name compression. */
-enum NS_DEFAULTPORT	=53;	/*%< For both TCP and UDP. */
+enum NS_PACKETSZ    =512;   /*%< default UDP packet size */
+enum NS_MAXDNAME    =1025;  /*%< maximum domain name */
+enum NS_MAXMSG  =65535;     // %< maximum message size
+enum NS_MAXCDNAME   =255;   // %< maximum compressed domain name */
+enum NS_MAXLABEL    =63;        //  %< maximum length of domain label */
+enum NS_HFIXEDSZ    =12;        //  /*%< #/bytes of fixed data in header */
+enum NS_QFIXEDSZ    =4;     //  /*%< #/bytes of fixed data in query */
+enum NS_RRFIXEDSZ   =10;    /*%< #/bytes of fixed data in r record */
+enum NS_INT32SZ =4; /*%< #/bytes of data in a uint32_t */
+enum NS_INT16SZ =2; /*%< #/bytes of data in a uint16_t */
+enum NS_INT8SZ  =1; /*%< #/bytes of data in a uint8_t */
+enum NS_INADDRSZ    =4; /*%< IPv4 T_A */
+enum NS_IN6ADDRSZ   =16;    /*%< IPv6 T_AAAA */
+enum NS_CMPRSFLGS   =0xc0;  /*%< Flag bits indicating name compression. */
+enum NS_DEFAULTPORT =53;    /*%< For both TCP and UDP. */
 /*
  * These can be expanded with synonyms, just keep ns_parse.c:ns_parserecord()
  * in synch with it.
  */
 enum NSSect
 {
-	qd = 0,		/*%< Query: Question. */
-	zn = 0,		/*%< Update: Zone. */
-	an = 1,		/*%< Query: Answer. */
-	pr = 1,		/*%< Update: Prerequisites. */
-	ns = 2,		/*%< Query: Name servers. */
-	ud = 2,		/*%< Update: Update. */
-	ar = 3,		/*%< Query|Update: Additional records. */
-	max = 4,
+    qd = 0,     /*%< Query: Question. */
+    zn = 0,     /*%< Update: Zone. */
+    an = 1,     /*%< Query: Answer. */
+    pr = 1,     /*%< Update: Prerequisites. */
+    ns = 2,     /*%< Query: Name servers. */
+    ud = 2,     /*%< Update: Update. */
+    ar = 3,     /*%< Query|Update: Additional records. */
+    max = 4,
 }
 
 alias ns_sect = NSSect;
@@ -492,15 +492,15 @@ alias ns_sect = NSSect;
  */
 struct ns_msg
 {
-	const(char)* _msg;
-	const(char)* _eom;
-	ushort _id;
-	ushort _flags;
-	ushort[ns_s_max] _counts;
-	const(char)[ns_s_max]* _sections;
-	ns_sect	_sect;
-	int	_rrnum;
-	const(char)	*_msg_ptr;
+    const(char)* _msg;
+    const(char)* _eom;
+    ushort _id;
+    ushort _flags;
+    ushort[ns_s_max] _counts;
+    const(char)[ns_s_max]* _sections;
+    ns_sect _sect;
+    int _rrnum;
+    const(char) *_msg_ptr;
 }
 
 /* Private data structure - do not use from outside library. */
@@ -510,27 +510,27 @@ struct ns_msg
 /* Accessor macros - this is part of the public interface. */
 auto ns_msg_id(ns_msg handle)
 {
-	return handle._id;
+    return handle._id;
 }
 
 auto ns_msg_base(ns_msg handle)
 {
-	return 	handle._msg;
+    return  handle._msg;
 }
 
 auto ns_msg_end(ns_msg handle)
 {
-	return handle._eom;
+    return handle._eom;
 }
 
 auto ns_msg_size(ns_msg handle)
 {
-	return handle._eom - handle._msg;
+    return handle._eom - handle._msg;
 }
 
 auto ns_msg_count(Section)(ns_msg handle, Section section)
 {
-	return handle._counts[section];
+    return handle._counts[section];
 }
 
 /*%
@@ -538,43 +538,43 @@ auto ns_msg_count(Section)(ns_msg handle, Section section)
  */
 struct ns_rr
 {
-	char[NS_MAXDNAME] name;
-	ushort type;
-	ushort rr_class;
-	uint ttl;
-	ushort rdlength;
-	const(char) *	rdata;
+    char[NS_MAXDNAME] name;
+    ushort type;
+    ushort rr_class;
+    uint ttl;
+    ushort rdlength;
+    const(char) *   rdata;
 }
 
 /* Accessor macros - this is part of the public interface. */
 string ns_rr_name(ns_rr rr)
 {
-	return (rr.name[0] != '\0') ? rr.name.ptr.fromStringz.idup: ".";
+    return (rr.name[0] != '\0') ? rr.name.ptr.fromStringz.idup: ".";
 }
 
 auto ns_rr_type(ns_rr rr)
 {
-	return cast(NSType)rr.type;
+    return cast(NSType)rr.type;
 }
 
 auto ns_rr_class(ns_rr rr)
 {
-	return cast(NSClass) rr.rr_class;
+    return cast(NSClass) rr.rr_class;
 }
 
 auto ns_rr_ttl(ns_rr rr)
 {
-	return rr.ttl;
+    return rr.ttl;
 }
 
 auto ns_rr_rdlen(ns_rr rr)
 {
-	return rr.rdlength;
+    return rr.rdlength;
 }
 
 char[] ns_rr_rdata(ns_rr rr)
 {
-	return rr.rdata[0.. rr.rdlength].dup;
+    return rr.rdata[0.. rr.rdlength].dup;
 }
 
 /*%
@@ -584,17 +584,17 @@ char[] ns_rr_rdata(ns_rr rr)
  */
 enum FlagCode
 {
-	qr,		/*%< Question/Response. */
-	opcode,		/*%< Operation code. */
-	aa,		/*%< Authoritative Answer. */
-	tc,		/*%< Truncation occurred. */
-	rd,		/*%< Recursion Desired. */
-	ra,		/*%< Recursion Available. */
-	z,			/*%< MBZ. */
-	ad,		/*%< Authentic Data (DNSSEC). */
-	cd,		/*%< Checking Disabled (DNSSEC). */
-	rcode,		/*%< Response code. */
-	max
+    qr,     /*%< Question/Response. */
+    opcode,     /*%< Operation code. */
+    aa,     /*%< Authoritative Answer. */
+    tc,     /*%< Truncation occurred. */
+    rd,     /*%< Recursion Desired. */
+    ra,     /*%< Recursion Available. */
+    z,          /*%< MBZ. */
+    ad,     /*%< Authentic Data (DNSSEC). */
+    cd,     /*%< Checking Disabled (DNSSEC). */
+    rcode,      /*%< Response code. */
+    max
 }
 
 /*%
@@ -602,13 +602,13 @@ enum FlagCode
  */
 enum OpCode
 {
-	query = 0,		/*%< Standard query. */
-	iquery = 1,	/*%< Inverse query (deprecated/unsupported). */
-	status = 2,	/*%< Name server status query (unsupported). */
-				/* Opcode 3 is undefined/reserved. */
-	notify = 4,	/*%< Zone change notification. */
-	update = 5,	/*%< Zone update message. */
-	max = 6
+    query = 0,      /*%< Standard query. */
+    iquery = 1, /*%< Inverse query (deprecated/unsupported). */
+    status = 2, /*%< Name server status query (unsupported). */
+                /* Opcode 3 is undefined/reserved. */
+    notify = 4, /*%< Zone change notification. */
+    update = 5, /*%< Zone update message. */
+    max = 6
 }
 
 /*%
@@ -616,33 +616,33 @@ enum OpCode
  */
 enum ResponseCode
 {
-	noerror = 0,	/*%< No error occurred. */
-	formerr = 1,	/*%< Format error. */
-	servfail = 2,	/*%< Server failure. */
-	nxdomain = 3,	/*%< Name error. */
-	notimpl = 4,	/*%< Unimplemented. */
-	refused = 5,	/*%< Operation refused. */
-	/* these are for BIND_UPDATE */
-	yxdomain = 6,	/*%< Name exists */
-	yxrrset = 7,	/*%< RRset exists */
-	nxrrset = 8,	/*%< RRset does not exist */
-	notauth = 9,	/*%< Not authoritative for zone */
-	notzone = 10,	/*%< Zone of record different from zone section */
-	_max = 11,
-	/* The following are EDNS extended rcodes */
-	badvers = 16,
-	/* The following are TSIG errors */
-	badsig = 16,
-	badkey = 17,
-	badtime = 18
+    noerror = 0,    /*%< No error occurred. */
+    formerr = 1,    /*%< Format error. */
+    servfail = 2,   /*%< Server failure. */
+    nxdomain = 3,   /*%< Name error. */
+    notimpl = 4,    /*%< Unimplemented. */
+    refused = 5,    /*%< Operation refused. */
+    /* these are for BIND_UPDATE */
+    yxdomain = 6,   /*%< Name exists */
+    yxrrset = 7,    /*%< RRset exists */
+    nxrrset = 8,    /*%< RRset does not exist */
+    notauth = 9,    /*%< Not authoritative for zone */
+    notzone = 10,   /*%< Zone of record different from zone section */
+    _max = 11,
+    /* The following are EDNS extended rcodes */
+    badvers = 16,
+    /* The following are TSIG errors */
+    badsig = 16,
+    badkey = 17,
+    badtime = 18
 }
 
 /* BIND_UPDATE */
 enum BindUpdateOperation
 {
-	delete_ = 0,
-	add = 1,
-	max = 2
+    delete_ = 0,
+    add = 1,
+    max = 2
 }
 
 /*%
@@ -651,7 +651,7 @@ enum BindUpdateOperation
 struct ns_tsig_key
 {
         char[NS_MAXDNAME] name;
-		char[NS_MAXDNAME] alg;
+        char[NS_MAXDNAME] alg;
         char *data;
         int len;
 }
@@ -661,11 +661,11 @@ struct ns_tsig_key
  */
 struct ns_tcp_tsig_state
 {
-	int counter;
-	dst_key *key;
-	void *ctx;
-	char[NS_PACKETSZ] sig;
-	int siglen;
+    int counter;
+    dst_key *key;
+    void *ctx;
+    char[NS_PACKETSZ] sig;
+    int siglen;
 }
 
 enum NS_TSIG_FUDGE = 300;
@@ -775,113 +775,113 @@ enum NSType
  */
 enum NSClass
 {
-	invalid = 0,	/*%< Cookie. */
-	in_ = 1,		/*%< Internet. */
-	ns_c_2 = 2,		/*%< unallocated/unsupported. */
-	chaos = 3,		/*%< MIT Chaos-net. */
-	hesiod  = 4,		/*%< MIT Hesiod. */
-	/* Query class values which do not appear in resource records */
-	none = 254,	/*%< for prereq. sections in update requests */
-	any = 255,		/*%< Wildcard match. */
-	max = 65536
+    invalid = 0,    /*%< Cookie. */
+    in_ = 1,        /*%< Internet. */
+    ns_c_2 = 2,     /*%< unallocated/unsupported. */
+    chaos = 3,      /*%< MIT Chaos-net. */
+    hesiod  = 4,        /*%< MIT Hesiod. */
+    /* Query class values which do not appear in resource records */
+    none = 254, /*%< for prereq. sections in update requests */
+    any = 255,      /*%< Wildcard match. */
+    max = 65536
 }
 
 /* Certificate type values in CERT resource records.  */
 enum NSCertType
 {
-	pkix = 1,	/*%< PKIX (X.509v3) */
-	spki = 2,	/*%< SPKI */
-	pgp  = 3,	/*%< PGP */
-	url  = 253,	/*%< URL private type */
-	oid  = 254	/*%< OID private type */
+    pkix = 1,   /*%< PKIX (X.509v3) */
+    spki = 2,   /*%< SPKI */
+    pgp  = 3,   /*%< PGP */
+    url  = 253, /*%< URL private type */
+    oid  = 254  /*%< OID private type */
 }
 
 /*%
  * EDNS0 extended flags and option codes, host order.
  */
 enum NS_OPT_DNSSEC_OK        =0x8000U;
-enum NS_OPT_NSID		=3;
+enum NS_OPT_NSID        =3;
 /+
 
 /*%
  * Inline versions of get/put short/long.  Pointer is advanced.
  */
 enum NS_GET16(s, cp) do { \
-	const(char) *t_cp = (const(char) *)(cp); \
-	(s) = ((uint16_t)t_cp[0] << 8) \
-	    | ((uint16_t)t_cp[1]) \
-	    ; \
-	(cp) += NS_INT16SZ; \
+    const(char) *t_cp = (const(char) *)(cp); \
+    (s) = ((uint16_t)t_cp[0] << 8) \
+        | ((uint16_t)t_cp[1]) \
+        ; \
+    (cp) += NS_INT16SZ; \
 } while (0)
 
 enum NS_GET32(l, cp) do { \
-	const(char) *t_cp = (const(char) *)(cp); \
-	(l) = ((uint32_t)t_cp[0] << 24) \
-	    | ((uint32_t)t_cp[1] << 16) \
-	    | ((uint32_t)t_cp[2] << 8) \
-	    | ((uint32_t)t_cp[3]) \
-	    ; \
-	(cp) += NS_INT32SZ; \
+    const(char) *t_cp = (const(char) *)(cp); \
+    (l) = ((uint32_t)t_cp[0] << 24) \
+        | ((uint32_t)t_cp[1] << 16) \
+        | ((uint32_t)t_cp[2] << 8) \
+        | ((uint32_t)t_cp[3]) \
+        ; \
+    (cp) += NS_INT32SZ; \
 } while (0)
 
 enum NS_PUT16(s, cp) do { \
-	uint16_t t_s = (uint16_t)(s); \
-	char *t_cp = (char *)(cp); \
-	*t_cp++ = t_s >> 8; \
-	*t_cp   = t_s; \
-	(cp) += NS_INT16SZ; \
+    uint16_t t_s = (uint16_t)(s); \
+    char *t_cp = (char *)(cp); \
+    *t_cp++ = t_s >> 8; \
+    *t_cp   = t_s; \
+    (cp) += NS_INT16SZ; \
 } while (0)
 
 enum NS_PUT32(l, cp) do { \
-	uint32_t t_l = (uint32_t)(l); \
-	char *t_cp = (char *)(cp); \
-	*t_cp++ = t_l >> 24; \
-	*t_cp++ = t_l >> 16; \
-	*t_cp++ = t_l >> 8; \
-	*t_cp   = t_l; \
-	(cp) += NS_INT32SZ; \
+    uint32_t t_l = (uint32_t)(l); \
+    char *t_cp = (char *)(cp); \
+    *t_cp++ = t_l >> 24; \
+    *t_cp++ = t_l >> 16; \
+    *t_cp++ = t_l >> 8; \
+    *t_cp   = t_l; \
+    (cp) += NS_INT32SZ; \
 } while (0)
 +/
-int		ns_msg_getflag (ns_msg, int);
-uint	ns_get16 (const(char) *);
-ulong	ns_get32 (const(char) *);
-void		ns_put16 (uint, char *);
-void		ns_put32 (ulong, char *);
-int		ns_initparse (const(char) *, int, ns_msg *);
-int		ns_skiprr (const(char) *, const(char) *, ns_sect, int);
-int		ns_parserr (ns_msg*, ns_sect, int, ns_rr *);
-int		ns_sprintrr (const ns_msg *, const ns_rr *, const(char) *, const(char) *, char *, size_t)
+int     ns_msg_getflag (ns_msg, int);
+uint    ns_get16 (const(char) *);
+ulong   ns_get32 (const(char) *);
+void        ns_put16 (uint, char *);
+void        ns_put32 (ulong, char *);
+int     ns_initparse (const(char) *, int, ns_msg *);
+int     ns_skiprr (const(char) *, const(char) *, ns_sect, int);
+int     ns_parserr (ns_msg*, ns_sect, int, ns_rr *);
+int     ns_sprintrr (const ns_msg *, const ns_rr *, const(char) *, const(char) *, char *, size_t)
     ;
-int		ns_sprintrrf (const(char) *, size_t, const(char) *, NSClass, NSType, ulong, const(char) *, size_t, const(char) *, const(char) *, char *, size_t);
-int		ns_format_ttl (ulong, char *, size_t);
-int		ns_parse_ttl (const(char) *, ulong *);
-uint32_t	ns_datetosecs (const(char) *, int *);
-int		ns_name_ntol (const(char) *, char *, size_t)
+int     ns_sprintrrf (const(char) *, size_t, const(char) *, NSClass, NSType, ulong, const(char) *, size_t, const(char) *, const(char) *, char *, size_t);
+int     ns_format_ttl (ulong, char *, size_t);
+int     ns_parse_ttl (const(char) *, ulong *);
+uint32_t    ns_datetosecs (const(char) *, int *);
+int     ns_name_ntol (const(char) *, char *, size_t)
     ;
-int		ns_name_ntop (const(char) *, char *, size_t);
-int		ns_name_pton (const(char) *, char *, size_t);
-int		ns_name_unpack (const(char) *, const(char) *,
-				const(char) *, char *, size_t)
+int     ns_name_ntop (const(char) *, char *, size_t);
+int     ns_name_pton (const(char) *, char *, size_t);
+int     ns_name_unpack (const(char) *, const(char) *,
+                const(char) *, char *, size_t)
     ;
-int		ns_name_pack (const(char) *, char *, int,
-			      const(char) **, const(char) **)
+int     ns_name_pack (const(char) *, char *, int,
+                  const(char) **, const(char) **)
     ;
-int		ns_name_uncompress (const(char) *,
-				    const(char) *,
-				    const(char) *,
-				    char *, size_t);
-int		ns_name_compress (const(char) *, char *, size_t,
-				  const(char) **,
-				  const(char) **);
-int		ns_name_skip (const(char) **, const(char) *)
+int     ns_name_uncompress (const(char) *,
+                    const(char) *,
+                    const(char) *,
+                    char *, size_t);
+int     ns_name_compress (const(char) *, char *, size_t,
+                  const(char) **,
+                  const(char) **);
+int     ns_name_skip (const(char) **, const(char) *)
     ;
-void		ns_name_rollback (const(char) *,
-				  const(char) **,
-				  const(char) **);
-int		ns_samedomain (const(char) *, const(char) *);
-int		ns_subdomain (const(char) *, const(char) *);
-int		ns_makecanon (const(char) *, char *, size_t);
-int		ns_samename (const(char) *, const(char) *);
+void        ns_name_rollback (const(char) *,
+                  const(char) **,
+                  const(char) **);
+int     ns_samedomain (const(char) *, const(char) *);
+int     ns_subdomain (const(char) *, const(char) *);
+int     ns_makecanon (const(char) *, char *, size_t);
+int     ns_samename (const(char) *, const(char) *);
 //__END_DECLS
 
 // #include <arpa/nameser_compat.h>

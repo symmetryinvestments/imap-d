@@ -178,10 +178,15 @@ struct Session
 	{
 		import std.exception : enforce;
 		import std.process : environment;
+		import imap.ssl : loadVerifyLocations;
 		this.options = options;
 		this.server = imapServer.server;
 		this.port = imapServer.port;
-        this.useSSL = useSSL;
+		this.useSSL = useSSL;
+		if (useSSL)
+		{
+			this.sslContext.loadVerifyLocations(options.trustStore, options.trustFile);
+		}
 		this.imapLogin = imapLogin;
 	}
 

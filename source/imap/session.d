@@ -169,9 +169,6 @@ struct Session {
         this.server = imapServer.server;
         this.port = imapServer.port;
         this.useSSL = useSSL;
-        if (useSSL) {
-            this.sslContext.loadVerifyLocations(options.trustStore, options.trustFile);
-        }
         this.imapLogin = imapLogin;
     }
 

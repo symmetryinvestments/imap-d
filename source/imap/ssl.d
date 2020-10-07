@@ -235,23 +235,3 @@ void setDefaultVerifyPaths(SSL_CTX* ctx) {
     auto ret = SSL_CTX_set_default_verify_paths(ctx);
     enforce(ret == 0, "SSL unable to set default verify paths");
 }
-
-void loadVerifyLocations(SSL_CTX* ctx, string caFile, string caPath)
-{
-	import std.exception : enforce;
-	auto ret = SSL_CTX_load_verify_locations(ctx,caFile.toStringz,caPath.toStringz);
-	enforce(ret == 0, "SSL unable to load verify locations");
-}
-
-void setDefaultVerifyPaths(SSL_CTX* ctx)
-{
-	import std.exception : enforce;
-	auto ret = SSL_CTX_set_default_verify_paths(ctx);
-	enforce(ret == 0, "SSL unable to set default verify paths");
-}
-
-
-
-
-
-

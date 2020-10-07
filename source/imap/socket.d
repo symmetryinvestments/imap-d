@@ -85,6 +85,7 @@ ref Session openSecureConnection(ref Session session) {
     enforce(session.socket.isAlive, "trying to secure a disconnected socket");
     session.sslContext = getContext("/etc/ssl/cert.pem", "/etc/ssl", null, null, false); // "cacert.pem","/etc/pki/CA",null,null,false);
     enforce(session.sslContext !is null, "unable to create new SSL context");
+    session.sslContext.loadVerifyLocations(session.options.trustStore, session.options.trustFile);
     session.sslConnection = SSL_new(session.sslContext);
     enforce(session.sslConnection !is null, "unable to create new SSL connection");
     enforce(session.socket.isAlive, "trying to secure a disconnected socket");

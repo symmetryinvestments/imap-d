@@ -466,12 +466,6 @@ T parseUpdateT(T)(T t, string name, string value) {
     return t;
 }
 
-private string extractMailbox(string line) {
-    import std.string : split, strip;
-    auto cols = line.split;
-    return (cols.length < 3) ? null : cols[2].strip;
-}
-
 private string[][] extractParenthesizedList(string line) {
     import std.string : indexOf, lastIndexOf, strip, split;
     import std.format : format;
@@ -502,36 +496,37 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName) {
     import std.range : front;
     import std.conv : to;
 
-    enum StatusToken = "* STATUS ";
+    // The server response is something like:
+    //   * STATUS INBOX (MESSAGES 10 RECENT 5 UIDNEXT 100 UNSEEN 2)
+    //   D1003 OK Completed
+
+    auto resp = session.responseGeneric(tag);
+    if (resp.status == ImapStatus.unknown || resp.status == ImapStatus.bye)
+        return StatusResult(resp.status, resp.value);
+
     StatusResult ret;
+    ret.status = resp.status;
+    ret.value = resp.value;
 
-    auto r = session.responseGeneric(tag);
-    if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-        return StatusResult(r.status, r.value);
+    auto extractMailbox = function string(string line) {
+        auto words = line.split;
+        return (words.length < 3) ? null : words[2].strip;
+    };
 
-    ret.status = r.status;
-    ret.value = r.value;
-
-    auto lists = r.value.splitLines
+    // Find the 'STATUS' line and extract its statistical key/value pairs.
+    enum StatusToken = "* STATUS ";
+    auto statuses = resp.value.splitLines
         .map!(line => line.strip)
-        .filter!(line => line.startsWith(StatusToken) && line.extractMailbox == mailboxName)
+        .filter!(line => line.startsWith(StatusToken) && extractMailbox(line) == mailboxName)
         .map!(line => line.extractParenthesizedList)
         .array;
 
-    foreach (list; lists)
-        auto lines = r.value.extractLinesWithPrefix(StatusToken, StatusToken.length + mailboxName.length + 2);
-
-    version (None)
-        foreach (line; lines) {
-            foreach (pair; list) {
-                ret = parseUpdateT!StatusResult(ret, pair[0], pair[1]);
-                auto key = cols[j * 2];
-                auto val = cols[j * 2 + 1];
-                if (!val.isNumeric)
-                    continue;
-                ret = ret.parseStruct(key.toUpper, val.to!int);
-            }
+    // If we found it then parse each pair into our status result.
+    if (statuses.length > 0) {
+        foreach (pair; statuses[0]) {
+            ret = parseUpdateT!StatusResult(ret, pair[0], pair[1]);
         }
+    }
     return ret;
 }
 

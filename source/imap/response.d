@@ -618,8 +618,14 @@ enum ListNameAttribute {
     @(`\Marked`)
     marked,
 
-    @(`\Unmarked`)
+    @(`\UnMarked`)
     unMarked,
+
+    @(`\HasChildren`)
+    hasChildren,
+
+    @(`\HasNoChildren`)
+    hasNoChildren,
 }
 
 
@@ -666,9 +672,10 @@ ListResponse responseList(ref Session session, Tag tag) {
     // string[] folders;
     import std.array : array;
     import std.algorithm : map, filter;
-    import std.string : splitLines, split, strip, startsWith;
+    import std.string : indexOf, splitLines, split, strip, startsWith;
     import std.traits : EnumMembers;
     import std.conv : to;
+    import std.exception : enforce;
 
     auto result = session.responseGeneric(tag);
     if (result.status == ImapStatus.unknown || result.status == ImapStatus.bye)
@@ -678,27 +685,34 @@ ListResponse responseList(ref Session session, Tag tag) {
 
     foreach (line; result.value.splitLines
              .map!(line => line.strip)
-             .array
-             .filter!(line => line.startsWith("* LIST ") || line.startsWith("* LSUB"))
-             .array
-             .map!(line => line.split[2 .. $])
-             .array) {
-        ListEntry listEntry;
+             .filter!(line => line.startsWith("* LIST ") || line.startsWith("* LSUB"))) {
 
+        // There can be multiple attributes within parentheses.  Find the parenthesised substring,
+        // split it into words and parse the attributes out.
+        auto attribsStartIdx = line.indexOf("(");
+        auto attribsEndIdx = line.indexOf(")");
+        enforce(attribsStartIdx != -1 && attribsEndIdx != -1 &&
+                attribsEndIdx > attribsStartIdx, "LIST response parse error.");
+        auto attribsLine = line[attribsStartIdx + 1 .. attribsEndIdx];
+
+        ListEntry listEntry;
         static foreach (A; EnumMembers!ListNameAttribute) {
             {
                 enum name = A.to!string;
                 enum udas = __traits(getAttributes, __traits(getMember, ListNameAttribute, name));
                 static if (udas.length > 0) {
-                    if (line[0].strip.stripBrackets() == udas[0].to!string) {
-                        listEntry.attributes ~= A;
+                    foreach (attrib; attribsLine.split) {
+                        if (attrib == udas[0].to!string) {
+                            listEntry.attributes ~= A;
+                        }
                     }
                 }
             }
         }
 
-        listEntry.hierarchyDelimiter = line[1].strip.stripQuotes;
-        listEntry.path = line[2].strip;
+        auto nonAttribFields = line[attribsEndIdx + 1 .. $].split;
+        listEntry.hierarchyDelimiter = nonAttribFields[0].strip.stripQuotes;
+        listEntry.path = nonAttribFields[1].strip;
         listEntries ~= listEntry;
     }
     return ListResponse(ImapStatus.ok, result.value, listEntries);

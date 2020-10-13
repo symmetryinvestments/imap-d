@@ -466,12 +466,6 @@ T parseUpdateT(T)(T t, string name, string value) {
     return t;
 }
 
-private string extractMailbox(string line) {
-    import std.string : split, strip;
-    auto cols = line.split;
-    return (cols.length < 3) ? null : cols[2].strip;
-}
-
 private string[][] extractParenthesizedList(string line) {
     import std.string : indexOf, lastIndexOf, strip, split;
     import std.format : format;
@@ -502,36 +496,37 @@ StatusResult responseStatus(ref Session session, int tag, string mailboxName) {
     import std.range : front;
     import std.conv : to;
 
-    enum StatusToken = "* STATUS ";
+    // The server response is something like:
+    //   * STATUS INBOX (MESSAGES 10 RECENT 5 UIDNEXT 100 UNSEEN 2)
+    //   D1003 OK Completed
+
+    auto resp = session.responseGeneric(tag);
+    if (resp.status == ImapStatus.unknown || resp.status == ImapStatus.bye)
+        return StatusResult(resp.status, resp.value);
+
     StatusResult ret;
+    ret.status = resp.status;
+    ret.value = resp.value;
 
-    auto r = session.responseGeneric(tag);
-    if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
-        return StatusResult(r.status, r.value);
+    auto extractMailbox = function string(string line) {
+        auto words = line.split;
+        return (words.length < 3) ? null : words[2].strip;
+    };
 
-    ret.status = r.status;
-    ret.value = r.value;
-
-    auto lists = r.value.splitLines
+    // Find the 'STATUS' line and extract its statistical key/value pairs.
+    enum StatusToken = "* STATUS ";
+    auto statuses = resp.value.splitLines
         .map!(line => line.strip)
-        .filter!(line => line.startsWith(StatusToken) && line.extractMailbox == mailboxName)
+        .filter!(line => line.startsWith(StatusToken) && extractMailbox(line) == mailboxName)
         .map!(line => line.extractParenthesizedList)
         .array;
 
-    foreach (list; lists)
-        auto lines = r.value.extractLinesWithPrefix(StatusToken, StatusToken.length + mailboxName.length + 2);
-
-    version (None)
-        foreach (line; lines) {
-            foreach (pair; list) {
-                ret = parseUpdateT!StatusResult(ret, pair[0], pair[1]);
-                auto key = cols[j * 2];
-                auto val = cols[j * 2 + 1];
-                if (!val.isNumeric)
-                    continue;
-                ret = ret.parseStruct(key.toUpper, val.to!int);
-            }
+    // If we found it then parse each pair into our status result.
+    if (statuses.length > 0) {
+        foreach (pair; statuses[0]) {
+            ret = parseUpdateT!StatusResult(ret, pair[0], pair[1]);
         }
+    }
     return ret;
 }
 
@@ -623,8 +618,14 @@ enum ListNameAttribute {
     @(`\Marked`)
     marked,
 
-    @(`\Unmarked`)
+    @(`\UnMarked`)
     unMarked,
+
+    @(`\HasChildren`)
+    hasChildren,
+
+    @(`\HasNoChildren`)
+    hasNoChildren,
 }
 
 
@@ -671,9 +672,10 @@ ListResponse responseList(ref Session session, Tag tag) {
     // string[] folders;
     import std.array : array;
     import std.algorithm : map, filter;
-    import std.string : splitLines, split, strip, startsWith;
+    import std.string : indexOf, splitLines, split, strip, startsWith;
     import std.traits : EnumMembers;
     import std.conv : to;
+    import std.exception : enforce;
 
     auto result = session.responseGeneric(tag);
     if (result.status == ImapStatus.unknown || result.status == ImapStatus.bye)
@@ -683,27 +685,34 @@ ListResponse responseList(ref Session session, Tag tag) {
 
     foreach (line; result.value.splitLines
              .map!(line => line.strip)
-             .array
-             .filter!(line => line.startsWith("* LIST ") || line.startsWith("* LSUB"))
-             .array
-             .map!(line => line.split[2 .. $])
-             .array) {
-        ListEntry listEntry;
+             .filter!(line => line.startsWith("* LIST ") || line.startsWith("* LSUB"))) {
 
+        // There can be multiple attributes within parentheses.  Find the parenthesised substring,
+        // split it into words and parse the attributes out.
+        auto attribsStartIdx = line.indexOf("(");
+        auto attribsEndIdx = line.indexOf(")");
+        enforce(attribsStartIdx != -1 && attribsEndIdx != -1 &&
+                attribsEndIdx > attribsStartIdx, "LIST response parse error.");
+        auto attribsLine = line[attribsStartIdx + 1 .. attribsEndIdx];
+
+        ListEntry listEntry;
         static foreach (A; EnumMembers!ListNameAttribute) {
             {
                 enum name = A.to!string;
                 enum udas = __traits(getAttributes, __traits(getMember, ListNameAttribute, name));
                 static if (udas.length > 0) {
-                    if (line[0].strip.stripBrackets() == udas[0].to!string) {
-                        listEntry.attributes ~= A;
+                    foreach (attrib; attribsLine.split) {
+                        if (attrib == udas[0].to!string) {
+                            listEntry.attributes ~= A;
+                        }
                     }
                 }
             }
         }
 
-        listEntry.hierarchyDelimiter = line[1].strip.stripQuotes;
-        listEntry.path = line[2].strip;
+        auto nonAttribFields = line[attribsEndIdx + 1 .. $].split;
+        listEntry.hierarchyDelimiter = nonAttribFields[0].strip.stripQuotes;
+        listEntry.path = nonAttribFields[1].strip;
         listEntries ~= listEntry;
     }
     return ListResponse(ImapStatus.ok, result.value, listEntries);

@@ -475,81 +475,92 @@ auto multiSearch(ref Session session, string criteria, SearchResultType[] result
     return r;
 }
 
-int sendFetchRequest(ref Session session, string id, string itemSpec) {
-    import std.format : format;
-
-    // Does the id start with '#'?
-    if (id.length > 1 && id[0] == '#') {
-        // A mailbox sequence id which should be in the range 1 to mailbox-message-count.
-        return session.sendRequest(format!"FETCH %s %s"(id[1 .. $], itemSpec));
-    }
-
-    // Otherwise it's a mailbox uid.
-    return session.sendRequest(format!"UID FETCH %s %s"(id, itemSpec));
-}
-
 @SILdoc("Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages")
 auto fetchFast(ref Session session, string mesg) {
-    auto t = session.imapTry!sendFetchRequest(mesg, "FAST");
-    return session.responseFetchFast(t);
+    import std.format : format;
+    auto t = session.imapTry!sendRequest(format!"UID FETCH %s FAST"(mesg));
+    auto r = session.responseFetchFast(t);
+    return r;
 }
 
 @SILdoc("Fetch the FLAGS of the messages")
 auto fetchFlags(ref Session session, string mesg) {
-    auto t = session.imapTry!sendFetchRequest(mesg, "FLAGS");
+    import std.format : format;
+    auto t = session.imapTry!sendRequest(format!"UID FETCH %s FLAGS"(mesg));
     return session.responseFetchFlags(t);
 }
 
 @SILdoc("Fetch the INTERNALDATE of the messages")
 auto fetchDate(ref Session session, string mesg) {
-    auto id = session.imapTry!sendFetchRequest(mesg, "INTERNALDATE");
+    import std.format : format;
+    auto request = format!"UID FETCH %s INTERNALDATE"(mesg);
+    auto id = session.imapTry!sendRequest(request);
     return session.responseFetchDate(id);
 }
 
 @SILdoc("Fetch the RFC822.SIZE of the messages")
 auto fetchSize(ref Session session, string mesg) {
-    auto id = session.imapTry!sendFetchRequest(mesg, "RFC822.SIZE");
+    import std.format : format;
+    auto request = format!"UID FETCH %s RFC822.SIZE"(mesg);
+    auto id = session.imapTry!sendRequest(request);
     return session.responseFetchSize(id);
 }
 
 @SILdoc("Fetch the BODYSTRUCTURE of the messages")
 auto fetchStructure(ref Session session, string mesg) {
-    auto id = session.imapTry!sendFetchRequest(mesg, "BODYSTRUCTURE");
+    import std.format : format;
+    auto request = format!"UID FETCH %s BODYSTRUCTURE"(mesg);
+    auto id = session.imapTry!sendRequest(request);
     return session.responseFetchStructure(id);
 }
 
+
 @SILdoc("Fetch the BODY[HEADER] of the messages")
 auto fetchHeader(ref Session session, string mesg) {
-    auto id  = session.imapTry!sendFetchRequest(mesg, "BODY.PEEK[HEADER]");
-    return session.responseFetchBody(id);
+    import std.format : format;
+
+    auto id  = session.imapTry!sendRequest(format!`UID FETCH %s BODY.PEEK[HEADER]`(mesg));
+    auto r = session.responseFetchBody(id);
+    return r;
 }
 
-@SILdoc("Fetch the entire message text, ie. RFC822, of the messages")
+
+@SILdoc("Fetch the text, ie. BODY[TEXT], of the messages")
 auto fetchRFC822(ref Session session, string mesg) {
-    auto id  = session.imapTry!sendFetchRequest(mesg, "RFC822");
-    return session.responseFetchBody(id);
+    import std.format : format;
+
+    auto id  = session.imapTry!sendRequest(format!`UID FETCH %s RFC822`(mesg));
+    auto r = session.responseFetchBody(id);
+    return r;
 }
 
 @SILdoc("Fetch the text, ie. BODY[TEXT], of the messages")
 auto fetchText(ref Session session, string mesg) {
-    auto id  = session.imapTry!sendFetchRequest(mesg, "BODY.PEEK[TEXT]");
-    return session.responseFetchBody(id);
+    import std.format : format;
+
+    auto id  = session.imapTry!sendRequest(format!`UID FETCH %s BODY.PEEK[TEXT]`(mesg));
+    auto r = session.responseFetchBody(id);
+    return r;
 }
+
 
 @SILdoc("Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.")
 auto fetchFields(ref Session session, string mesg, string headerFields) {
     import std.format : format;
-    auto itemSpec = format!`BODY.PEEK[HEADER.FIELDS (%s)]`(headerFields);
-    auto id  = session.imapTry!sendFetchRequest(mesg, itemSpec);
-    return session.responseFetchBody(id);
+
+    auto id  = session.imapTry!sendRequest(format!`UID FETCH %s BODY.PEEK[HEADER.FIELDS (%s)]`(mesg, headerFields));
+    auto r = session.responseFetchBody(id);
+    return r;
 }
+
 
 @SILdoc("Fetch the specified message part, ie. BODY[<part>], of the messages")
 auto fetchPart(ref Session session, string mesg, string part) {
     import std.format : format;
-    auto itemSpec = format!`BODY.PEEK[%s]`(part);
-    auto id  = session.imapTry!sendFetchRequest(mesg, itemSpec);
-    return session.responseFetchBody(id);
+
+    auto id  = session.imapTry!sendRequest(format!`UID FETCH %s BODY.PEEK[%s]`(mesg, part));
+    auto r = session.responseFetchBody(id);
+    return r;
 }
 
 enum StoreMode {

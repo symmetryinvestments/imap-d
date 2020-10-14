@@ -1,0 +1,12 @@
+.dub
+dub.selections.json
+
+libsymmetry-imap.*
+example/imap-example
+
+tags
+
+# SIL REPL artefacts.
+SIL.log
+SIL_user.log
+history.txt

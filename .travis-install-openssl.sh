@@ -1,12 +1,22 @@
 #!/bin/bash
 
 set -euxo pipefail
-git clone https://github.com/openssl/openssl
-pushd openssl
+
+# Install dependency packages.
+apt install -y libssl-dev
+
+# Fetch the version 1.1.1g of the OpenSSL source.
+wget https://github.com/openssl/openssl/archive/OpenSSL_1_1_1g.tar.gz
+tar xzf OpenSSL_1_1_1g.tar.gz
+
+# Build and install it under /usr/local/openssl.
+pushd openssl-OpenSSL_1_1_1g
 ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib
 make
-sudo make install
+make install
 popd
+
+# Create a package config file which points to our new installation.
 cat > libssl.pc << EOF
 prefix=/usr/local/openssl
 exec_prefix=\${prefix}
@@ -21,5 +31,7 @@ Requires.private: libcrypto
 Libs: -L\${libdir} -L\${sharedlibdir} -lssl
 Cflags: -I\${includedir}
 EOF
-sudo mv libssl.pc /usr/lib/x86_64-linux-gnu/pkgconfig/libssl.pc
+
+# Install it manually.
+mv libssl.pc /usr/lib/x86_64-linux-gnu/pkgconfig/libssl.pc
 

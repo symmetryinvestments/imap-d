@@ -156,8 +156,6 @@ ref Session login(ref Session session) {
     if (session.socket is null || !session.socket.isAlive()) {
         if (session.options.debugMode) infof("login called with dead socket, so trying to reconnect");
         session = openConnection(session);
-        if (session.useSSL && !session.options.startTLS)
-            session = openSecureConnection(session);
     }
     enforce(session.socket.isAlive(), "not connected to server");
 

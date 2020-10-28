@@ -102,10 +102,10 @@ ImapStatus checkTag(ref Session session, string buf, Tag tag) {
     if (session.options.debugMode) tracef("tag result is status %s for lines: %s", r, relevantLines);
 
     if (r != ImapStatus.none && session.options.debugMode)
-        tracef("S (%s): %s / %s", session.socket, buf, relevantLines);
+        if (session.options.debugMode) tracef("S (%s): %s / %s", session.socket, buf, relevantLines);
 
     if (r == ImapStatus.no || r == ImapStatus.bad)
-        errorf("IMAP (%s): %s / %s", session.socket, buf, relevantLines);
+        if (session.options.debugMode) errorf("IMAP (%s): %s / %s", session.socket, buf, relevantLines);
 
     return r;
 }

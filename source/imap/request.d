@@ -154,7 +154,7 @@ ref Session login(ref Session session) {
     scope (failure)
         closeConnection(session);
     if (session.socket is null || !session.socket.isAlive()) {
-        infof("login called with dead socket, so trying to reconnect");
+        if (session.options.debugMode) infof("login called with dead socket, so trying to reconnect");
         session = openConnection(session);
         if (session.useSSL && !session.options.startTLS)
             session = openSecureConnection(session);
@@ -217,7 +217,7 @@ ref Session login(ref Session session) {
         }
         if (rl == ImapStatus.no) {
             auto err = format!"username %s or password rejected at %s\n"(login.username, session.server);
-            errorf("username %s or password rejected at %s\n", login.username, session.server);
+            if (session.options.debugMode) errorf("username %s or password rejected at %s\n", login.username, session.server);
             session.closeConnection();
             throw new Exception(err);
         }

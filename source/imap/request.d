@@ -380,9 +380,9 @@ auto list(ref Session session, string referenceName = "", string mailboxName = "
 
 
 @SILdoc("List subscribed mailboxes")
-auto lsub(ref Session session, string refer, string name) {
+auto lsub(ref Session session, string refer = "", string name = "*") {
     import std.format : format;
-    auto request = format!`LIST "%s" "%s"`(refer, name);
+    auto request = format!`LSUB "%s" "%s"`(refer, name);
     auto id = session.imapTry!sendRequest(request);
     return session.responseList(id);
 }
@@ -732,7 +732,7 @@ auto subscribe(ref Session session, Mailbox mailbox) {
 @SILdoc("Unsubscribe from the specified mailbox.")
 auto unsubscribe(ref Session session, Mailbox mailbox) {
     import std.format : format;
-    auto request = format!`UNSUBSCRIBE"%s"`(mailbox.toString);
+    auto request = format!`UNSUBSCRIBE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
     return session.responseGeneric(id);
 }

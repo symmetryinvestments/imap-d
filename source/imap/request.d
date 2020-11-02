@@ -449,7 +449,7 @@ auto multiSearch(ref Session session, string criteria, SearchResultType[] result
     return r;
 }
 
-int sendFetchRequest(ref Session session, string id, string itemSpec) {
+private int sendFetchRequest(ref Session session, string id, string itemSpec) {
     import std.format : format;
 
     // Does the id start with '#'?
@@ -542,18 +542,27 @@ private string modeString(StoreMode mode) {
     assert(0);
 }
 
+private string formatRequestWithId(alias fmt, Args...)(string id, Args args) {
+    import std.format : format;
+
+    if (id.length > 1 && id[0] == '#') {
+        return format!(fmt)(id[1 .. $], args);
+    }
+    return format!("UID " ~ fmt)(id, args);
+}
+
 @SILdoc("Add, remove or replace the specified flags of the messages.")
 auto store(ref Session session, string mesg, StoreMode mode, string flags) {
     import std.format : format;
     import std.algorithm : canFind;
     import std.string : toLower, startsWith;
     import std.format : format;
-    auto t = session.imapTry!sendRequest(format!"UID STORE %s %sFLAGS.SILENT (%s)"(mesg, mode.modeString, flags));
+    auto t = session.imapTry!sendRequest(formatRequestWithId!"STORE %s %sFLAGS.SILENT (%s)"(mesg, mode.modeString, flags));
     auto r = session.responseGeneric(t);
 
     if (canFind(flags, `\Deleted`) && mode != StoreMode.remove && session.options.expunge) {
         if (session.capabilities.has(Capability.uidPlus)) {
-            t = session.imapTry!sendRequest(format!"UID EXPUNGE %s"(mesg));
+            t = session.imapTry!sendRequest(formatRequestWithId!"EXPUNGE %s"(mesg));
             session.responseGeneric(t);
         } else {
             t = session.imapTry!sendRequest("EXPUNGE");
@@ -563,12 +572,11 @@ auto store(ref Session session, string mesg, StoreMode mode, string flags) {
     return r;
 }
 
-
 @SILdoc("Copy the specified messages to another mailbox.")
 auto copy(ref Session session, string mesg, Mailbox mailbox) {
     import std.format : format;
 
-    auto t = session.imapTry!sendRequest(format!`UID COPY %s "%s"`(mesg, mailbox.toString));
+    auto t = session.imapTry!sendRequest(formatRequestWithId!`COPY %s "%s"`(mesg, mailbox.toString));
     auto r = session.imapTry!responseGeneric(t);
     if (r.status == ImapStatus.tryCreate) {
         t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
@@ -577,7 +585,7 @@ auto copy(ref Session session, string mesg, Mailbox mailbox) {
             t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
             session.imapTry!responseGeneric(t);
         }
-        t = session.imapTry!sendRequest(format!`UID COPY %s "%s"`(mesg, mailbox.toString));
+        t = session.imapTry!sendRequest(formatRequestWithId!`COPY %s "%s"`(mesg, mailbox.toString));
         r = session.imapTry!responseGeneric(t);
     }
     return r;

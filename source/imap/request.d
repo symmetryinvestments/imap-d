@@ -10,7 +10,7 @@ import imap.response;
 import imap.sil : SILdoc;
 
 /// Every IMAP command is preceded with a unique string
-static int tag = 0x1000;
+static int g_tag = 0x1000;
 
 
 auto imapTry(alias F, Args...)(ref Session session, Args args) {
@@ -69,33 +69,30 @@ int sendRequest(ref Session session, string value) {
     import std.experimental.logger : infof, tracef;
     import std.stdio;
     import std.string : endsWith;
-    int n;
-    int t = tag;
 
     enforce(session.socket, "not connected to server");
 
-    if (value.isLoginRequest) {
-        if (session.options.debugMode) infof("sending command (%s):\n\n%s\n\n", session.socket,
-                value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
-        if (session.options.debugMode) tracef("C (%s): %s\n", session.socket, value.length,
-                session.imapLogin.password.length - "\"\"\r\n".length, value);
-    } else {
-        if (session.options.debugMode) {
+    if (session.options.debugMode) {
+        if (value.isLoginRequest) {
+            infof("sending command (%s):\n\n%s\n\n", session.socket, value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
+            tracef("C (%s): %s\n", session.socket, value.length, session.imapLogin.password.length - "\"\"\r\n".length, value);
+        } else {
             infof("sending command (%s):\n\n%s\n", session.socket, value);
             tracef("C (%s): %s", session.socket, value);
         }
     }
+
+    int tag = g_tag;
+    g_tag++;
+    if (g_tag > 0xffff)
+        g_tag = 0x1000;
 
     auto taggedValue = format!"D%04X %s%s"(tag, value, value.endsWith("\n") ? "" : "\r\n");
     version (Trace) stderr.writefln("sending %s", taggedValue);
     if (session.socketWrite(taggedValue) == -1)
         return -1;
 
-    if (tag == 0xFFFF)  /* Tag always between 0x1000 and 0xFFFF. */
-        tag = 0x0FFF;
-    tag++;
-
-    return t;
+    return tag;
 }
 
 @SILdoc("Sends a response to a command continuation request.")
@@ -103,7 +100,6 @@ int sendContinuation(ref Session session, string data) {
     import std.exception : enforce;
     enforce(session.socket, "not connected to server");
     session.socketWrite(data ~ "\r\n");
-    // socketWrite(session, data ~ "\r\n");
     return 1;
 }
 
@@ -653,47 +649,34 @@ auto multiMove(ref Session session, string mesg, Mailbox mailbox) {
 }
 
 
-/+
-// TODO - finish append function
+// TODO: flags and date
 @SILdoc(`Append supplied message to the specified mailbox.`)
-auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, string flags, string date)
+auto append(ref Session session, Mailbox mbox, string[] mesgLines)
 {
-    auto request = format!`CREATE "%s"`(mailbox);
-    auto id = sendRequest(session,request);
-    return responseGeneric(session,id);
+    import std.format: format;
+    import std.algorithm: fold;
 
-    t = session.imapTry!sendRequest(format!"APPEND \"%s\"%s%s%s%s%s%s {%d}"(m,
-        (flags ? " (" : ""), (flags ? flags : ""),
-        (flags ? ")" : ""), (date ? " \"" : ""),
-        (date ? date : ""), (date ? "\"" : "")));
+    // TODO: We're making assumptions about the format of the data sent, i.e., '\r\n' suffixes for
+    // lines, which should be better abstracted away.
 
-    r = session.imapTry!responseContinuation(t);
-    if (r == ImapStatus.continue_) {
-        session.imapTry!sendContinuation(mesg, mesglen);
-        r = imaptry!responseGeneric(t);
+    // Each line in the message has a 2 char '\r\n' suffix added when sent to the server.
+    size_t mesgSize = fold!((size, line) => size + line.length + 2)(mesgLines, 0.size_t);
+    int cmdTag = session.imapTry!sendRequest(format!"APPEND \"%s\" {%u}"(mbox, mesgSize));
+
+    auto resp = session.imapTry!responseContinuation(cmdTag);
+    if (resp.status != ImapStatus.continue_) {
+        return resp;
     }
 
-    if (r == ImapStatus.tryCreate) {
-        t = session.imapTry!sendRequest(format!`CREATE "%s"`(m));
-        r = session.imapTry!responseGeneric(t);
-        if (get_option_boolean("subscribe")) {
-            t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(m));
-            session.imapTry!responseGeneric(t);
-        }
-        TRY(t = sendRequest(session, "APPEND \"%s\"%s%s%s%s%s%s {%d}", m,
-            (flags ? " (" : ""), (flags ? flags : ""),
-            (flags ? ")" : ""), (date ? " \"" : ""),
-            (date ? date : ""), (date ? "\"" : ""), mesglen));
-        r = session.imapTry!responseContinuation(t);
-        if (r == ImapStatus.continue_) {
-            TRY(send_continuation(session, mesg, mesglen));
-            TRY(r = responseGeneric(session, t));
-        }
+    // Send each line individually -- the server will wait for exactly mesgSize bytes as the literal
+    // string.  Then send an empty line (which will actually be '\r\n') to end the APPEND command.
+    foreach (line; mesgLines) {
+        session.sendContinuation(line);
     }
+    session.sendContinuation("");
 
-    return r;
+    return session.responseGeneric(cmdTag);
 }
-+/
 
 @SILdoc("Create the specified mailbox")
 auto create(ref Session session, Mailbox mailbox) {

@@ -203,7 +203,8 @@ ImapResult responseContinuation(ref Session session, Tag tag) {
         if (checkBye(result[1]))
             return ImapResult(ImapStatus.bye, result[1]);
         resTag = session.checkTag(result[1], tag);
-    } while ((resTag != ImapStatus.none) && !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
+    } while (resTag != ImapStatus.none && resTag != ImapStatus.no &&
+             !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
 
     if (resTag == ImapStatus.no && (checkTryCreate(buf) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf);

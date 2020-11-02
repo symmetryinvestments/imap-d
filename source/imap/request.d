@@ -249,14 +249,6 @@ int logout(ref Session session) {
     return ImapStatus.ok;
 }
 
-@SILdoc("Mailbox status returned by IMAP status command")
-struct MailboxImapStatus {
-    uint exists;
-    uint recent;
-    uint unseen;
-    uint uidnext;
-}
-
 @SILdoc("IMAP examine command for mailbox mbox")
 auto examine(ref Session session, Mailbox mbox) {
     import std.format : format;
@@ -290,23 +282,11 @@ auto select(ref Session session, Mailbox mailbox) {
 
 
 @SILdoc("Close examined/selected mailbox")
-ImapResult raw(ref Session session, string command) {
-    auto id = sendRequest(session, command);
-    auto response = responseGeneric(session, id);
-    if (response.status == ImapStatus.ok && session.socket.isAlive) {
-        session.close();
-        session.selected = Mailbox.init;
-    }
-    return response;
-}
-
-@SILdoc("Close examined/selected mailbox")
 ImapResult close(ref Session session) {
     enum request = "CLOSE";
     auto id = sendRequest(session, request);
     auto response = responseGeneric(session, id);
-    if (response.status == ImapStatus.ok && session.socket.isAlive) {
-        session.close();
+    if (response.status == ImapStatus.ok) {
         session.selected = Mailbox.init;
     }
     return response;

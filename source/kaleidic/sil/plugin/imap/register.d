@@ -126,9 +126,9 @@ void registerImap(ref Handlers handlers) {
         scope (exit) handlers.closeModule();
         handlers.registerGrammar();
 
-        static foreach (T; AliasSeq!(MailboxImapStatus, MailboxList, Mailbox, ImapResult, ImapStatus, Result!string,
+        static foreach (T; AliasSeq!(MailboxList, Mailbox, ImapResult, ImapStatus, Result!string,
                                      Status, FlagResult, SearchResult, Status, Session, ProtocolSSL, ImapServer, ImapLogin,
-                                     MailboxImapStatus, MailboxList, Mailbox, ImapResult, ImapStatus, Result!string,
+                                     MailboxList, Mailbox, ImapResult, ImapStatus, Result!string,
                                      Status, FlagResult, SearchResult, Status, StatusResult, BodyResponse, ListResponse, ListEntry,
                                      IncomingEmailMessage, RelayInfo, ToType, EmailMessage, MimePart, Options,
                                      MimeContainer_, MimePart,
@@ -148,7 +148,7 @@ void registerImap(ref Handlers handlers) {
         static foreach (F; AliasSeq!(noop, login, logout, status, examine, select, close, expunge, list, lsub,
                                      search, fetchFast, fetchFlags, fetchDate, fetchSize, fetchStructure, fetchHeader,
                                      fetchText, fetchFields, fetchPart, logout, store, copy, create, delete_, rename, subscribe,
-                                     unsubscribe, idle, openConnection, closeConnection, raw, fetchRFC822, attachments, writeBinaryString,
+                                     unsubscribe, idle, openConnection, closeConnection, fetchRFC822, attachments, writeBinaryString,
                                      createQuery, searchQuery, searchQueries, rfcDate, esearch, multiSearch, move, multiMove, moveUIDs,
                                      extractAddress,
                         ))

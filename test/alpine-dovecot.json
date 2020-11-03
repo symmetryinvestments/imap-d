@@ -1,0 +1,24 @@
+{
+  "builders": [
+    {
+      "type": "lxd",
+      "name": "alpine-dovecot",
+      "image": "images:alpine/3.12/amd64",
+      "output_image": "dovecot-test"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "adduser --disabled-password mailuser",
+        "apk -U upgrade",
+        "apk add dovecot",
+        "rc-update add dovecot default",
+        "echo 'mail_location = maildir:~/Maildir' >> /etc/dovecot/local.conf",
+        "echo mailuser:`doveadm pw -u mailuser -p secret123`:1000:1000::/home/mailuser/::: >> /etc/dovecot/users",
+        "rc-service dovecot start"
+      ]
+    }
+  ]
+}

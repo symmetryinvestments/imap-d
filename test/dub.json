@@ -1,0 +1,12 @@
+{
+	"authors": [
+		"Toby Hutton <toby@grusly.com>"
+	],
+	"copyright": "Copyright © 2020, Symmetry Investments",
+	"dependencies": {
+		"symmetry-imap" : { "path": "../"}
+	},
+	"description": "Functional test application for IMAP.",
+	"license": "MIT",
+	"name": "imap-d-test"
+}

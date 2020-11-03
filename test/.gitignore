@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/imap-d-test
+imap-d-test.so
+imap-d-test.dylib
+imap-d-test.dll
+imap-d-test.a
+imap-d-test.lib
+imap-d-test-test-*
+*.exe
+*.o
+*.obj
+*.lst

@@ -10,7 +10,7 @@ import imap.response;
 import imap.sil : SILdoc;
 
 /// Every IMAP command is preceded with a unique string
-static int tag = 0x1000;
+static int g_tag = 0x1000;
 
 
 auto imapTry(alias F, Args...)(ref Session session, Args args) {
@@ -69,33 +69,30 @@ int sendRequest(ref Session session, string value) {
     import std.experimental.logger : infof, tracef;
     import std.stdio;
     import std.string : endsWith;
-    int n;
-    int t = tag;
 
     enforce(session.socket, "not connected to server");
 
-    if (value.isLoginRequest) {
-        if (session.options.debugMode) infof("sending command (%s):\n\n%s\n\n", session.socket,
-                value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
-        if (session.options.debugMode) tracef("C (%s): %s\n", session.socket, value.length,
-                session.imapLogin.password.length - "\"\"\r\n".length, value);
-    } else {
-        if (session.options.debugMode) {
+    if (session.options.debugMode) {
+        if (value.isLoginRequest) {
+            infof("sending command (%s):\n\n%s\n\n", session.socket, value.length - session.imapLogin.password.length - "\"\"\r\n".length, value);
+            tracef("C (%s): %s\n", session.socket, value.length, session.imapLogin.password.length - "\"\"\r\n".length, value);
+        } else {
             infof("sending command (%s):\n\n%s\n", session.socket, value);
             tracef("C (%s): %s", session.socket, value);
         }
     }
+
+    int tag = g_tag;
+    g_tag++;
+    if (g_tag > 0xffff)
+        g_tag = 0x1000;
 
     auto taggedValue = format!"D%04X %s%s"(tag, value, value.endsWith("\n") ? "" : "\r\n");
     version (Trace) stderr.writefln("sending %s", taggedValue);
     if (session.socketWrite(taggedValue) == -1)
         return -1;
 
-    if (tag == 0xFFFF)  /* Tag always between 0x1000 and 0xFFFF. */
-        tag = 0x0FFF;
-    tag++;
-
-    return t;
+    return tag;
 }
 
 @SILdoc("Sends a response to a command continuation request.")
@@ -103,7 +100,6 @@ int sendContinuation(ref Session session, string data) {
     import std.exception : enforce;
     enforce(session.socket, "not connected to server");
     session.socketWrite(data ~ "\r\n");
-    // socketWrite(session, data ~ "\r\n");
     return 1;
 }
 
@@ -154,10 +150,8 @@ ref Session login(ref Session session) {
     scope (failure)
         closeConnection(session);
     if (session.socket is null || !session.socket.isAlive()) {
-        infof("login called with dead socket, so trying to reconnect");
+        if (session.options.debugMode) infof("login called with dead socket, so trying to reconnect");
         session = openConnection(session);
-        if (session.useSSL && !session.options.startTLS)
-            session = openSecureConnection(session);
     }
     enforce(session.socket.isAlive(), "not connected to server");
 
@@ -217,7 +211,7 @@ ref Session login(ref Session session) {
         }
         if (rl == ImapStatus.no) {
             auto err = format!"username %s or password rejected at %s\n"(login.username, session.server);
-            errorf("username %s or password rejected at %s\n", login.username, session.server);
+            if (session.options.debugMode) errorf("username %s or password rejected at %s\n", login.username, session.server);
             session.closeConnection();
             throw new Exception(err);
         }
@@ -255,14 +249,6 @@ int logout(ref Session session) {
     return ImapStatus.ok;
 }
 
-@SILdoc("Mailbox status returned by IMAP status command")
-struct MailboxImapStatus {
-    uint exists;
-    uint recent;
-    uint unseen;
-    uint uidnext;
-}
-
 @SILdoc("IMAP examine command for mailbox mbox")
 auto examine(ref Session session, Mailbox mbox) {
     import std.format : format;
@@ -296,23 +282,11 @@ auto select(ref Session session, Mailbox mailbox) {
 
 
 @SILdoc("Close examined/selected mailbox")
-ImapResult raw(ref Session session, string command) {
-    auto id = sendRequest(session, command);
-    auto response = responseGeneric(session, id);
-    if (response.status == ImapStatus.ok && session.socket.isAlive) {
-        session.close();
-        session.selected = Mailbox.init;
-    }
-    return response;
-}
-
-@SILdoc("Close examined/selected mailbox")
 ImapResult close(ref Session session) {
     enum request = "CLOSE";
     auto id = sendRequest(session, request);
     auto response = responseGeneric(session, id);
-    if (response.status == ImapStatus.ok && session.socket.isAlive) {
-        session.close();
+    if (response.status == ImapStatus.ok) {
         session.selected = Mailbox.init;
     }
     return response;
@@ -382,9 +356,9 @@ auto list(ref Session session, string referenceName = "", string mailboxName = "
 
 
 @SILdoc("List subscribed mailboxes")
-auto lsub(ref Session session, string refer, string name) {
+auto lsub(ref Session session, string refer = "", string name = "*") {
     import std.format : format;
-    auto request = format!`LIST "%s" "%s"`(refer, name);
+    auto request = format!`LSUB "%s" "%s"`(refer, name);
     auto id = session.imapTry!sendRequest(request);
     return session.responseList(id);
 }
@@ -475,7 +449,7 @@ auto multiSearch(ref Session session, string criteria, SearchResultType[] result
     return r;
 }
 
-int sendFetchRequest(ref Session session, string id, string itemSpec) {
+private int sendFetchRequest(ref Session session, string id, string itemSpec) {
     import std.format : format;
 
     // Does the id start with '#'?
@@ -568,18 +542,27 @@ private string modeString(StoreMode mode) {
     assert(0);
 }
 
+private string formatRequestWithId(alias fmt, Args...)(string id, Args args) {
+    import std.format : format;
+
+    if (id.length > 1 && id[0] == '#') {
+        return format!(fmt)(id[1 .. $], args);
+    }
+    return format!("UID " ~ fmt)(id, args);
+}
+
 @SILdoc("Add, remove or replace the specified flags of the messages.")
 auto store(ref Session session, string mesg, StoreMode mode, string flags) {
     import std.format : format;
     import std.algorithm : canFind;
     import std.string : toLower, startsWith;
     import std.format : format;
-    auto t = session.imapTry!sendRequest(format!"UID STORE %s %sFLAGS.SILENT (%s)"(mesg, mode.modeString, flags));
+    auto t = session.imapTry!sendRequest(formatRequestWithId!"STORE %s %sFLAGS.SILENT (%s)"(mesg, mode.modeString, flags));
     auto r = session.responseGeneric(t);
 
     if (canFind(flags, `\Deleted`) && mode != StoreMode.remove && session.options.expunge) {
         if (session.capabilities.has(Capability.uidPlus)) {
-            t = session.imapTry!sendRequest(format!"UID EXPUNGE %s"(mesg));
+            t = session.imapTry!sendRequest(formatRequestWithId!"EXPUNGE %s"(mesg));
             session.responseGeneric(t);
         } else {
             t = session.imapTry!sendRequest("EXPUNGE");
@@ -589,12 +572,11 @@ auto store(ref Session session, string mesg, StoreMode mode, string flags) {
     return r;
 }
 
-
 @SILdoc("Copy the specified messages to another mailbox.")
 auto copy(ref Session session, string mesg, Mailbox mailbox) {
     import std.format : format;
 
-    auto t = session.imapTry!sendRequest(format!`UID COPY %s "%s"`(mesg, mailbox.toString));
+    auto t = session.imapTry!sendRequest(formatRequestWithId!`COPY %s "%s"`(mesg, mailbox.toString));
     auto r = session.imapTry!responseGeneric(t);
     if (r.status == ImapStatus.tryCreate) {
         t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
@@ -603,7 +585,7 @@ auto copy(ref Session session, string mesg, Mailbox mailbox) {
             t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
             session.imapTry!responseGeneric(t);
         }
-        t = session.imapTry!sendRequest(format!`UID COPY %s "%s"`(mesg, mailbox.toString));
+        t = session.imapTry!sendRequest(formatRequestWithId!`COPY %s "%s"`(mesg, mailbox.toString));
         r = session.imapTry!responseGeneric(t);
     }
     return r;
@@ -655,47 +637,34 @@ auto multiMove(ref Session session, string mesg, Mailbox mailbox) {
 }
 
 
-/+
-// TODO - finish append function
+// TODO: flags and date
 @SILdoc(`Append supplied message to the specified mailbox.`)
-auto append(ref Session session, Mailbox mbox, string mesg, size_t mesglen, string flags, string date)
+auto append(ref Session session, Mailbox mbox, string[] mesgLines)
 {
-    auto request = format!`CREATE "%s"`(mailbox);
-    auto id = sendRequest(session,request);
-    return responseGeneric(session,id);
+    import std.format: format;
+    import std.algorithm: fold;
 
-    t = session.imapTry!sendRequest(format!"APPEND \"%s\"%s%s%s%s%s%s {%d}"(m,
-        (flags ? " (" : ""), (flags ? flags : ""),
-        (flags ? ")" : ""), (date ? " \"" : ""),
-        (date ? date : ""), (date ? "\"" : "")));
+    // TODO: We're making assumptions about the format of the data sent, i.e., '\r\n' suffixes for
+    // lines, which should be better abstracted away.
 
-    r = session.imapTry!responseContinuation(t);
-    if (r == ImapStatus.continue_) {
-        session.imapTry!sendContinuation(mesg, mesglen);
-        r = imaptry!responseGeneric(t);
+    // Each line in the message has a 2 char '\r\n' suffix added when sent to the server.
+    size_t mesgSize = fold!((size, line) => size + line.length + 2)(mesgLines, 0.size_t);
+    int cmdTag = session.imapTry!sendRequest(format!"APPEND \"%s\" {%u}"(mbox, mesgSize));
+
+    auto resp = session.imapTry!responseContinuation(cmdTag);
+    if (resp.status != ImapStatus.continue_) {
+        return resp;
     }
 
-    if (r == ImapStatus.tryCreate) {
-        t = session.imapTry!sendRequest(format!`CREATE "%s"`(m));
-        r = session.imapTry!responseGeneric(t);
-        if (get_option_boolean("subscribe")) {
-            t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(m));
-            session.imapTry!responseGeneric(t);
-        }
-        TRY(t = sendRequest(session, "APPEND \"%s\"%s%s%s%s%s%s {%d}", m,
-            (flags ? " (" : ""), (flags ? flags : ""),
-            (flags ? ")" : ""), (date ? " \"" : ""),
-            (date ? date : ""), (date ? "\"" : ""), mesglen));
-        r = session.imapTry!responseContinuation(t);
-        if (r == ImapStatus.continue_) {
-            TRY(send_continuation(session, mesg, mesglen));
-            TRY(r = responseGeneric(session, t));
-        }
+    // Send each line individually -- the server will wait for exactly mesgSize bytes as the literal
+    // string.  Then send an empty line (which will actually be '\r\n') to end the APPEND command.
+    foreach (line; mesgLines) {
+        session.sendContinuation(line);
     }
+    session.sendContinuation("");
 
-    return r;
+    return session.responseGeneric(cmdTag);
 }
-+/
 
 @SILdoc("Create the specified mailbox")
 auto create(ref Session session, Mailbox mailbox) {
@@ -734,7 +703,7 @@ auto subscribe(ref Session session, Mailbox mailbox) {
 @SILdoc("Unsubscribe from the specified mailbox.")
 auto unsubscribe(ref Session session, Mailbox mailbox) {
     import std.format : format;
-    auto request = format!`UNSUBSCRIBE"%s"`(mailbox.toString);
+    auto request = format!`UNSUBSCRIBE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
     return session.responseGeneric(id);
 }

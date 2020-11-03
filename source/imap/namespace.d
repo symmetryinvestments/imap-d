@@ -335,7 +335,7 @@ struct Mailbox {
         if ((prefix.length == 0) && ((delim == '\0') || delim == '/'))
             return mbox;
         auto ret = format!"%s%s"(prefix, mbox).replace("/", [delim]);
-        infof("namespace: '%s' -> '%s'\n", mbox, ret);
+        version(Trace) infof("namespace: '%s' -> '%s'\n", mbox, ret);
         return ret;
     }
     //// Convert the names of personal mailboxes, using the namespace specified by

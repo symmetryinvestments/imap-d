@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/sil-example-util
+sil-example-util.so
+sil-example-util.dylib
+sil-example-util.dll
+sil-example-util.a
+sil-example-util.lib
+sil-example-util-test-*
+*.exe
+*.o
+*.obj
+*.lst

@@ -8,28 +8,22 @@ config = imap_config.getConfig(commandLineArguments)
 // -------------------------------------------------------------------------------------------------
 // Some helper functions.
 //
-// Firstly, a field formatter which strips the field prefix and pads to a fixed width.
+// Firstly, a function to join an array of strings.
+
+joinFields(flds, sep) => {
+  len(flds) > 0 |> enforce("Cannot join an empty array.")
+  in fold(flds[1:$], (str, fld) => str ~ sep ~ fld, flds[0])
+}
+
+// Secondly, a field formatter which strips the field prefix and pads to a fixed width.
 // E.g., ("From: me@here.com" |> fmtField(20)) == "me@here.com         "
 
 fmtField(field, width) => {
-// Use the following when we know how to concat arrayOf char and string.
-//  field
-//    |> findSplitAfter(": ").after
-//    |> padRight(' ', width)
-//    |> array
-
-  // Using this in the meantime.
   pad(str) => iota(width - len(str)) |> fold((a, i) => a ~ " ", str)
   in field
     |> string.split(": ")[1:$]
-    |> fold((a, s) => a ~ s, "")
+    |> joinFields(": ")
     |> pad
-}
-
-// Secondly, a function to join an array of strings.
-
-joinFields(flds, sep) => {
-  fold(flds[1:$], (str, fld) => str ~ sep ~ fld, flds[0])
 }
 
 // And thirdly, a function which concatenates the headers into a formatted string.

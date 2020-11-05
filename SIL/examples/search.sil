@@ -41,16 +41,16 @@ session =
   imap.Session(server, creds)
     |> imap.openConnection().returnValue
     |> imap.login().returnValue
-inbox = imap.Mailbox("INBOX", "", '/')
+inbox = imap.Mailbox("support", "", '/')
 
 // Select the default inbox.
 inbox |> imap.examine(session, _)
 
 // Specify some search criteria to be combined for different searches.
-fromCrit   = "FROM robot@example.com"
-alertCrit  = "SUBJECT \"Alert: new issue\""
-resCrit    = "SUBJECT \"Resolution: issue\""
-afterCrit  = "SENTSINCE 13-may-2020"
+fromCrit   = `FROM robot@example.com`
+alertCrit  = `SUBJECT "Alert: new issue"`
+resCrit    = `SUBJECT "Resolution: issue"`
+afterCrit  = `SENTSINCE 13-may-2020`
 
 // Function to join search criteria.
 joinQuery(crita) => fold(crita[1:$], (str, crit) => str ~ " " ~ crit, crita[0])
@@ -88,9 +88,9 @@ report =
   keys(unresolvedAlertTable)
     |> map(alertId => {
          msgId = unresolvedAlertTable[alertId] |> toString
-       in [ alertId,
-            imap.fetchFields(session, msgId, "date").returnValue.lines[0],
-            imap.fetchText(session, msgId).returnValue.lines[1]
+       in [ alertId
+          , imap.fetchFields(session, msgId, "date").returnValue.lines[0]
+          , imap.fetchText(session, msgId).returnValue.lines[0]
           ]
        })
     |> fold((outStr, tuple) => {

@@ -636,20 +636,41 @@ auto multiMove(ref Session session, string mesg, Mailbox mailbox) {
     assert(0);
 }
 
+// NOTE: the date string must follow the standard grammar taken from the RFC, without the
+// surrounding double quotes:
+//
+// date-time       = DQUOTE date-day-fixed "-" date-month "-" date-year SP time SP zone DQUOTE
+// date-day-fixed  = (SP DIGIT) / 2DIGIT
+// date-month      = "Jan" / "Feb" / "Mar" / "Apr" / "May" / "Jun" / "Jul" / "Aug" / "Sep" / "Oct" / "Nov" / "Dec"
+// date-year       = 4DIGIT
+// time            = 2DIGIT ":" 2DIGIT ":" 2DIGIT
+// zone            = ("+" / "-") 4DIGIT
+//
+// e.g., " 5-Nov-2020 14:19:28 +1100"
 
-// TODO: flags and date
 @SILdoc(`Append supplied message to the specified mailbox.`)
-auto append(ref Session session, Mailbox mbox, string[] mesgLines)
+auto append(ref Session session, Mailbox mbox, string[] mesgLines, string[] flags = [], string date = string.init)
 {
     import std.format: format;
     import std.algorithm: fold;
+    import std.array: join;
+
+    string flagsStr = "";
+    if (flags.length > 0) {
+        flagsStr = " (" ~ join(flags, " ") ~ ")";
+    }
+
+    string dateStr = "";
+    if (date) {
+        dateStr = ` "` ~ date ~ `"`;
+    }
 
     // TODO: We're making assumptions about the format of the data sent, i.e., '\r\n' suffixes for
     // lines, which should be better abstracted away.
 
     // Each line in the message has a 2 char '\r\n' suffix added when sent to the server.
     size_t mesgSize = fold!((size, line) => size + line.length + 2)(mesgLines, 0.size_t);
-    int cmdTag = session.imapTry!sendRequest(format!"APPEND \"%s\" {%u}"(mbox, mesgSize));
+    int cmdTag = session.imapTry!sendRequest(format!`APPEND "%s"%s%s {%u}`(mbox, flagsStr, dateStr, mesgSize));
 
     auto resp = session.imapTry!responseContinuation(cmdTag);
     if (resp.status != ImapStatus.continue_) {

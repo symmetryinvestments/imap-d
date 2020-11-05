@@ -389,6 +389,8 @@ private string[] exampleMessage2 =
 // TODO:
 // - Automatic creation of mailbox.
 // - Subscription on create.
+// NOTE:
+// - we're testing the flags and date is set properly down in `testFetch()` below.
 
 private void testAppend(string host) {
     auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
@@ -398,15 +400,23 @@ private void testAppend(string host) {
     auto lsResp = session.list();
     char delim = lsResp.entries[0].hierarchyDelimiter[0];
 
-    session.create(Mailbox("mbox0", "", delim));
-    scope(exit) session.delete_(Mailbox("mbox0", "", delim));
+    auto mbox0 = Mailbox("mbox0", "", delim);
 
-    auto resp = session.append(Mailbox("mbox0", "", delim), exampleMessage0);
+    session.create(mbox0);
+    scope(exit) session.delete_(mbox0);
+
+    auto resp = session.append(mbox0, exampleMessage0);
     imapEnforce(resp.status == ImapStatus.ok, "append", "Append failed.");
 
     resp = session.append(Mailbox("notexist", "", delim), exampleMessage0);
     imapEnforce(resp.status == ImapStatus.tryCreate,
                 "append", "Append to non-existent mailbox should be try-create.");
+
+    resp = session.append(mbox0, exampleMessage1, [`\Seen`, `\Flagged`]);
+    imapEnforce(resp.status == ImapStatus.ok, "append", "Append with flags failed.");
+
+    resp = session.append(mbox0, exampleMessage1, [`\Flagged`], " 5-Nov-2020 14:19:28 +1100");
+    imapEnforce(resp.status == ImapStatus.ok, "append", "Append with flags and date failed.");
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -662,8 +672,8 @@ private void testFetch(string host) {
         session.select(Mailbox("INBOX", "", delim));
         session.delete_(mbox0);
     }
-    session.append(mbox0, exampleMessage0);
-    session.append(mbox0, exampleMessage2);
+    session.append(mbox0, exampleMessage0, [`\Flagged`]);
+    session.append(mbox0, exampleMessage2, [], "12-May-2017 09:00:00 +0000");
     session.select(mbox0);
 
     auto resp = session.fetchFast("#1");
@@ -671,9 +681,15 @@ private void testFetch(string host) {
 
     auto flagsResp = session.fetchFlags("#1");
     imapEnforce(flagsResp.status == ImapStatus.ok, "fetch", "Failed fetch flags.");
+    // The flags should be in flagsResp.flags or flagsResp.ids but don't seem to be.
+    imapEnforce(flagsResp.value.canFind(`\Flagged`), "fetch", "Flag missing from message.");
 
-    resp = session.fetchDate("#1");
+    // The header date of message2 is `Tue, 11 Oct 2011 14:44:56 -0500 (EST)` and by default APPEND
+    // will use the current date/time but the internal date we set when appending above is
+    // `12-May-2017 09:00:00 +0000`.
+    resp = session.fetchDate("#2");
     imapEnforce(resp.status == ImapStatus.ok, "fetch", "Failed fetch date.");
+    imapEnforce(resp.value.canFind("12-May-2017"), "fetch", "Fetched date is incorrect.");
 
     resp = session.fetchSize("#1");
     imapEnforce(resp.status == ImapStatus.ok, "fetch", "Failed fetch size.");

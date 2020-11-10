@@ -81,9 +81,15 @@ enum ProtocolSSL {
 ref Session openSecureConnection(ref Session session) {
     import std.exception : enforce;
     import imap.ssl;
-    int r;
+
     enforce(session.socket.isAlive, "trying to secure a disconnected socket");
-    session.sslContext = getContext("/etc/ssl/cert.pem", "/etc/ssl", null, null, false); // "cacert.pem","/etc/pki/CA",null,null,false);
+
+    // TODO: The CAs are *usually* found under /etc/ssl on *nix systems, but on Windows they
+    // probably need to come from the certificate manager or somewhere?  I don't know yet.  For now
+    // we'll make these assumptions, and on Windows not try to verify the server certificate at all.
+    version (linux) session.sslContext = getContext("/etc/ssl/cert.pem", "/etc/ssl", null, null, false);
+    version (Windows) session.sslContext = getContext("", "", null, null, false);
+
     enforce(session.sslContext !is null, "unable to create new SSL context");
     session.sslContext.loadVerifyLocations(session.options.trustStore, session.options.trustFile);
     session.sslConnection = SSL_new(session.sslContext);
@@ -92,7 +98,7 @@ ref Session openSecureConnection(ref Session session) {
     SSL_set_fd(session.sslConnection, cast(int) session.socket.handle);
     scope (failure)
         session.sslConnection = null;
-    r = SSL_connect(session.sslConnection);
+    int r = SSL_connect(session.sslConnection);
     if (isSSLError(r)) {
         auto message = sslConnectionError(session, r);
         throw new Exception(message);

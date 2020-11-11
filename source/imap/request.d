@@ -13,7 +13,7 @@ import imap.sil : SILdoc;
 static int g_tag = 0x1000;
 
 
-auto imapTry(alias F, Args...)(ref Session session, Args args) {
+auto imapTry(alias F, Args...)(Session session, Args args) {
     import std.traits : isInstanceOf;
     import std.conv : to;
     enum noThrow = true;
@@ -63,7 +63,7 @@ bool isLoginRequest(string value) {
 }
 
 @SILdoc("Sends to server data; a command")
-int sendRequest(ref Session session, string value) {
+int sendRequest(Session session, string value) {
     import std.format : format;
     import std.exception : enforce;
     import std.experimental.logger : infof, tracef;
@@ -96,7 +96,7 @@ int sendRequest(ref Session session, string value) {
 }
 
 @SILdoc("Sends a response to a command continuation request.")
-int sendContinuation(ref Session session, string data) {
+int sendContinuation(Session session, string data) {
     import std.exception : enforce;
     enforce(session.socket, "not connected to server");
     session.socketWrite(data ~ "\r\n");
@@ -105,13 +105,13 @@ int sendContinuation(ref Session session, string data) {
 
 
 @SILdoc("Reset any inactivity autologout timer on the server")
-void noop(ref Session session) {
+void noop(Session session) {
     auto t = session.sendRequest("NOOP");
     session.check!responseGeneric(t);
 }
 
 ///
-auto check(alias F, Args...)(ref Session session, Args args) {
+auto check(alias F, Args...)(Session session, Args args) {
     import std.exception : enforce;
     import std.format : format;
     import std.traits : isInstanceOf;
@@ -135,7 +135,7 @@ auto check(alias F, Args...)(ref Session session, Args args) {
 
 
 @SILdoc("Connect to the server, login to the IMAP server, get its capabilities, get the namespace of the mailboxes.")
-ref Session login(ref Session session) {
+Session login(Session session) {
     import std.format : format;
     import std.exception : enforce;
     import std.experimental.logger : errorf, infof;
@@ -238,7 +238,7 @@ ref Session login(ref Session session) {
 
 
 @SILdoc("Logout from the IMAP server and disconnect")
-int logout(ref Session session) {
+int logout(Session session) {
 
     if (responseGeneric(session, sendRequest(session, "LOGOUT")).status == ImapStatus.unknown) {
         // sessionDestroy(session);
@@ -250,7 +250,7 @@ int logout(ref Session session) {
 }
 
 @SILdoc("IMAP examine command for mailbox mbox")
-auto examine(ref Session session, Mailbox mbox) {
+auto examine(Session session, Mailbox mbox) {
     import std.format : format;
     auto request = format!`EXAMINE "%s"`(mbox);
     auto id = session.sendRequest(request);
@@ -259,7 +259,7 @@ auto examine(ref Session session, Mailbox mbox) {
 
 
 @SILdoc("Get mailbox status")
-auto status(ref Session session, Mailbox mbox) {
+auto status(Session session, Mailbox mbox) {
     import std.format : format;
     import std.exception : enforce;
     enforce(session.imapProtocol == ImapProtocol.imap4Rev1, "status only implemented for Imap4Rev1 - try using examine");
@@ -270,7 +270,7 @@ auto status(ref Session session, Mailbox mbox) {
 }
 
 @SILdoc("Open mailbox in read-write mode.")
-auto select(ref Session session, Mailbox mailbox) {
+auto select(Session session, Mailbox mailbox) {
     import std.format : format;
     auto request = format!`SELECT "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
@@ -282,7 +282,7 @@ auto select(ref Session session, Mailbox mailbox) {
 
 
 @SILdoc("Close examined/selected mailbox")
-ImapResult close(ref Session session) {
+ImapResult close(Session session) {
     enum request = "CLOSE";
     auto id = sendRequest(session, request);
     auto response = responseGeneric(session, id);
@@ -293,7 +293,7 @@ ImapResult close(ref Session session) {
 }
 
 @SILdoc("Remove all messages marked for deletion from selected mailbox")
-ImapResult expunge(ref Session session) {
+ImapResult expunge(Session session) {
     enum request = "EXPUNGE";
     auto id = sendRequest(session, request);
     return session.responseGeneric(id);
@@ -347,7 +347,7 @@ struct MailboxList {
 		referenceName
 		mailboxName
 `)
-auto list(ref Session session, string referenceName = "", string mailboxName = "*") {
+auto list(Session session, string referenceName = "", string mailboxName = "*") {
     import std.format : format;
     auto request = format!`LIST "%s" "%s"`(referenceName, mailboxName);
     auto id = session.sendRequest(request);
@@ -356,7 +356,7 @@ auto list(ref Session session, string referenceName = "", string mailboxName = "
 
 
 @SILdoc("List subscribed mailboxes")
-auto lsub(ref Session session, string refer = "", string name = "*") {
+auto lsub(Session session, string refer = "", string name = "*") {
     import std.format : format;
     auto request = format!`LSUB "%s" "%s"`(refer, name);
     auto id = session.imapTry!sendRequest(request);
@@ -364,7 +364,7 @@ auto lsub(ref Session session, string refer = "", string name = "*") {
 }
 
 @SILdoc("Search selected mailbox according to the supplied search criteria")
-auto search(ref Session session, string criteria, string charset = null) {
+auto search(Session session, string criteria, string charset = null) {
     import std.format : format;
     string s;
 
@@ -416,7 +416,7 @@ private string createSearchMailboxList(string[] mailboxes, string[] subtrees, bo
 
 
 @SILdoc("Search selected mailbox according to the supplied search criteria.")
-auto esearch(ref Session session, string criteria, SearchResultType[] resultTypes = [], string charset = null) {
+auto esearch(Session session, string criteria, SearchResultType[] resultTypes = [], string charset = null) {
     import std.format : format;
     import std.string : strip;
     string s;
@@ -432,7 +432,7 @@ auto esearch(ref Session session, string criteria, SearchResultType[] resultType
 }
 
 @SILdoc("Search selected mailboxes and subtrees according to the supplied search criteria.")
-auto multiSearch(ref Session session, string criteria, SearchResultType[] resultTypes = [], string[] mailboxes = [], string[] subtrees = [], string charset = null, bool subtreeOne = false) {
+auto multiSearch(Session session, string criteria, SearchResultType[] resultTypes = [], string[] mailboxes = [], string[] subtrees = [], string charset = null, bool subtreeOne = false) {
     import std.format : format;
     import std.string : strip;
     string s;
@@ -449,7 +449,7 @@ auto multiSearch(ref Session session, string criteria, SearchResultType[] result
     return r;
 }
 
-private int sendFetchRequest(ref Session session, string id, string itemSpec) {
+private int sendFetchRequest(Session session, string id, string itemSpec) {
     import std.format : format;
 
     // Does the id start with '#'?
@@ -463,55 +463,55 @@ private int sendFetchRequest(ref Session session, string id, string itemSpec) {
 }
 
 @SILdoc("Fetch the FLAGS, INTERNALDATE and RFC822.SIZE of the messages")
-auto fetchFast(ref Session session, string mesg) {
+auto fetchFast(Session session, string mesg) {
     auto t = session.imapTry!sendFetchRequest(mesg, "FAST");
     return session.responseFetchFast(t);
 }
 
 @SILdoc("Fetch the FLAGS of the messages")
-auto fetchFlags(ref Session session, string mesg) {
+auto fetchFlags(Session session, string mesg) {
     auto t = session.imapTry!sendFetchRequest(mesg, "FLAGS");
     return session.responseFetchFlags(t);
 }
 
 @SILdoc("Fetch the INTERNALDATE of the messages")
-auto fetchDate(ref Session session, string mesg) {
+auto fetchDate(Session session, string mesg) {
     auto id = session.imapTry!sendFetchRequest(mesg, "INTERNALDATE");
     return session.responseFetchDate(id);
 }
 
 @SILdoc("Fetch the RFC822.SIZE of the messages")
-auto fetchSize(ref Session session, string mesg) {
+auto fetchSize(Session session, string mesg) {
     auto id = session.imapTry!sendFetchRequest(mesg, "RFC822.SIZE");
     return session.responseFetchSize(id);
 }
 
 @SILdoc("Fetch the BODYSTRUCTURE of the messages")
-auto fetchStructure(ref Session session, string mesg) {
+auto fetchStructure(Session session, string mesg) {
     auto id = session.imapTry!sendFetchRequest(mesg, "BODYSTRUCTURE");
     return session.responseFetchStructure(id);
 }
 
 @SILdoc("Fetch the BODY[HEADER] of the messages")
-auto fetchHeader(ref Session session, string mesg) {
+auto fetchHeader(Session session, string mesg) {
     auto id  = session.imapTry!sendFetchRequest(mesg, "BODY.PEEK[HEADER]");
     return session.responseFetchBody(id);
 }
 
 @SILdoc("Fetch the entire message text, ie. RFC822, of the messages")
-auto fetchRFC822(ref Session session, string mesg) {
+auto fetchRFC822(Session session, string mesg) {
     auto id  = session.imapTry!sendFetchRequest(mesg, "RFC822");
     return session.responseFetchBody(id);
 }
 
 @SILdoc("Fetch the text, ie. BODY[TEXT], of the messages")
-auto fetchText(ref Session session, string mesg) {
+auto fetchText(Session session, string mesg) {
     auto id  = session.imapTry!sendFetchRequest(mesg, "BODY.PEEK[TEXT]");
     return session.responseFetchBody(id);
 }
 
 @SILdoc("Fetch the specified header fields, ie. BODY[HEADER.FIELDS (<fields>)], of the messages.")
-auto fetchFields(ref Session session, string mesg, string headerFields) {
+auto fetchFields(Session session, string mesg, string headerFields) {
     import std.format : format;
     auto itemSpec = format!`BODY.PEEK[HEADER.FIELDS (%s)]`(headerFields);
     auto id  = session.imapTry!sendFetchRequest(mesg, itemSpec);
@@ -519,7 +519,7 @@ auto fetchFields(ref Session session, string mesg, string headerFields) {
 }
 
 @SILdoc("Fetch the specified message part, ie. BODY[<part>], of the messages")
-auto fetchPart(ref Session session, string mesg, string part) {
+auto fetchPart(Session session, string mesg, string part) {
     import std.format : format;
     auto itemSpec = format!`BODY.PEEK[%s]`(part);
     auto id  = session.imapTry!sendFetchRequest(mesg, itemSpec);
@@ -552,7 +552,7 @@ private string formatRequestWithId(alias fmt, Args...)(string id, Args args) {
 }
 
 @SILdoc("Add, remove or replace the specified flags of the messages.")
-auto store(ref Session session, string mesg, StoreMode mode, string flags) {
+auto store(Session session, string mesg, StoreMode mode, string flags) {
     import std.format : format;
     import std.algorithm : canFind;
     import std.string : toLower, startsWith;
@@ -573,7 +573,7 @@ auto store(ref Session session, string mesg, StoreMode mode, string flags) {
 }
 
 @SILdoc("Copy the specified messages to another mailbox.")
-auto copy(ref Session session, string mesg, Mailbox mailbox) {
+auto copy(Session session, string mesg, Mailbox mailbox) {
     import std.format : format;
 
     auto t = session.imapTry!sendRequest(formatRequestWithId!`COPY %s "%s"`(mesg, mailbox.toString));
@@ -592,13 +592,13 @@ auto copy(ref Session session, string mesg, Mailbox mailbox) {
 }
 
 @SILdoc("Move the specified message to another mailbox.")
-auto move(ref Session session, long uid, string mailbox) {
+auto move(Session session, long uid, string mailbox) {
     import std.conv : text;
     return multiMove(session, text(uid), Mailbox(mailbox));
 }
 
 @SILdoc("Move the specified messages to another mailbox.")
-auto moveUIDs(ref Session session, long[] uids, string mailbox) {
+auto moveUIDs(Session session, long[] uids, string mailbox) {
     import std.conv : text;
     import std.algorithm : map;
     import std.array : array;
@@ -607,7 +607,7 @@ auto moveUIDs(ref Session session, long[] uids, string mailbox) {
 }
 
 @SILdoc("Move the specified messages to another mailbox.")
-auto multiMove(ref Session session, string mesg, Mailbox mailbox) {
+auto multiMove(Session session, string mesg, Mailbox mailbox) {
     import std.exception : enforce;
     import std.format : format;
     import std.conv : to;
@@ -649,7 +649,7 @@ auto multiMove(ref Session session, string mesg, Mailbox mailbox) {
 // e.g., " 5-Nov-2020 14:19:28 +1100"
 
 @SILdoc(`Append supplied message to the specified mailbox.`)
-auto append(ref Session session, Mailbox mbox, string[] mesgLines, string[] flags = [], string date = string.init)
+auto append(Session session, Mailbox mbox, string[] mesgLines, string[] flags = [], string date = string.init)
 {
     import std.format: format;
     import std.algorithm: fold;
@@ -688,7 +688,7 @@ auto append(ref Session session, Mailbox mbox, string[] mesgLines, string[] flag
 }
 
 @SILdoc("Create the specified mailbox")
-auto create(ref Session session, Mailbox mailbox) {
+auto create(Session session, Mailbox mailbox) {
     import std.format : format;
     auto request = format!`CREATE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
@@ -697,7 +697,7 @@ auto create(ref Session session, Mailbox mailbox) {
 
 
 @SILdoc("Delete the specified mailbox")
-auto delete_(ref Session session, Mailbox mailbox) {
+auto delete_(Session session, Mailbox mailbox) {
     import std.format : format;
     auto request = format!`DELETE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
@@ -705,7 +705,7 @@ auto delete_(ref Session session, Mailbox mailbox) {
 }
 
 @SILdoc("Rename a mailbox")
-auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox) {
+auto rename(Session session, Mailbox oldmbox, Mailbox newmbox) {
     import std.format : format;
     auto request = format!`RENAME "%s" "%s"`(oldmbox.toString, newmbox.toString);
     auto id = session.sendRequest(request);
@@ -713,7 +713,7 @@ auto rename(ref Session session, Mailbox oldmbox, Mailbox newmbox) {
 }
 
 @SILdoc("Subscribe to the specified mailbox")
-auto subscribe(ref Session session, Mailbox mailbox) {
+auto subscribe(Session session, Mailbox mailbox) {
     import std.format : format;
     auto request = format!`SUBSCRIBE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
@@ -722,7 +722,7 @@ auto subscribe(ref Session session, Mailbox mailbox) {
 
 
 @SILdoc("Unsubscribe from the specified mailbox.")
-auto unsubscribe(ref Session session, Mailbox mailbox) {
+auto unsubscribe(Session session, Mailbox mailbox) {
     import std.format : format;
     auto request = format!`UNSUBSCRIBE "%s"`(mailbox.toString);
     auto id = session.sendRequest(request);
@@ -730,7 +730,7 @@ auto unsubscribe(ref Session session, Mailbox mailbox) {
 }
 
 @SILdoc(`IMAP idle command`)
-auto idle(ref Session session) {
+auto idle(Session session) {
     import std.stdio;
     Tag t;
     ImapResult r, ri;

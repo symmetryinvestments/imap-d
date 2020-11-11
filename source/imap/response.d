@@ -46,7 +46,7 @@ enum ImapResponse {
 
 
 @SILdoc("Read data the server sent")
-auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool timeoutFail = false) {
+auto receiveResponse(Session session, Duration timeout = Duration.init, bool timeoutFail = false) {
     timeout = (timeout == Duration.init) ? session.options.timeout : timeout;
     // auto result = session.socketSecureRead(); // timeout,timeoutFail);
     auto result = session.socketRead(timeout, timeoutFail);
@@ -64,7 +64,7 @@ auto receiveResponse(ref Session session, Duration timeout = Duration.init, bool
 
 
 @SILdoc("Search for tagged response in the data that the server sent.")
-ImapStatus checkTag(ref Session session, string buf, Tag tag) {
+ImapStatus checkTag(Session session, string buf, Tag tag) {
     import std.algorithm : all, map, filter;
     import std.ascii : isHexDigit, isWhite;
     import std.experimental.logger;
@@ -149,7 +149,7 @@ struct ImapResult {
 }
 
 @SILdoc("Get server data and make sure there is a tagged response inside them.")
-ImapResult responseGeneric(ref Session session, Tag tag, Duration timeout = 2000.msecs) {
+ImapResult responseGeneric(Session session, Tag tag, Duration timeout = 2000.msecs) {
     import std.typecons : Tuple;
     import std.array : Appender;
     import core.time : msecs;
@@ -183,7 +183,7 @@ ImapResult responseGeneric(ref Session session, Tag tag, Duration timeout = 2000
 
 
 @SILdoc("Get server data and make sure there is a continuation response inside them.")
-ImapResult responseContinuation(ref Session session, Tag tag) {
+ImapResult responseContinuation(Session session, Tag tag) {
     import std.algorithm : any;
     import std.string : strip, splitLines;
 
@@ -217,7 +217,7 @@ ImapResult responseContinuation(ref Session session, Tag tag) {
 
 
 @SILdoc("Process the greeting that server sends during connection.")
-ImapResult responseGreeting(ref Session session) {
+ImapResult responseGreeting(Session session) {
     import std.experimental.logger : tracef;
 
     auto res = session.receiveResponse(Duration.init, false);
@@ -254,7 +254,7 @@ T parseEnum(T)(string val, T def = T.init) {
 
 
 @SILdoc("Process the data that server sent due to IMAP CAPABILITY client request.")
-ImapResult responseCapability(ref Session session, Tag tag) {
+ImapResult responseCapability(Session session, Tag tag) {
     import std.experimental.logger : infof, tracef;
     import std.string : splitLines, join, startsWith, toUpper, strip, split;
     import std.algorithm : filter, map;
@@ -353,7 +353,7 @@ ImapResult responseCapability(ref Session session, Tag tag) {
 
 
 @SILdoc("Process the data that server sent due to IMAP AUTHENTICATE client request.")
-ImapResult responseAuthenticate(ref Session session, Tag tag) {
+ImapResult responseAuthenticate(Session session, Tag tag) {
     import std.string : splitLines, join, strip, startsWith;
     import std.algorithm : filter, map;
     import std.array : array;
@@ -374,7 +374,7 @@ ImapResult responseAuthenticate(ref Session session, Tag tag) {
 }
 
 @SILdoc("Process the data that server sent due to IMAP NAMESPACE client request.")
-ImapResult responseNamespace(ref Session session, Tag tag) {
+ImapResult responseNamespace(Session session, Tag tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -489,7 +489,7 @@ private string[][] extractParenthesizedList(string line) {
 
 
 @SILdoc("Process the data that server sent due to IMAP STATUS client request.")
-StatusResult responseStatus(ref Session session, int tag, string mailboxName) {
+StatusResult responseStatus(Session session, int tag, string mailboxName) {
     import std.exception : enforce;
     import std.algorithm : map, filter;
     import std.array : array;
@@ -545,7 +545,7 @@ string[] extractLinesWithPrefix(string buf, string prefix, size_t minimumLength 
 }
 
 @SILdoc("Process the data that server sent due to IMAP EXAMINE client request.")
-ImapResult responseExamine(ref Session session, int tag) {
+ImapResult responseExamine(Session session, int tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -580,7 +580,7 @@ struct SelectResult {
 
 
 @SILdoc("Process the data that server sent due to IMAP SELECT client request.")
-SelectResult responseSelect(ref Session session, int tag) {
+SelectResult responseSelect(Session session, int tag) {
     import std.algorithm : canFind;
     import std.string : toUpper;
     SelectResult ret;
@@ -600,7 +600,7 @@ SelectResult responseSelect(ref Session session, int tag) {
 }
 
 @SILdoc("Process the data that server sent due to IMAP MOVE client request.")
-ImapResult responseMove(ref Session session, int tag) {
+ImapResult responseMove(Session session, int tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -665,7 +665,7 @@ struct ListResponse {
 }
 
 @SILdoc("Process the data that server sent due to IMAP LIST or IMAP LSUB client request.")
-ListResponse responseList(ref Session session, Tag tag) {
+ListResponse responseList(Session session, Tag tag) {
 //          list:           "\\* (LIST|LSUB) \\(([[:print:]]*)\\) (\"[[:print:]]\"|NIL) " ~
 //                            "(\"([[:print:]]+)\"|([[:print:]]+)|\\{([[:digit:]]+)\\} *\r+\n+([[:print:]]*))\r+\n+",
 
@@ -728,12 +728,12 @@ struct SearchResult {
 }
 
 @SILdoc("Process the data that server sent due to IMAP SEARCH client request.")
-SearchResult responseEsearch(ref Session session, int tag) {
+SearchResult responseEsearch(Session session, int tag) {
     return responseSearch(session, tag, "* ESEARCH ");
 }
 
 @SILdoc("Process the data that server sent due to IMAP SEARCH client request.")
-SearchResult responseSearch(ref Session session, int tag, string searchToken = "* SEARCH ") {
+SearchResult responseSearch(Session session, int tag, string searchToken = "* SEARCH ") {
     import std.algorithm : filter, map, each;
     import std.array : array, Appender;
     import std.string : startsWith, strip, isNumeric, splitLines, split;
@@ -758,7 +758,7 @@ SearchResult responseSearch(ref Session session, int tag, string searchToken = "
 }
 
 @SILdoc("Process the data that server sent due to IMAP ESEARCH (really multi-search) client request.")
-SearchResult responseMultiSearch(ref Session session, int tag) {
+SearchResult responseMultiSearch(Session session, int tag) {
     import std.algorithm : filter, map, each;
     import std.array : array, Appender;
     import std.string : startsWith, strip, isNumeric, splitLines, split;
@@ -784,7 +784,7 @@ SearchResult responseMultiSearch(ref Session session, int tag) {
 }
 
 @SILdoc("Process the data that server sent due to IMAP FETCH FAST client request.")
-ImapResult responseFetchFast(ref Session session, int tag) {
+ImapResult responseFetchFast(Session session, int tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -801,7 +801,7 @@ struct FlagResult {
 }
 
 @SILdoc("Process the data that server sent due to IMAP FETCH FLAGS client request.")
-FlagResult responseFetchFlags(ref Session session, Tag tag) {
+FlagResult responseFetchFlags(Session session, Tag tag) {
     import std.experimental.logger : infof;
     import std.string : splitLines, join, startsWith, toUpper, strip, split, isNumeric, indexOf;
     import std.algorithm : filter, map, canFind;
@@ -858,7 +858,7 @@ FlagResult responseFetchFlags(ref Session session, Tag tag) {
 }
 
 ///
-ImapResult responseFetchDate(ref Session session, Tag tag) {
+ImapResult responseFetchDate(Session session, Tag tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -873,7 +873,7 @@ struct ResponseSize {
 
 
 @SILdoc("Process the data that server sent due to IMAP FETCH RFC822.SIZE client request.")
-ImapResult responseFetchSize(ref Session session, Tag tag) {
+ImapResult responseFetchSize(Session session, Tag tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -882,7 +882,7 @@ ImapResult responseFetchSize(ref Session session, Tag tag) {
 
 
 @SILdoc("Process the data that server sent due to IMAP FETCH BODYSTRUCTURE client request.")
-ImapResult responseFetchStructure(ref Session session, int tag) {
+ImapResult responseFetchStructure(Session session, int tag) {
     auto r = session.responseGeneric(tag);
     if (r.status == ImapStatus.unknown || r.status == ImapStatus.bye)
         return ImapResult(r.status, r.value);
@@ -914,7 +914,7 @@ MimeAttachment[] attachments(IncomingEmailMessage message) {
 }
 
 ///
-BodyResponse responseFetchBody(ref Session session, Tag tag) {
+BodyResponse responseFetchBody(Session session, Tag tag) {
     import arsd.email : MimePart, IncomingEmailMessage;
     import std.string : splitLines, join;
     import std.exception : enforce;
@@ -939,7 +939,7 @@ BodyResponse responseFetchBody(ref Session session, Tag tag) {
 /+
 //  Process the data that server sent due to IMAP FETCH BODY[] client request,
 //   ie. FETCH BODY[HEADER], FETCH BODY[TEXT], FETCH BODY[HEADER.FIELDS (<fields>)], FETCH BODY[<part>].
-ImapResult fetchBody(ref Session session, Tag tag)
+ImapResult fetchBody(Session session, Tag tag)
 {
     import std.experimental.logger : infof;
     import std.string : splitLines, join, startsWith, toUpper, strip, split;
@@ -971,7 +971,7 @@ bool isTagged(ImapStatus status) {
 }
 
 @SILdoc("Process the data that server sent due to IMAP IDLE client request.")
-ImapResult responseIdle(ref Session session, Tag tag) {
+ImapResult responseIdle(Session session, Tag tag) {
     import std.experimental.logger : tracef;
     import std.string : toUpper, startsWith, strip;
     import std.algorithm : canFind;

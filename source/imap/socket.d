@@ -47,7 +47,7 @@ SSL_CTX* getContext(string caFile, string caPath, string certificateFile, string
 
 
 /// Connect to mail server.
-Session openConnection(ref Session session) {
+Session openConnection(Session session) {
     import core.time : seconds;
     import std.format : format;
     import std.exception : enforce;
@@ -78,7 +78,7 @@ enum ProtocolSSL {
 }
 
 /// Initialize SSL/TLS connection.
-ref Session openSecureConnection(ref Session session) {
+Session openSecureConnection(Session session) {
     import std.exception : enforce;
     import imap.ssl;
 
@@ -131,7 +131,7 @@ bool isSSLError(int socketStatus) {
 }
 
 ///
-string sslConnectionError(ref Session session, int socketStatus) {
+string sslConnectionError(Session session, int socketStatus) {
     import std.format : format;
     import std.string : fromStringz;
     auto result = SSL_get_error(session.sslConnection, socketStatus);
@@ -171,7 +171,7 @@ private string sslConnectionSysCallError(int socketStatus) {
 }
 
 /// Disconnect from mail server.
-void closeConnection(ref Session session) {
+void closeConnection(Session session) {
     version (SSL) closeSecureConnection(session);
     if (session.socket !is null && session.socket.isAlive) {
         session.socket.close();
@@ -179,7 +179,7 @@ void closeConnection(ref Session session) {
 }
 
 /// Shutdown SSL/TLS connection.
-int closeSecureConnection(ref Session session) {
+int closeSecureConnection(Session session) {
     if (session.sslConnection) {
         SSL_shutdown(session.sslConnection);
         SSL_free(session.sslConnection);
@@ -208,7 +208,7 @@ auto result(T)(Status status, T value) {
 }
 
 /// Read data from socket.
-Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail = true) {
+Result!string socketRead(Session session, Duration timeout, bool timeoutFail = true) {
     import std.experimental.logger : tracef;
     import std.exception : enforce;
     import std.format : format;
@@ -254,7 +254,7 @@ Result!string socketRead(ref Session session, Duration timeout, bool timeoutFail
 }
 
 ///
-bool isSSLReadError(ref Session session, int status) {
+bool isSSLReadError(Session session, int status) {
     switch (SSL_get_error(session.sslConnection, status)) {
         case SSL_ERROR_ZERO_RETURN,
             SSL_ERROR_SYSCALL,
@@ -276,7 +276,7 @@ bool isSSLReadError(ref Session session, int status) {
 }
 
 ///
-bool isTryAgain(ref Session session, int status) {
+bool isTryAgain(Session session, int status) {
     if (status > 0)
         return false;
     if (session.isSSLReadError(status))
@@ -297,7 +297,7 @@ bool isTryAgain(ref Session session, int status) {
 }
 
 /// Read data from a TLS/SSL connection.
-Result!string socketSecureRead(ref Session session) {
+Result!string socketSecureRead(Session session) {
     import std.experimental.logger : tracef;
     import std.exception : enforce;
     import std.conv : to;
@@ -321,7 +321,7 @@ Result!string socketSecureRead(ref Session session) {
 }
 
 ///
-string sslReadErrorMessage(ref Session session, int status) {
+string sslReadErrorMessage(Session session, int status) {
     import std.format : format;
     import std.string : fromStringz;
     import std.exception : enforce;
@@ -349,7 +349,7 @@ string sslReadErrorMessage(ref Session session, int status) {
 }
 
 /// Write data to socket.
-ssize_t socketWrite(ref Session session, string buf) {
+ssize_t socketWrite(Session session, string buf) {
     import std.experimental.logger : tracef;
     import std.exception : enforce;
     import std.format : format;
@@ -397,7 +397,7 @@ ssize_t socketWrite(ref Session session, string buf) {
 }
 
 /// Write data to a TLS/SSL connection.
-auto socketSecureWrite(ref Session session, string buf) {
+auto socketSecureWrite(Session session, string buf) {
     import std.experimental.logger : tracef;
     import std.string : fromStringz;
     import std.format : format;

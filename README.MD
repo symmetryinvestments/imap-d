@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/symmetryinvestments/imap-d.svg?branch=master)](https://travis-ci.org/symmetryinvestments/imap-d)
-[![Build status](https://ci.appveyor.com/api/projects/status/mpti6h28igwso71e/branch/master?svg=true)](https://ci.appveyor.com/project/Laeeth/imap-d/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/h8i2hmwpx704n6ip/branch/master?svg=true)](https://ci.appveyor.com/project/otrho/imap-d/branch/master)
 [![Coverage](https://codecov.io/gh/symmetryinvestments/imap-d/branch/master/graph/badge.svg)](https://codecov.io/gh/symmetryinvestments/imap-d)
 
 # IMAP for D / SIL and JMAP for SIL

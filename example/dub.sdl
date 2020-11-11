@@ -7,3 +7,9 @@ dependency "symmetry-imap" path="../"
 subConfiguration "symmetry-imap" "default"
 targetType "executable"
 dependency "arsd-official:email" version="~master"
+
+configuration "appveyor" {
+	libs "libssl" "libcrypto" platform="windows"
+	lflags "/LIBPATH:C:\\OpenSSL-v111-Win32\\lib" platform="windows-x86"
+	lflags "/LIBPATH:C:\\OpenSSL-v111-Win64\\lib" platform="windows-x86_64"
+}

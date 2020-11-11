@@ -1,37 +1,13 @@
 image: Visual Studio 2017
 environment:
     VS: 15
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017    
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     matrix:
         - DC: ldc
-          DVersion: 1.19.0
-          arch: x64
-        - DC: ldc
-          DVersion: 1.19.0
-          arch: x86
-        - DC: ldc
-          DVersion: 1.18.0
-          arch: x64
-        - DC: ldc
-          DVersion: 1.18.0
-          arch: x86
-        - DC: ldc
-          DVersion: 1.17.0
-          arch: x64
-        - DC: ldc
-          DVersion: 1.17.0
-          arch: x86
-        - DC: dmd
-          DVersion: 2.081.1
+          DVersion: 1.21.0
           arch: x64
         - DC: dmd
-          DVersion: 2.080.1
-          arch: x64
-        - DC: dmd
-          DVersion: 2.079.1
-          arch: x64
-        - DC: dmd
-          DVersion: 2.078.3
+          DVersion: 2.091.1
           arch: x64
 
 skip_tags: true
@@ -157,13 +133,13 @@ before_build:
   - call "c:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars32.bat" %arch% 8.1
 
 build_script:
- - dub build --arch=%Darch% --compiler=%DC% --vverbose && cd example && dub build --arch=%Darch% --compiler=%DC%
- 
-test_script:
- - echo %PLATFORM%
- - echo %Darch%
- - echo %DC%
- - echo %DMD%
- - echo %PATH%
- - '%DC% --help'
- - dub test --arch=%Darch% --compiler=%DC% --vverbose
+ - dub build --arch=%Darch% --compiler=%DC% && cd example && dub build --arch=%Darch% --compiler=%DC% --config=appveyor
+
+#test_script:
+# - echo %PLATFORM%
+# - echo %Darch%
+# - echo %DC%
+# - echo %DMD%
+# - echo %PATH%
+# - '%DC% --help'
+# - dub test --arch=%Darch% --compiler=%DC%

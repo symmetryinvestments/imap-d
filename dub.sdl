@@ -8,6 +8,7 @@ dependency "asdf" version="~master"
 license "MIT"
 
 versions "SSL" "OPENSSL_NO_SRP"
+
 libs "ssl" "crypto" platform="posix"
 
 configuration "default" {
@@ -25,10 +26,8 @@ configuration "sil-library" {
 // dub insists on looking for sil-lang even if building
 // the default configuration!
 configuration "plugin" {
-        dependency "sil-lang" version="*" optional=true
+	dependency "sil-lang" version="*" optional=true
 	dependency "pegged" version="*" optional=true
 	targetType "dynamicLibrary"
 	versions "SIL_Plugin" "SIL" "MoveSanity"  //"Trace"
 }
-
-

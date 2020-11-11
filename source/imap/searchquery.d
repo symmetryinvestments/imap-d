@@ -192,7 +192,7 @@ string createQuery(SearchQuery[] searchQueries) {
 There is an implicit AND within a searchQuery. For NOT, set not within the query
 to be true - this applies to all the conditions within the query.
 `)
-auto searchQuery(ref Session session, string mailbox, SearchQuery searchQuery, string charset = null) {
+auto searchQuery(Session session, string mailbox, SearchQuery searchQuery, string charset = null) {
     import imap.namespace : Mailbox;
     import imap.request;
     select(session, Mailbox(mailbox));
@@ -204,7 +204,7 @@ The searchQueries are ORed together.  There is an implicit AND within a searchQu
 For NOT, set not within the query to be true - this applies to all the conditions within
 the query.
 `)
-auto searchQueries(ref Session session, string mailbox, SearchQuery[] searchQueries, string charset = null) {
+auto searchQueries(Session session, string mailbox, SearchQuery[] searchQueries, string charset = null) {
     import imap.namespace : Mailbox;
     import imap.request;
     select(session, Mailbox(mailbox));

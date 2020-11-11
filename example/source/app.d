@@ -31,7 +31,7 @@ int main(string[] args) {
     auto login = ImapLogin(user, pass);
     auto imapServer = ImapServer(server, port);
 
-    auto session = Session(imapServer, login);
+    auto session = new Session(imapServer, login);
     session.options.debugMode = false;
     session = session.openConnection;
     session = session.login();

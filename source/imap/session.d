@@ -119,7 +119,7 @@ struct Options {
 }
 
 ///
-struct Session {
+final class Session {
     import imap.defines : ImapStatus;
     import imap.namespace;
     Options options;
@@ -144,7 +144,7 @@ struct Session {
     SSL* sslConnection;
     SSL_CTX* sslContext;
 
-    string toString() {
+    override string toString() {
         import std.array : Appender;
         import std.format : format;
         import std.conv : to;
@@ -171,17 +171,17 @@ struct Session {
         this.imapLogin = imapLogin;
     }
 
-    ref Session useStartTLS(bool useTLS = true) {
+    Session useStartTLS(bool useTLS = true) {
         this.options.startTLS = useTLS;
         return this;
     }
 
-    ref Session setSelected(Mailbox mailbox) {
+    Session setSelected(Mailbox mailbox) {
         this.selected = mailbox;
         return this;
     }
 
-    ref Session setStatus(ImapStatus status) {
+    Session setStatus(ImapStatus status) {
         this.status_ = status;
         return this;
     }

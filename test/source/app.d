@@ -90,7 +90,7 @@ private bool imapFail(F)(F fn) {
 
 private void testAuthentication(string host) {
     {
-        auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+        auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
         session = session.openConnection();
         session = session.login();
         imapEnforce(session.status == "ok", "auth", "SSL login failure.");
@@ -98,23 +98,23 @@ private void testAuthentication(string host) {
     }
     {
         // Logging in without opening a connection first should still work.
-        auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+        auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
         session = session.login();
         imapEnforce(session.status == "ok", "auth", "Login without connection failure.");
         imapEnforce(session.logout() == ImapStatus.ok, "auth", "Logout without connection failure.");
     }
     {
-        auto session = Session(ImapServer(host, "993"), ImapLogin("invalidusername", TestPass));
+        auto session = new Session(ImapServer(host, "993"), ImapLogin("invalidusername", TestPass));
         imapEnforce(imapFail(() => session.login()), "auth", "Bad username succeeded.");
     }
     {
-        auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, "incorrectpass"));
+        auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, "incorrectpass"));
         imapEnforce(imapFail(() => session.login()), "auth", "Bad password succeeded.");
     }
     {
         // The server is configured to reject plaintext password authentication over a non-encrypted
         // connection.
-        auto session = Session(ImapServer(host, "143"), ImapLogin(TestUser, TestPass), false);
+        auto session = new Session(ImapServer(host, "143"), ImapLogin(TestUser, TestPass), false);
         session = session.openConnection();
         imapEnforce(imapFail(() => session.login()), "auth", "Able to login without encryption.");
     }
@@ -123,7 +123,7 @@ private void testAuthentication(string host) {
 // -------------------------------------------------------------------------------------------------
 
 private void testMailboxOps(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -253,7 +253,7 @@ private void testMailboxOps(string host) {
 // - automatic subscription upon mailbox creation.
 
 private void testSubscriptions(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -393,7 +393,7 @@ private string[] exampleMessage2 =
 // - we're testing the flags and date is set properly down in `testFetch()` below.
 
 private void testAppend(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -422,7 +422,7 @@ private void testAppend(string host) {
 // -------------------------------------------------------------------------------------------------
 
 private void testStatus(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -457,7 +457,7 @@ private void testStatus(string host) {
 // - Removing mailbox when selected (will log you out).
 
 private void testSelect(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -487,7 +487,7 @@ private void testSelect(string host) {
 // - Try different mailbox hierarchies.
 
 private void testCopy(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -526,7 +526,7 @@ private void testCopy(string host) {
 // - Auto expunge in options.
 
 private void testStore(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -569,7 +569,7 @@ private void testStore(string host) {
 // - Check read-only state.  Not allowed to lose \Recent, nor to delete messages I assume.
 
 private void testExamine(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -598,7 +598,7 @@ private void testExamine(string host) {
 // -------------------------------------------------------------------------------------------------
 
 private void testCloseExpunge(string host) {
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -658,7 +658,7 @@ private void testCloseExpunge(string host) {
 private void testFetch(string host) {
     import std.algorithm: canFind;
 
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -749,7 +749,7 @@ private void testFetch(string host) {
 private void testSearch(string host) {
     import std.algorithm: canFind;
 
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 
@@ -791,7 +791,7 @@ private void testUid(string host) {
     import std.algorithm: canFind;
     import std.conv;
 
-    auto session = Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 

@@ -12,7 +12,7 @@ int main(string[] args) {
         return 1;
     }
 
-    auto session = Session(ImapServer(args[1], "993"), ImapLogin(TestUser, TestPass));
+    auto session = new Session(ImapServer(args[1], "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
     scope(exit) logout(session);
 

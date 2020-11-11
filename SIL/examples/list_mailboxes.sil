@@ -8,11 +8,11 @@ creds = imap.ImapLogin(config.user, config.pass)
 server = imap.ImapServer(config.host, config.port)
 session =
   imap.Session(server, creds)
-  |> imap.openConnection().returnValue
-  |> imap.login().returnValue
+  |> imap.openConnection()
+  |> imap.login()
 
 // Get a list of all the mailboxes.
-list = imap.list(session).returnValue
+list = imap.list(session)
 
 // Close the session.
 imap.closeConnection(session)

@@ -34,7 +34,7 @@ X509* getPeerCertificate(ref SSL context) {
 }
 
 @SILdoc("Get SSL/TLS certificate check it, maybe ask user about it and act accordingly.")
-Status getCert(ref Session session) {
+Status getCert(Session session) {
     import std.exception : enforce;
     X509* pcert = getPeerCertificate(*session.sslConnection);
     enforce(pcert !is null);

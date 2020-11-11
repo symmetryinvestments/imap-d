@@ -39,8 +39,8 @@ creds = imap.ImapLogin(config.user, config.pass)
 server = imap.ImapServer(config.host, config.port)
 session =
   imap.Session(server, creds)
-    |> imap.openConnection().returnValue
-    |> imap.login().returnValue
+    |> imap.openConnection()
+    |> imap.login()
 inbox = imap.Mailbox("support", "", '/')
 
 // Select the default inbox.
@@ -57,13 +57,13 @@ joinQuery(crita) => fold(crita[1:$], (str, crit) => str ~ " " ~ crit, crita[0])
 
 // Get each of the alerts and resolutions from the past week (13-19 May).
 alertMsgIds =
-  imap.search(session, joinQuery([fromCrit, afterCrit, alertCrit])).returnValue.ids
+  imap.search(session, joinQuery([fromCrit, afterCrit, alertCrit])).ids
 resolutionMsgIds =
-  imap.search(session, joinQuery([fromCrit, afterCrit, resCrit])).returnValue.ids
+  imap.search(session, joinQuery([fromCrit, afterCrit, resCrit])).ids
 
 // A function to get the alert ID from a message subject.
 getAlertId(msgId) => {
-  imap.fetchFields(session, toString(msgId), "subject").returnValue.lines[0]
+  imap.fetchFields(session, toString(msgId), "subject").lines[0]
     |> string.split()[$ - 1]
 }
 
@@ -89,8 +89,8 @@ report =
     |> map(alertId => {
          msgId = unresolvedAlertTable[alertId] |> toString
        in [ alertId
-          , imap.fetchFields(session, msgId, "date").returnValue.lines[0]
-          , imap.fetchText(session, msgId).returnValue.lines[0]
+          , imap.fetchFields(session, msgId, "date").lines[0]
+          , imap.fetchText(session, msgId).lines[0]
           ]
        })
     |> fold((outStr, tuple) => {

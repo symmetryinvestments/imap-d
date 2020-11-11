@@ -9,11 +9,11 @@ creds = imap.ImapLogin(config.user, config.pass)
 server = imap.ImapServer(config.host, config.port)
 session =
   imap.Session(server, creds)
-  |> imap.openConnection().returnValue
-  |> imap.login().returnValue
+  |> imap.openConnection()
+  |> imap.login()
 
 // Get the status for the inbox.
-stat = (imap.Mailbox("INBOX", "", '/') |> imap.status(session, _)).returnValue
+stat = (imap.Mailbox("INBOX", "", '/') |> imap.status(session, _))
 
 // Close the session.
 imap.closeConnection(session)

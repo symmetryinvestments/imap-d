@@ -39,12 +39,12 @@ creds = imap.ImapLogin(config.user, config.pass)
 server = imap.ImapServer(config.host, config.port)
 session =
   imap.Session(server, creds)
-  |> imap.openConnection().returnValue
-  |> imap.login().returnValue
+  |> imap.openConnection()
+  |> imap.login()
 inbox = imap.Mailbox("INBOX", "", '/')
 
 // Get the number of messages in the inbox.
-msgCount = imap.status(session, inbox).returnValue.messages
+msgCount = imap.status(session, inbox).messages
 
 // Select the default inbox.
 inbox |> imap.examine(session, _)
@@ -55,7 +55,7 @@ headers =
   iota(msgCount)
     |> map(id => "#" ~ toString(id + 1))
     |> map(id =>
-         imap.fetchFields(session, id, "date from subject").returnValue.lines
+         imap.fetchFields(session, id, "date from subject").lines
            |> map(hdr => fmtField(hdr, 40)))
     |> fold(fmtHeaders, "INBOX:\n")
 print(headers)

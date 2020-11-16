@@ -1,33 +1,26 @@
 name "symmetry-imap"
 description "IMAP client library"
-dependency "openssl" version="~>1.1.6+1.0.1g"
-dependency "arsd-official:email" version="~>8.5"
-dependency "requests" version="~>2.0"
-dependency "asdf" version="~>0.6"
-
 license "MIT"
-
-versions "SSL" "OPENSSL_NO_SRP"
-
+dependency "sumtype" version="~>0.9.3"
+dependency "arsd-official:email" version="~>8.5"
+dependency "openssl" version="~>1.1.6"
+dependency "requests" version="~>2"
+dependency "asdf" version="~>0.6"
 libs "ssl" "crypto" platform="posix"
-
+versions "SSL" "OPENSSL_NO_SRP"
 configuration "default" {
 	targetType "library"
 	versions "MoveSanity"
 }
-
 configuration "sil-library" {
-	dependency "sil-lang" version="*" optional=true
-	dependency "pegged" version="*" optional=true
+	dependency "sil-lang" version=">=0.0.0" optional=true
+	dependency "pegged" version=">=0.0.0" optional=true
 	targetType "library"
 	versions "MoveSanity" "SIL"
 }
-
-// dub insists on looking for sil-lang even if building
-// the default configuration!
 configuration "plugin" {
-	dependency "sil-lang" version="*" optional=true
-	dependency "pegged" version="*" optional=true
+	dependency "sil-lang" version=">=0.0.0" optional=true
+	dependency "pegged" version=">=0.0.0" optional=true
 	targetType "dynamicLibrary"
-	versions "SIL_Plugin" "SIL" "MoveSanity"  //"Trace"
+	versions "SIL_Plugin" "SIL" "MoveSanity"
 }

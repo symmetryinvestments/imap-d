@@ -4,8 +4,8 @@ import core.time : seconds;
 import std.typecons : Nullable;
 
 version (SIL) :
-    import kaleidic.sil.lang.types : Variable, Function, SILdoc;
-import kaleidic.sil.lang.json : toVariable, toJsonString;
+    import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
+import kaleidic.sil.lang.typing.json : toVariable, toJsonString;
 import std.datetime : DateTime;
 import asdf;
 

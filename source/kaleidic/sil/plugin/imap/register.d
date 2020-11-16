@@ -4,7 +4,7 @@ import imap.set;
 version (SIL) :
 
     import kaleidic.sil.lang.handlers : Handlers;
-import kaleidic.sil.lang.types : Variable, Function, SILdoc;
+import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
 import std.meta : AliasSeq;
 
 version (SIL_Plugin) {

@@ -47,8 +47,10 @@ int main(string[] args) {
     writeln("--- Search result IDs: ", searchResult.ids);
 
     // search all messages from GitHub since 29 Jan 2019 and get UIDs using high level query interface
-    SearchQuery query = { since : Date(2019, 1, 29), fromContains : "GitHub" };
-    searchResult = session.searchQuery("INBOX", query);
+    auto query = new SearchQuery()
+        .and(DateTerm(DateTerm.When.Since, Date(2019, 1, 29)))
+        .and(FieldTerm(FieldTerm.Field.From, "GitHub"));
+    searchResult = session.search(query);
     writeln("--- Structured 'since:Date(2019,1,29),fromContains:\"GitHub\"' search results:");
     writeln(searchResult.value);
 

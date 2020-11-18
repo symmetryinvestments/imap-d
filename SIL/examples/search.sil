@@ -28,7 +28,10 @@
 // number of outstanding alerts.
 
 import imap
+import * from imap.query
 import imap_config
+
+import dates
 import string
 
 // Get the configuration from the environment and command line.
@@ -46,20 +49,16 @@ inbox = imap.Mailbox("support", "", '/')
 // Select the default inbox.
 inbox |> imap.examine(session, _)
 
-// Specify some search criteria to be combined for different searches.
-fromCrit   = `FROM robot@example.com`
-alertCrit  = `SUBJECT "Alert: new issue"`
-resCrit    = `SUBJECT "Resolution: issue"`
-afterCrit  = `SENTSINCE 13-may-2020`
+// These criteria are common for both our searches.
+commonCrit = imap.Query()
+    |> and(from(`robot@example.com`))
+    |> and(sentSince(dates.Date(2020, 5, 13)))
 
-// Function to join search criteria.
-joinQuery(crita) => fold(crita[1:$], (str, crit) => str ~ " " ~ crit, crita[0])
-
-// Get each of the alerts and resolutions from the past week (13-19 May).
+// Get each of the alerts and resolutions from the past week (13-19 May 2020).
 alertMsgIds =
-  imap.search(session, joinQuery([fromCrit, afterCrit, alertCrit])).ids
+  imap.search(session, imap.Query(subject("Alert: new issue")) |> and(commonCrit)).ids
 resolutionMsgIds =
-  imap.search(session, joinQuery([fromCrit, afterCrit, resCrit])).ids
+  imap.search(session, imap.Query(subject("Resolution: issue")) |> and(commonCrit)).ids
 
 // A function to get the alert ID from a message subject.
 getAlertId(msgId) => {

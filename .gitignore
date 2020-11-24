@@ -2,6 +2,7 @@
 dub.selections.json
 
 libsymmetry-imap.*
+symmetry-imap-test-default
 example/imap-example
 
 tags

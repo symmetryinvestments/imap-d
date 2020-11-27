@@ -3,7 +3,7 @@ import std.exception;
 
 import imap;
 
-enum TestUser = "mailuser";
+enum TestUser = "siluser";
 enum TestPass = "secret123";
 
 int main(string[] args) {

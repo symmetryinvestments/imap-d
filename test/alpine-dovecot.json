@@ -12,11 +12,13 @@
       "type": "shell",
       "inline": [
         "adduser --disabled-password mailuser",
+        "adduser --disabled-password siluser",
         "apk -U upgrade",
         "apk add dovecot",
         "rc-update add dovecot default",
         "echo 'mail_location = maildir:~/Maildir' >> /etc/dovecot/local.conf",
         "echo mailuser:`doveadm pw -u mailuser -p secret123`:1000:1000::/home/mailuser/::: >> /etc/dovecot/users",
+        "echo siluser:`doveadm pw -u siluser -p secret123`:1001:1001::/home/siluser/::: >> /etc/dovecot/users",
         "rc-service dovecot start"
       ]
     }

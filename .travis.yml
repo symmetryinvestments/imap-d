@@ -11,3 +11,4 @@ before_install:
 script:
   - dub build --compiler=${DC}
   - dub build --compiler=${DC} --root=example
+  - dub build --compiler=${DC} --root=test

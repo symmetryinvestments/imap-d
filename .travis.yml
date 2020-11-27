@@ -11,3 +11,9 @@ before_install:
 script:
   - dub build --compiler=${DC}
   - dub build --compiler=${DC} --root=example
+  - dub build --compiler=${DC} --root=test
+  - export LD_LIBRARY_PATH="/usr/local/openssl/lib:$LD_LIBRARY_PATH"
+  - dub test --build=unittest-cov --compiler=${DC}
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

@@ -2,6 +2,32 @@
 
 This directory contains some examples of how to use the **imap-d** SIL plugin.
 
+## Testing Against A Container
+
+It's possible to try these examples and to get some valid looking results by using an LXC container
+running Dovecot.  See the `test` directory at the root of this project for instructions on building
+and launching this image.  (It's basically as simple as running `packer build alpine-dovecot.json`
+and then `lxc launch dovecot-test`, if you're familiar with `packer` and LXC.)
+
+Once the container is running it will initially be empty.  The `util` directory contains a D project
+which can be built with `dub build` and run with the hostname/IP of the running container.  It will
+populate the mailbox for the user `siluser` with many example messages which in turn will provide
+meaningful results when running these example SIL scripts.
+
+The command line for these scripts should therefore specify the user `siluser` with the password
+`secret123`.  The host may be the container name `dovecot-test` or if that doesn't work use the IP
+found by running `lxc list`.
+
+E.g.,
+
+```
+sil search.sil -- --host=dovecot-test --port=993 --user=siluser --pass=secret123
+or
+IMAP_USER=siluser IMAP_PASS=secret123 sil search.sil -- --host=dovecot-test --port=993
+```
+
+# The Scripts
+
 ## Biff
 
 `biff.sil` implements a simple [Biff-like](https://en.wikipedia.org/wiki/Biff_(Unix)) utility.

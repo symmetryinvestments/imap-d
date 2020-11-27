@@ -1018,64 +1018,64 @@ string toUTCDate(DateTime dt) {
 }
 
 class FilterCondition : Filter {
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string inMailbox;
 
-    @serializationIgnoreOutIf!`a.isNull`
+    @serdeIgnoreOutIf!`a.isNull`
     Nullable!(string[])inMailboxOtherThan;
 
-    @serializationIgnoreOutIf!`a.isNull`
-    @serializationTransformOut!toUTCDate
+    @serdeIgnoreOutIf!`a.isNull`
+    @serdeTransformOut!toUTCDate
     Nullable!DateTime before;
 
-    @serializationIgnoreOutIf!`a.isNull`
-    @serializationTransformOut!toUTCDate
+    @serdeIgnoreOutIf!`a.isNull`
+    @serdeTransformOut!toUTCDate
     Nullable!DateTime after;
 
-    @serializationIgnoreOutIf!`a.isNull`
+    @serdeIgnoreOutIf!`a.isNull`
     Nullable!uint minSize;
 
-    @serializationIgnoreOutIf!`a.isNull`
+    @serdeIgnoreOutIf!`a.isNull`
     Nullable!uint maxSize;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string allInThreadHaveKeyword;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string someInThreadHaveKeyword;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string noneInThreadHaveKeyword;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string hasKeyword;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string notKeyword;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string text;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string from;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string to;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string cc;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string bcc;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     string subject;
 
-    @serializationIgnoreOutIf!`a.length == 0`
+    @serdeIgnoreOutIf!`a.length == 0`
     @serdeKeys("body")
     string body_;
 
-    @serializationIgnoreOutIf!`a.isNull`
+    @serdeIgnoreOutIf!`a.isNull`
     Nullable!(string[])header;
 
     override string toString() {

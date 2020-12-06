@@ -1,7 +1,7 @@
 ///
 module imap.searchquery;
 
-import sumtype;
+import mir.algebraic: Variant, This, match;
 import std.format : format;
 import std.datetime : Date;
 
@@ -13,52 +13,52 @@ import imap.sildoc : SILdoc;
 // -------------------------------------------------------------------------------------------------
 
 final class SearchQuery {
-    this(SearchExpr* expr = null) {
+    this(const SearchExpr* expr = null) {
         query = expr;
     }
 
-    SearchQuery and(SearchExpr* term) {
-        return applyBinOp('&', term);
-    }
-    SearchQuery and(SearchQuery other) {
-        return applyBinOp('&', other.query);
+    this(T)(T value) {
+        this(new SearchExpr(value));
     }
 
-    SearchQuery or(SearchExpr* term) {
-        // Strictly speaking the implicit 'ALL' term should be ORed with a unit arg, but that
-        // wouldn't really be helpful and is very likely not what the user wants.
-        return applyBinOp('|', term);
-    }
-    SearchQuery or(SearchQuery other) {
-        return applyBinOp('|', other.query);
+
+    SearchQuery not(T)(T value) {
+        return not(new SearchExpr(value));
     }
 
-    SearchQuery not(SearchExpr* term) {
+    SearchQuery not(const(SearchExpr)* term) {
         assert(query is null, "Cannot apply .not() to existing queries!  Use andNot() or orNot().");
         query = new SearchExpr(SearchOp('!', term, null));
         return this;
     }
 
-    SearchQuery andNot(SearchExpr* term) {
-        return applyBinOp('&', new SearchExpr(SearchOp('!', term, null)));
-    }
-    SearchQuery andNot(SearchQuery other) {
-        return applyBinOp('&', new SearchExpr(SearchOp('!', other.query, null)));
+    alias and = applyBinOpImpl!('&');
+    alias or = applyBinOpImpl!('|');
+
+    alias andNot = applyBinOpImpl!('&', true);
+    alias orNot = applyBinOpImpl!('|', true);
+
+    private template applyBinOpImpl(char op, bool not = false)
+    {
+        SearchQuery applyBinOpImpl(T)(T value) {
+            return applyBinOpImpl(new SearchExpr(value));
+        }
+        SearchQuery applyBinOpImpl(const(SearchExpr)* term) {
+            static if (not)
+                return applyBinOp(op, new SearchExpr(SearchOp('!', term, null)));
+            else
+                return applyBinOp(op, term);
+        }
+        SearchQuery applyBinOpImpl(const SearchQuery other) {
+            return applyBinOpImpl(other.query);
+        }
     }
 
-    SearchQuery orNot(SearchExpr* term) {
-        return applyBinOp('|', new SearchExpr(SearchOp('!', term, null)));
-    }
-    SearchQuery orNot(SearchQuery other) {
-        return applyBinOp('|', new SearchExpr(SearchOp('!', other.query, null)));
-    }
-
-    override string toString() {
+    override string toString() const {
         return searchExprToString(query);
     }
-    alias toString this;
 
-    SearchQuery applyBinOp(char op, SearchExpr* newTerm) {
+    SearchQuery applyBinOp(char op, const(SearchExpr)* newTerm) {
         if (query is null)
             query = newTerm;
         else
@@ -66,12 +66,12 @@ final class SearchQuery {
         return this;
     }
 
-    SearchExpr* query;
+    const(SearchExpr)* query;
 }
 
 // -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
-string searchExprToString(SearchExpr* expr) {
+string searchExprToString(const SearchExpr* expr) {
     import std.algorithm : map;
     import std.array : join;
 
@@ -99,7 +99,7 @@ string searchOpToString(SearchOp op) {
     }
 }
 
-string notOpToString(SearchExpr* expr) {
+string notOpToString(const SearchExpr* expr) {
     string exprStr = searchExprToString(expr);
     if (isBinaryOp(expr)) {
         return format!"NOT (%s)"(exprStr);
@@ -107,7 +107,7 @@ string notOpToString(SearchExpr* expr) {
     return format!"NOT %s"(exprStr);
 }
 
-string orOpToString(SearchExpr* lhs, SearchExpr* rhs) {
+string orOpToString(const(SearchExpr)* lhs, const(SearchExpr)* rhs) {
     string lhsStr = searchExprToString(lhs);
     if (isBinaryOp(lhs)) {
         lhsStr = format!"(%s)"(lhsStr);
@@ -119,7 +119,7 @@ string orOpToString(SearchExpr* lhs, SearchExpr* rhs) {
     return format!"OR %s %s"(lhsStr, rhsStr);
 }
 
-bool isBinaryOp(SearchExpr* expr) {
+bool isBinaryOp(const SearchExpr* expr) {
     return (*expr).match!(
         (SearchOp op) => op.op == '&' || op.op == '|',
         (_)           => false,
@@ -130,7 +130,7 @@ bool isBinaryOp(SearchExpr* expr) {
 
 import std.typecons : Tuple;
 
-alias SearchExpr = SumType!(
+alias SearchExpr = Variant!(
     FlagTerm,
     KeywordTerm,
     FieldTerm,
@@ -140,10 +140,10 @@ alias SearchExpr = SumType!(
     UidSeqTerm,
 
     // '!' == NOT, '&' == AND, '|' == OR.
-    Tuple!(char, "op", This*, "lhs", This*, "rhs"),
+    Tuple!(char, "op", const(This)*, "lhs", const(This)*, "rhs"),
 );
 
-alias SearchOp = SearchExpr.Types[7];
+alias SearchOp = Tuple!(char, "op", const(SearchExpr)*, "lhs", const(SearchExpr)*, "rhs");
 
 struct FlagTerm {
     enum Flag : string {
@@ -162,21 +162,11 @@ struct FlagTerm {
         Unseen     = "UNSEEN",
     }
     Flag flag;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 struct KeywordTerm {
     string keyword;
     bool negated = false;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 struct FieldTerm {
@@ -191,21 +181,11 @@ struct FieldTerm {
     }
     Field field;
     string term;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 struct HeaderTerm {
     string header;
     string term;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 struct DateTerm {
@@ -219,11 +199,6 @@ struct DateTerm {
     }
     When when;
     Date date;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 string rfcDateStr(Date date) {
@@ -240,11 +215,6 @@ struct SizeTerm {
     }
     Relation relation;
     int size;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
 }
 
 struct UidSeqTerm {
@@ -256,18 +226,13 @@ struct UidSeqTerm {
 
         invariant (start >= 1 && length >= 0);
 
-        string toString() {
+        string toString() const {
             if (length == 0)
                 return format!"%d"(start);
             return format!"%d:%d"(start, start + length);
         }
     }
-    Range[] sequences;
-
-    @property SearchExpr* toExpr() {
-        return new SearchExpr(this);
-    }
-    alias toExpr this;
+    const(Range)[] sequences;
 }
 
 // -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
@@ -299,19 +264,20 @@ unittest {
 // -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
 unittest {
+    import std.conv : to;
     import std.exception;
     import core.exception;
 
     void queryTest(Q)(Q query, string expected) {
         import std.stdio : writeln;
 
-        auto got = query.toString();
+        auto got = query.to!string;
         if (got != expected) {
             writeln("FAILED MATCH:");
             writeln("expecting: ", expected);
             writeln("got:       ", got);
         }
-        assert(query.toString() == expected);
+        assert(query.to!string == expected);
     }
 
     // AND.

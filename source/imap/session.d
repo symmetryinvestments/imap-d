@@ -45,14 +45,12 @@ Set!T addValues(T)(Set!T set, T[] values) {
 
 ///
 Set!T addSet(T)(Set!T lhs, Set!T rhs) {
-    import std.algorithm : each;
     Set!T ret;
     return lhs.addValues(rhs.values);
 }
 
 ///
 Set!T removeSet(T)(Set!T lhs, Set!T rhs) {
-    import std.algorithm : each;
     Set!T ret;
     return lhs.removeValues(rhs.values);
 }
@@ -62,7 +60,7 @@ struct ImapServer {
     string server = "imap.fastmail.com"; // localhost";
     string port = "993";
 
-    string toString() {
+    string toString() const {
         import std.format : format;
         return format!"%s:%s"(server, port);
     }
@@ -76,7 +74,7 @@ struct ImapLogin {
     @SILdoc("User's secret keyword. If a password wasn't supplied the user will be asked to enter one interactively the first time it will be needed. It takes a string as a value.")
     string password;
 
-    string toString() {
+    string toString() const {
         import std.format : format;
         return format!"%s:[hidden]"(username);
     }
@@ -144,20 +142,19 @@ final class Session {
     SSL* sslConnection;
     SSL_CTX* sslContext;
 
-    override string toString() {
+    override string toString() const {
         import std.array : Appender;
-        import std.format : format;
-        import std.conv : to;
+        import std.format : formattedWrite;
         Appender!string ret;
-        ret.put(format!"Session to %s:%s as user %s\n"(server, port, imapLogin.username));
-        ret.put(format!"- useSSL: %s\n"(useSSL.to!string));
-        ret.put(format!"- startTLS: %s\n"(useSSL.to!string));
-        ret.put(format!"- noCerts: %s\n"(noCerts.to!string));
-        ret.put(format!"- sslProtocol: %s\n"(sslProtocol.to!string));
-        ret.put(format!"- imap protocol: %s\n"(imapProtocol.to!string));
-        ret.put(format!" - capabilities: %s\n"(capabilities.to!string));
-        ret.put(format!" - namespace: %s/%s\n"(namespacePrefix, [namespaceDelim]));
-        ret.put(format!" - selected mailbox: %s\n"(selected));
+        ret.formattedWrite!"Session to %s:%s as user %s\n"(server, port, imapLogin.username);
+        ret.formattedWrite!"- useSSL: %s\n"(useSSL);
+        ret.formattedWrite!"- startTLS: %s\n"(useSSL);
+        ret.formattedWrite!"- noCerts: %s\n"(noCerts);
+        ret.formattedWrite!"- sslProtocol: %s\n"(sslProtocol);
+        ret.formattedWrite!"- imap protocol: %s\n"(imapProtocol);
+        ret.formattedWrite!" - capabilities: %s\n"(capabilities);
+        ret.formattedWrite!" - namespace: %s/%s\n"(namespacePrefix, [namespaceDelim]);
+        ret.formattedWrite!" - selected mailbox: %s\n"(selected);
         return ret.data;
     }
 

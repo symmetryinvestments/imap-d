@@ -318,13 +318,13 @@ struct Mailbox {
     char delim = '/';
 
     ///
-    string toString() {
+    string toString() const {
         return applyNamespace();
     }
 
     /// Convert the names of personal mailboxes, using the namespace specified
     /// by the mail server, from internal to mail server format.
-    string applyNamespace() {
+    string applyNamespace() const {
         import std.experimental.logger : infof;
         import std.string : toUpper, replace;
         import std.format : format;

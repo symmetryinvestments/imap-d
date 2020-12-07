@@ -22,6 +22,7 @@ import arsd.email : MimeContainer;
 
 ///
 void registerImap(ref Handlers handlers) {
+    import std.conv;
     import imap.session;
     import imap.request;
     import imap.response;
@@ -64,7 +65,7 @@ void registerImap(ref Handlers handlers) {
 
         handlers.registerType!SearchQuery("Query");
         handlers.registerHandlerOverloads!(
-            ((Session session, SearchQuery query) => session.search(query)),
+            ((Session session, SearchQuery query) => session.search(query.to!string)),
             ((Session session, string str) => session.search(str)),
         )("search");
 
@@ -115,21 +116,21 @@ To use these operators and terms as shown above, use:
 
         // Boolean ops.
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, SearchExpr* expr) => this_.and(expr),
-            (SearchQuery this_, SearchQuery other) => this_.and(other),
+            (SearchQuery this_, const(SearchExpr)* expr) => this_.and(expr),
+            (SearchQuery this_, const SearchQuery other) => this_.and(other),
         )("and", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, SearchExpr* expr) => this_.or(expr),
-            (SearchQuery this_, SearchQuery other) => this_.or(other),
+            (SearchQuery this_, const(SearchExpr)* expr) => this_.or(expr),
+            (SearchQuery this_, const SearchQuery  other) => this_.or(other),
         )("or", opDoc);
-        handlers.registerHandler!((SearchQuery this_, SearchExpr* expr) => this_.not(expr))("not", opDoc);
+        handlers.registerHandler!((SearchQuery this_, const(SearchExpr)* expr) => this_.not(expr))("not", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, SearchExpr* expr) => this_.andNot(expr),
-            (SearchQuery this_, SearchQuery other) => this_.andNot(other),
+            (SearchQuery this_, const(SearchExpr)* expr) => this_.andNot(expr),
+            (SearchQuery this_, const SearchQuery other) => this_.andNot(other),
         )("andNot", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, SearchExpr* expr) => this_.orNot(expr),
-            (SearchQuery this_, SearchQuery other) => this_.orNot(other),
+            (SearchQuery this_, const(SearchExpr)* expr) => this_.orNot(expr),
+            (SearchQuery this_, const SearchQuery other) => this_.orNot(other),
         )("orNot", opDoc);
 
         auto termDoc = SILdoc(`Search terms used to build a query to pass to imap.search().  Also see imap.query
@@ -151,50 +152,47 @@ Size terms, where size is the entire message size in bytes.
     larger(size), smaller(size).`);
 
         // Flags.
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Answered)))("answered", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Deleted)))("deleted", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Draft)))("draft", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Flagged)))("flagged", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.New)))("new", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Old)))("old", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Recent)))("recent", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Seen)))("seen", termDoc);
-        handlers.registerHandler!(() => new
-                                  SearchExpr(FlagTerm(FlagTerm.Flag.Unanswered)))("unanswered", termDoc);
-        handlers.registerHandler!(() => new
-                                  SearchExpr(FlagTerm(FlagTerm.Flag.Undeleted)))("undeleted", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Undraft)))("undraft", termDoc);
-        handlers.registerHandler!(() => new
-                                  SearchExpr(FlagTerm(FlagTerm.Flag.Unflagged)))("unflagged", termDoc);
-        handlers.registerHandler!(() => new SearchExpr(FlagTerm(FlagTerm.Flag.Unseen)))("unseen", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Answered)))("answered", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Deleted)))("deleted", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Draft)))("draft", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Flagged)))("flagged", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.New)))("new", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Old)))("old", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Recent)))("recent", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Seen)))("seen", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Unanswered)))("unanswered", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Undeleted)))("undeleted", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Undraft)))("undraft", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Unflagged)))("unflagged", termDoc);
+        handlers.registerHandler!(() => cast(const) new SearchExpr(FlagTerm(FlagTerm.Flag.Unseen)))("unseen", termDoc);
 
         // Keyword.
-        handlers.registerHandler!((string keyw) => new SearchExpr(KeywordTerm(keyw)))("keyword", termDoc);
-        handlers.registerHandler!((string keyw) => new SearchExpr(KeywordTerm(keyw, true)))("unkeyword", termDoc);
+        handlers.registerHandler!((string keyw) => cast(const) new SearchExpr(KeywordTerm(keyw)))("keyword", termDoc);
+        handlers.registerHandler!((string keyw) => cast(const) new SearchExpr(KeywordTerm(keyw, true)))("unkeyword", termDoc);
 
         // Fields.
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.Bcc, str)))("bcc", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.Body, str)))("body", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.Cc, str)))("cc", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.From, str)))("from", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.Subject, str)))("subject", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.Text, str)))("text", termDoc);
-        handlers.registerHandler!((string str) => new SearchExpr(FieldTerm(FieldTerm.Field.To, str)))("to", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.Bcc, str)))("bcc", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.Body, str)))("body", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.Cc, str)))("cc", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.From, str)))("from", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.Subject, str)))("subject", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.Text, str)))("text", termDoc);
+        handlers.registerHandler!((string str) => cast(const) new SearchExpr(FieldTerm(FieldTerm.Field.To, str)))("to", termDoc);
 
-        handlers.registerHandler!((string hdr, string str) => new SearchExpr(HeaderTerm(hdr, str)))("header", termDoc);
+        handlers.registerHandler!((string hdr, string str) => cast(const) new SearchExpr(HeaderTerm(hdr, str)))("header", termDoc);
 
         // Dates.
         import std.datetime : Date;
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.Before, date)))("before", termDoc);
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.On, date)))("on", termDoc);
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.SentBefore, date)))("sentBefore", termDoc);
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.SentOn, date)))("sentOn", termDoc);
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.SentSince, date)))("sentSince", termDoc);
-        handlers.registerHandler!((Date date) => new SearchExpr(DateTerm(DateTerm.When.Since, date)))("since", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.Before, date)))("before", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.On, date)))("on", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.SentBefore, date)))("sentBefore", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.SentOn, date)))("sentOn", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.SentSince, date)))("sentSince", termDoc);
+        handlers.registerHandler!((Date date) => cast(const) new SearchExpr(DateTerm(DateTerm.When.Since, date)))("since", termDoc);
 
         // Sizes.
-        handlers.registerHandler!((int size) => new SearchExpr(SizeTerm(SizeTerm.Relation.Larger, size)))("larger", termDoc);
-        handlers.registerHandler!((int size) => new SearchExpr(SizeTerm(SizeTerm.Relation.Smaller, size)))("smaller", termDoc);
+        handlers.registerHandler!((int size) => cast(const) new SearchExpr(SizeTerm(SizeTerm.Relation.Larger, size)))("larger", termDoc);
+        handlers.registerHandler!((int size) => cast(const) new SearchExpr(SizeTerm(SizeTerm.Relation.Smaller, size)))("smaller", termDoc);
 
         // UID sequences.
         // XXX This is tricky.  We'd like some simple syntax to be able to declare them in SIL (I

@@ -117,6 +117,50 @@ struct Options {
 }
 
 ///
+final class Mailbox {
+    this(Session session, string mailbox) {
+        this(session, [mailbox]);
+    }
+    this(Session session, Mailbox base, string mailbox) {
+        this(session, base.path ~ mailbox);
+    }
+    this(Session session, string[] mailboxes) {
+        if (session.namespaceDelim == '\0') {
+            import std.exception : enforce;
+            import imap.request : list;
+
+            // Fetch the delimiter *once* for the session.  We're assuming that INBOX exists, so
+            // there will be at least one entry returned for us to inspect.
+            auto resp = session.list();
+            enforce(resp.status == ImapStatus.ok, "Failed to get listing in Mailbox().");
+            session.namespaceDelim = resp.entries[0].hierarchyDelimiter[0];
+        }
+        path = mailboxes;
+        delim = session.namespaceDelim;
+    }
+
+    ///
+    override string toString() {
+        import std.array : join;
+        import std.string : toUpper, replace;
+        import std.format : format;
+        import imap.namespace;
+
+        if (utf7Path is null) {
+            // XXX Or to we convert to utf-7 before joining?
+            utf7Path = utf8ToUtf7(path.join(delim));
+        }
+        return utf7Path;
+    }
+
+    private {
+        string[] path;
+        char delim;
+        string utf7Path;
+    }
+}
+
+///
 final class Session {
     import imap.defines : ImapStatus;
     import imap.namespace;
@@ -133,7 +177,7 @@ final class Session {
     ImapProtocol imapProtocol;
     Set!Capability capabilities;
     string namespacePrefix;
-    char namespaceDelim = '\0';
+    char namespaceDelim = '\0';   // Use Nullable?
     Mailbox selected;
 
     bool useSSL = true;

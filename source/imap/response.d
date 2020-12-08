@@ -619,6 +619,8 @@ ListResponse responseList(Session session, Tag tag) {
     import std.conv : to;
     import std.exception : enforce;
 
+    import imap.namespace;
+
     auto result = session.responseGeneric(tag);
     if (result.status == ImapStatus.unknown || result.status == ImapStatus.bye)
         return ListResponse(result.status, result.value);
@@ -654,7 +656,7 @@ ListResponse responseList(Session session, Tag tag) {
 
         auto nonAttribFields = line[attribsEndIdx + 1 .. $].split;
         listEntry.hierarchyDelimiter = nonAttribFields[0].strip.stripQuotes;
-        listEntry.path = nonAttribFields[1].strip;
+        listEntry.path = utf7ToUtf8(nonAttribFields[1].strip);
         listEntries ~= listEntry;
     }
     return ListResponse(ImapStatus.ok, result.value, listEntries);

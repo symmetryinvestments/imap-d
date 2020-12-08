@@ -4,8 +4,7 @@ import imap;
 
 // -------------------------------------------------------------------------------------------------
 // These tests depend on a running IMAP server with an IMAP service on port 143 and an IMAPS service
-// on port 993.  It must initially populated with the test emails and this server is obviously
-// stateful, as an email server should be.
+// on port 993.
 //
 // To keep things simple these tests assume they are run in order and the effects of previous tests
 // are present.  We are NOT resetting the state of the server between tests.
@@ -127,9 +126,6 @@ private void testMailboxOps(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    // Mailbox delimiter is usually '.' but sometimes '/' works.  Will use whatever LIST gives us.
-    char delim = '.';
-
     {
         // By default reference is empty, mailbox is '*'.  We expect just INBOX at this stage.
         auto resp = session.list();
@@ -137,28 +133,31 @@ private void testMailboxOps(string host) {
         imapEnforce(resp.entries.length == 1, "mailboxOps", "Listing all != 1 entry.");
         auto entry = resp.entries[0];
         imapEnforce(entry.path == "INBOX", "mailboxOps", "Listing all didn't have INBOX.");
-
-        delim = entry.hierarchyDelimiter[0];
     }
 
     {
-        auto resp = session.create(Mailbox("mbox0", "", delim));
+        auto mbox0 = new Mailbox(session, "mbox0");
+
+        auto resp = session.create(mbox0);
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Creating a new mail box (mbox0).");
 
-        resp = session.create(Mailbox("mbox0", "", delim));
+        resp = session.create(mbox0);
         imapEnforce(resp.status != ImapStatus.ok,
                     "mailboxOps", "Recreating extant mail box (mbox0) succeeded.");
 
-        resp = session.create(Mailbox("INBOX", "", delim));
+        resp = session.create(new Mailbox(session, "INBOX"));
         imapEnforce(resp.status != ImapStatus.ok,
                     "mailboxOps", "Recreating extant mail box (INBOX) succeeded.");
 
         // A trailing delimiter indicates intent for sub-mailboxes, and should still work and be
         // stripped from the name.
-        resp = session.create(Mailbox("mbox1" ~ delim, "", delim));
+        char delim = session.namespaceDelim;
+        imapEnforce(delim != '\0', "mailboxOps", "Delimiter is not in session?!");
+
+        resp = session.create(new Mailbox(session, "mbox1" ~ delim));
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Creating a new mail box (mbox1).");
 
-        resp = session.create(Mailbox("mbox2" ~ delim ~ "sub0" ~ delim ~ "sub1", "", delim));
+        resp = session.create(new Mailbox(session, ["mbox2", "sub0", "sub1"]));
         imapEnforce(resp.status == ImapStatus.ok,
                     "mailboxOps", "Creating a new mail box (mbox2.sub0.sub1).");
     }
@@ -166,6 +165,9 @@ private void testMailboxOps(string host) {
     {
         import std.algorithm: canFind;
         import std.format: format;
+
+        char delim = session.namespaceDelim;
+        imapEnforce(delim != '\0', "mailboxOps", "Delimiter is not in session?!");
 
         // We should have INBOX, mbox0, mbox1 and mbox2.sub0.sub1 (6 mailboxes).
         auto resp = session.list();
@@ -202,41 +204,48 @@ private void testMailboxOps(string host) {
     }
 
     {
-        auto resp = session.rename(Mailbox("mbox1", "", delim), Mailbox("foo", "", delim));
+        auto mbox0 = new Mailbox(session, "mbox0");
+        auto mbox1 = new Mailbox(session, "mbox1");
+        auto foo = new Mailbox(session, "foo");
+
+        auto resp = session.rename(mbox1, foo);
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Renaming mbox1 -> foo failed.");
 
-        resp = session.rename(Mailbox("mbox1", "", delim), Mailbox("bar", "", delim));
+        resp = session.rename(mbox1, new Mailbox(session, "bar"));
         imapEnforce(resp.status != ImapStatus.ok,
                     "mailboxOps", "Renaming non-existent mbox1 -> bar succeeded.");
 
-        resp = session.rename(Mailbox("foo", "", delim), Mailbox("mbox0", "", delim));
+        resp = session.rename(foo, mbox0);
         imapEnforce(resp.status != ImapStatus.ok,
                     "mailboxOps", "Renaming foo -> existing mbox0 succeeded.");
     }
 
     {
-        auto resp = session.delete_(Mailbox("mbox0", "", delim));
+
+        auto resp = session.delete_(new Mailbox(session, "mbox0"));
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting mbox0 failed.");
 
-        resp = session.delete_(Mailbox("mbox1", "", delim));
+        resp = session.delete_(new Mailbox(session, "mbox1"));
         imapEnforce(resp.status != ImapStatus.ok,
                     "mailboxOps", "Deleting non-existing mbox1 succeeded.");
 
-        resp = session.delete_(Mailbox("foo", "", delim));
+        auto foo = new Mailbox(session, "foo");
+
+        resp = session.delete_(foo);
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting foo failed.");
 
-        resp = session.delete_(Mailbox("foo", "", delim));
+        resp = session.delete_(foo);
         imapEnforce(resp.status != ImapStatus.ok, "mailboxOps", "Deleting foo twice succeeded.");
 
         auto lsResp = session.list();
         imapEnforce(lsResp.status == ImapStatus.ok, "mailboxOps", "Listing all after delete failed.");
         imapEnforce(lsResp.entries.length == 4, "mailboxOps", "Listing all after delete != 4 entries.");
 
-        resp = session.delete_(Mailbox("sub0", "mbox2", delim));
+        resp = session.delete_(new Mailbox(session, "sub0"));
         imapEnforce(resp.status != ImapStatus.ok, "mailboxOps", "Deleting mbox2.sub0 succeeded.");
 
         // Deleting mbox2.sub0.sub1 will delete mbox2.sub0 and mbox2 too.
-        resp = session.delete_(Mailbox("mbox2" ~ delim ~ "sub0" ~ delim ~ "sub1", "", delim));
+        resp = session.delete_(new Mailbox(session, ["mbox2", "sub0", "sub1"]));
         imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting mbox2.sub0.sub1 failed.");
 
         lsResp = session.list();
@@ -244,6 +253,45 @@ private void testMailboxOps(string host) {
                     "mailboxOps", "Listing all after delete all failed.");
         imapEnforce(lsResp.entries.length == 1,
                     "mailboxOps", "Listing all after delete all != 1 entries.");
+    }
+
+    {
+        // NOTE: All of the namespacing stuff in the RFC is SHOULD or SHOULD NOT (as opposed to MUST).
+
+        auto resp = session.create(new Mailbox(session, "an_&_ampersand"));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Creating a new mail box (ampersand).");
+        resp = session.create(new Mailbox(session, "über"));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Creating a new mail box (diacritics).");
+        resp = session.create(new Mailbox(session, ["über", "café"]));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Creating a new mail box (diacritics).");
+
+        // Ugh, this delimiter stuff is a pain.  To keep things easy we're enforcing it to be a '.'
+        // here.
+        char delim = session.namespaceDelim;
+        imapEnforce(delim == '.', "mailboxOps", "Delimiter is not a '.' when we would prefer that for these tests.");
+
+        bool foundAmp = false, foundUber = false, foundCafe = false;
+        auto lresp = session.list();
+        foreach (entry; lresp.entries) {
+            switch (entry.path) {
+                case "an_&_ampersand": foundAmp  = true; break;
+                case "über":           foundUber = true; break;
+                case "über.café":      foundCafe = true; break;
+                default:               /* INBOX */       break;
+            }
+        }
+        imapEnforce(foundAmp,  "mailboxOps", "Listing an_&_ampersand");
+        imapEnforce(foundUber, "mailboxOps", "Listing über");
+        imapEnforce(foundCafe, "mailboxOps", "Listing über.café");
+
+        resp = session.delete_(new Mailbox(session, "an_&_ampersand"));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting an_&_ampersand failed.");
+        resp = session.delete_(new Mailbox(session, "über"));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting über failed.");
+        resp = session.delete_(new Mailbox(session, ["über", "café"]));
+        imapEnforce(resp.status == ImapStatus.ok, "mailboxOps", "Deleting über.café failed.");
+
+//        resp = session.create(new Mailbox(session, "with/a/slash"));
     }
 }
 
@@ -257,21 +305,21 @@ private void testSubscriptions(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto resp = session.list();
-    char delim = resp.entries[0].hierarchyDelimiter[0];
+    auto mbox0 = new Mailbox(session, "mbox0");
+    auto mbox1 = new Mailbox(session, "mbox1");
 
-    session.create(Mailbox("mbox0", "", delim));
-    session.create(Mailbox("mbox1", "", delim));
+    session.create(mbox0);
+    session.create(mbox1);
     scope(exit) {
-        session.delete_(Mailbox("mbox0", "", delim));
-        session.delete_(Mailbox("mbox1", "", delim));
+        session.delete_(mbox0);
+        session.delete_(mbox1);
     }
 
-    resp = session.lsub();
+    auto resp = session.lsub();
     imapEnforce(resp.status == ImapStatus.ok, "subscribe", "Lsub failed.");
     imapEnforce(resp.entries.length == 0, "subscribe", "Empty lsub returned values.");
 
-    auto result = session.subscribe(Mailbox("mbox0", "", delim));
+    auto result = session.subscribe(mbox0);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Subscribe to mbox0 failed.");
 
     resp = session.lsub();
@@ -279,21 +327,21 @@ private void testSubscriptions(string host) {
     imapEnforce(resp.entries.length == 1, "subscribe", "Lsub of * not single value.");
     imapEnforce(resp.entries[0].path == "mbox0", "subscribe", "Lsub of * not to mbox0.");
 
-    result = session.subscribe(Mailbox("mbox0", "", delim));
+    result = session.subscribe(mbox0);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Second subscribe to mbox0 failed.");
 
     resp = session.lsub("", "foobar*");
     imapEnforce(resp.status == ImapStatus.ok, "subscribe", "Lsub of foobar* failed.");
     imapEnforce(resp.entries.length == 0, "subscribe", "Lsub of foobar* not empty.");
 
-    result = session.subscribe(Mailbox("mbox1", "", delim));
+    result = session.subscribe(mbox1);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Subscribe to mbox1 failed.");
 
     resp = session.lsub("", "mbo*");
     imapEnforce(resp.status == ImapStatus.ok, "subscribe", "Lsub of mbo* failed.");
     imapEnforce(resp.entries.length == 2, "subscribe", "Lsub of mbo* not 2 values.");
 
-    result = session.unsubscribe(Mailbox("mbox0", "", delim));
+    result = session.unsubscribe(mbox0);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Unsubscribe from mbox0 failed.");
 
     resp = session.lsub("", "mbo*");
@@ -301,13 +349,13 @@ private void testSubscriptions(string host) {
     imapEnforce(resp.entries.length == 1, "subscribe", "2nd Lsub of mbo* not 1 value.");
 
     // It's OK to unsubscribe from something not in LSUB results..?
-    result = session.unsubscribe(Mailbox("mbox0", "", delim));
+    result = session.unsubscribe(mbox0);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "2nd unsubscribe from mbox0 failed.");
 
-    result = session.unsubscribe(Mailbox("nonexistent", "", delim));
+    result = session.unsubscribe(new Mailbox(session, "nonexistent"));
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Unsubscribe from nonexistent failed.");
 
-    result = session.unsubscribe(Mailbox("mbox1", "", delim));
+    result = session.unsubscribe(mbox1);
     imapEnforce(result.status == ImapStatus.ok, "subscribe", "Unsubscribe from mbox1 failed.");
 
     resp = session.lsub();
@@ -397,10 +445,7 @@ private void testAppend(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
     scope(exit) session.delete_(mbox0);
@@ -408,7 +453,7 @@ private void testAppend(string host) {
     auto resp = session.append(mbox0, exampleMessage0);
     imapEnforce(resp.status == ImapStatus.ok, "append", "Append failed.");
 
-    resp = session.append(Mailbox("notexist", "", delim), exampleMessage0);
+    resp = session.append(new Mailbox(session, "notexist"), exampleMessage0);
     imapEnforce(resp.status == ImapStatus.tryCreate,
                 "append", "Append to non-existent mailbox should be try-create.");
 
@@ -426,10 +471,7 @@ private void testStatus(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
     session.create(mbox0);
     scope(exit) session.delete_(mbox0);
 
@@ -461,22 +503,21 @@ private void testSelect(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto resp = session.select(Mailbox("INBOX", "", delim));
+    auto inbox = new Mailbox(session, "INBOX");
+    auto resp = session.select(inbox);
     imapEnforce(resp.status == ImapStatus.ok, "select", "Failed to select INBOX.");
 
-    session.create(Mailbox("mbox0", "", delim));
+    auto mbox0 = new Mailbox(session, "mbox0");
+    session.create(mbox0);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
-        session.delete_(Mailbox("mbox0", "", delim));
+        session.select(inbox);
+        session.delete_(mbox0);
     }
 
-    resp = session.select(Mailbox("mbox0", "", delim));
+    resp = session.select(mbox0);
     imapEnforce(resp.status == ImapStatus.ok, "select", "Failed to select mbox0.");
 
-    resp = session.select(Mailbox("notexist", "", delim));
+    resp = session.select(new Mailbox(session, "notexist"));
     imapEnforce(resp.status != ImapStatus.ok, "select", "Success selecting non-existent mailbox.");
 }
 
@@ -491,16 +532,13 @@ private void testCopy(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
-    auto mbox1 = Mailbox("mbox1", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
+    auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);
     }
@@ -513,9 +551,9 @@ private void testCopy(string host) {
     resp = session.copy("#2", mbox1);
     imapEnforce(resp.status != ImapStatus.ok, "copy", "Copy of bad ID to mbox1 succeeded.");
 
-    resp = session.copy("#1", Mailbox("mbox2", "", delim));
+    resp = session.copy("#1", new Mailbox(session, "mbox2"));
     imapEnforce(resp.status == ImapStatus.ok, "copy", "Copy and create to mbox2 failed.");
-    scope(exit) session.delete_(Mailbox("mbox2", "", delim));
+    scope(exit) session.delete_(new Mailbox(session, "mbox2"));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -530,14 +568,11 @@ private void testStore(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
     session.append(mbox0, exampleMessage0);
@@ -573,25 +608,23 @@ private void testExamine(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
+    auto inbox = new Mailbox(session, "INBOX");
+    auto mbox0 = new Mailbox(session, "mbox0");
 
-    auto mbox0 = Mailbox("mbox0", "", delim);
-
-    auto resp = session.examine(Mailbox("INBOX", "", delim));
+    auto resp = session.examine(inbox);
     imapEnforce(resp.status == ImapStatus.ok, "examine", "Failed to examine INBOX.");
 
     session.create(mbox0);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(inbox);
         session.delete_(mbox0);
     }
     session.append(mbox0, exampleMessage0);
 
-    resp = session.examine(Mailbox("notexist", "", delim));
+    resp = session.examine(new Mailbox(session, "notexist"));
     imapEnforce(resp.status != ImapStatus.ok, "examine", "Success examine non-existent mailbox.");
 
-    resp = session.examine(Mailbox("mbox0", "", delim));
+    resp = session.examine(mbox0);
     imapEnforce(resp.status == ImapStatus.ok, "examine", "Failed to examine mbox0.");
 }
 
@@ -602,16 +635,13 @@ private void testCloseExpunge(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
-    auto mbox1 = Mailbox("mbox1", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
+    auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);
     }
@@ -662,14 +692,11 @@ private void testFetch(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
     session.append(mbox0, exampleMessage0, [`\Flagged`]);
@@ -755,14 +782,11 @@ private void testSearch(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
     session.append(mbox0, exampleMessage0);
@@ -813,16 +837,13 @@ private void testUid(string host) {
     session = login(session);
     scope(exit) logout(session);
 
-    auto lsResp = session.list();
-    char delim = lsResp.entries[0].hierarchyDelimiter[0];
-
-    auto mbox0 = Mailbox("mbox0", "", delim);
-    auto mbox1 = Mailbox("mbox1", "", delim);
+    auto mbox0 = new Mailbox(session, "mbox0");
+    auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
     scope(exit) {
-        session.select(Mailbox("INBOX", "", delim));
+        session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);
     }

@@ -234,8 +234,8 @@ Session login(Session session) {
         session.imapProtocol = ImapProtocol.init;
     }
 
-    if (session.selected != Mailbox.init) {
-        t = session.check!sendRequest(format!"SELECT \"%s\""(session.selected.applyNamespace()));
+    if (session.selected !is null) {
+        t = session.check!sendRequest(format!"SELECT \"%s\""(session.selected.toString));
         auto selectResult = session.responseSelect(t);
         enforce(selectResult.status == ImapStatus.ok);
         rl = selectResult.status;
@@ -602,7 +602,7 @@ auto copy(Session session, string mesg, Mailbox mailbox) {
 @SILdoc("Move the specified message to another mailbox.")
 auto move(Session session, long uid, string mailbox) {
     import std.conv : text;
-    return multiMove(session, text(uid), Mailbox(mailbox));
+    return multiMove(session, text(uid), new Mailbox(session, mailbox));
 }
 
 @SILdoc("Move the specified messages to another mailbox.")
@@ -611,7 +611,7 @@ auto moveUIDs(Session session, long[] uids, string mailbox) {
     import std.algorithm : map;
     import std.array : array;
     import std.string : join;
-    return multiMove(session, uids.map!(uid => text(uid)).array.join(","), Mailbox(mailbox));
+    return multiMove(session, uids.map!(uid => text(uid)).array.join(","), new Mailbox(session, mailbox));
 }
 
 @SILdoc("Move the specified messages to another mailbox.")

@@ -1078,10 +1078,10 @@ class FilterCondition : Filter {
     @serdeIgnoreOutIf!`a.isNull`
     Nullable!(string[])header;
 
-    override string toString() {
+    override string toString() const {
         import asdf : jsonSerializer;
         import std.array : appender;
-        return serializeToJson(this).idup;
+        return serializeToJson(this);
         /+
         auto app = appender!(char[]);
         auto ser = jsonSerializer!("\t")((const(char)[] chars) => app.put(chars));

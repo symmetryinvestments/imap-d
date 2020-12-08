@@ -9,7 +9,7 @@ struct Set(T) {
         return (value in values_) !is null;
     }
 
-    T[] values() {
+    T[] values() const {
         import std.algorithm : filter, map;
         import std.array : array;
         import std.conv : to;
@@ -17,7 +17,7 @@ struct Set(T) {
                .array;
     }
 
-    string toString() {
+    string toString() const {
         import std.format : format;
         import std.algorithm : map, sort;
         import std.array : array;

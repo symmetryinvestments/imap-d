@@ -748,6 +748,7 @@ private void testFetch(string host) {
 
 private void testSearch(string host) {
     import std.algorithm: canFind;
+    import std.conv: to;
     import std.datetime : Date;
 
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
@@ -783,17 +784,17 @@ private void testSearch(string host) {
     imapEnforce(resp.ids == [2, 3], "search", "Bad results for search #3.");
 
     // Same searches with search expressions.
-    resp = session.search(new SearchQuery().not(FieldTerm(FieldTerm.Field.From, "mooch")));
+    resp = session.search(new SearchQuery().not(FieldTerm(FieldTerm.Field.From, "mooch")).to!string);
     imapEnforce(resp.status == ImapStatus.ok, "search", "Failed search #4.");
     imapEnforce(resp.ids == [1, 3], "search", "Bad results for search #4.");
 
-    resp = session.search(new SearchQuery(DateTerm(DateTerm.When.SentSince, Date(1994, 12, 31))));
+    resp = session.search(new SearchQuery(DateTerm(DateTerm.When.SentSince, Date(1994, 12, 31))).to!string);
     imapEnforce(resp.status == ImapStatus.ok, "search", "Failed search #5.");
     imapEnforce(resp.ids == [3], "search", "Bad results for search #5.");
 
     resp = session.search(
         new SearchQuery(SizeTerm(SizeTerm.Relation.Larger, 1000))
-        .or(FieldTerm(FieldTerm.Field.Body, "new phone")));
+        .or(FieldTerm(FieldTerm.Field.Body, "new phone")).to!string);
     imapEnforce(resp.status == ImapStatus.ok, "search", "Failed search #6.");
     imapEnforce(resp.ids == [2, 3], "search", "Bad results for search #6.");
 }

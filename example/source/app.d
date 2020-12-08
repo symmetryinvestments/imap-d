@@ -50,7 +50,7 @@ int main(string[] args) {
     auto query = new SearchQuery()
         .and(DateTerm(DateTerm.When.Since, Date(2019, 1, 29)))
         .and(FieldTerm(FieldTerm.Field.From, "GitHub"));
-    searchResult = session.search(query);
+    searchResult = session.search(query.to!string);
     writeln("--- Structured 'since:Date(2019,1,29),fromContains:\"GitHub\"' search results:");
     writeln(searchResult.value);
 

@@ -37,7 +37,7 @@ int main(string[] args) {
     session = session.login();
 
     // Select Inbox
-    auto INBOX = Mailbox(mailbox, "", '/');
+    auto INBOX = new Mailbox(session, mailbox);
     auto result = session.select(INBOX);
 
     // search all messages since 29 Jan 2019 and get UIDs using raw query interface

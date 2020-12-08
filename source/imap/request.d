@@ -226,6 +226,14 @@ Session login(Session session) {
         rl = res.status;
     }
 
+    if (session.capabilities.has(Capability.imap4Rev1)) {
+        session.imapProtocol = ImapProtocol.imap4Rev1;
+    } else if (session.capabilities.has(Capability.imap4)) {
+        session.imapProtocol = ImapProtocol.imap4;
+    } else {
+        session.imapProtocol = ImapProtocol.init;
+    }
+
     if (session.selected != Mailbox.init) {
         t = session.check!sendRequest(format!"SELECT \"%s\""(session.selected.applyNamespace()));
         auto selectResult = session.responseSelect(t);

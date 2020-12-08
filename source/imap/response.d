@@ -243,7 +243,7 @@ T parseEnum(T)(string val, T def = T.init) {
             enum name = C.to!string;
             enum udas = __traits(getAttributes, __traits(getMember, T, name));
             static if (udas.length > 0) {
-                if (val == udas[0].to!string) {
+                if (val == udas[$ - 1].to!string) {
                     return C;
                 }
             }
@@ -262,15 +262,13 @@ ImapResult responseCapability(Session session, Tag tag) {
     import std.traits : EnumMembers;
     import std.conv : to;
 
-    ImapProtocol protocol = session.imapProtocol;
-    Set!Capability capabilities = session.capabilities;
     enum CapabilityToken = "* CAPABILITY ";
 
     auto res = session.responseGeneric(tag);
     if (res.status == ImapStatus.unknown || res.status == ImapStatus.bye)
         return res;
 
-    auto lines = res.value
+    auto tokens = res.value
         .splitLines
         .filter!(line => line.startsWith(CapabilityToken) && line.length > CapabilityToken.length)
         .array
@@ -279,70 +277,13 @@ ImapResult responseCapability(Session session, Tag tag) {
             .array)
         .join;
 
-    foreach (token; lines) {
+    foreach (token; tokens) {
         auto capability = parseEnum!Capability(token, Capability.none);
         if (capability != Capability.none) {
-            switch (token) {
-                case "NAMESPACE":
-                    capabilities = capabilities.add(Capability.namespace);
-                    break;
-
-                case "AUTH=CRAM-MD5":
-                    capabilities = capabilities.add(Capability.cramMD5);
-                    break;
-
-                case "STARTTLS":
-                    capabilities = capabilities.add(Capability.startTLS);
-                    break;
-
-                case "CHILDREN":
-                    capabilities = capabilities.add(Capability.children);
-                    break;
-
-                case "IDLE":
-                    capabilities = capabilities.add(Capability.idle);
-                    break;
-
-                case "IMAP4rev1":
-                    protocol = ImapProtocol.imap4Rev1;
-                    break;
-
-                case "IMAP4":
-                    protocol = ImapProtocol.imap4;
-                    break;
-
-                default:
-                    bool isKnown = false;
-                    static foreach (C; EnumMembers!Capability) {
-                        {
-                            enum name = C.to!string;
-                            enum udas = __traits(getAttributes, __traits(getMember, Capability, name));
-                            static if (udas.length > 0) {
-                                if (token == udas[0].to!string) {
-                                    capabilities = capabilities.add(C);
-                                    isKnown = true;
-                                }
-                            }
-                        }
-                    }
-                    if (!isKnown && session.options.debugMode) {
-                        infof("unknown capabilty: %s", token);
-                    }
-                    break;
-            }
+            session.capabilities = session.capabilities.add(capability);
         }
     }
 
-    if (capabilities.has(Capability.imap4Rev1)) {
-        session.imapProtocol = ImapProtocol.imap4Rev1;
-    } else if (capabilities.has(Capability.imap4)) {
-        session.imapProtocol = ImapProtocol.imap4;
-    } else {
-        session.imapProtocol = ImapProtocol.init;
-    }
-
-    session.capabilities = capabilities;
-    session.imapProtocol = protocol;
     if (session.options.debugMode)
         version (Trace) {
             tracef("session capabilities: %s", session.capabilities.values);

@@ -84,7 +84,7 @@ ImapStatus checkTag(Session session, string buf, Tag tag) {
         .array;
 
     foreach (line; relevantLines) {
-        auto token = line.toUpper[t.length + 1 .. $].strip.split.front;
+        auto token = (line.length > t.length +1) ? line.toUpper[t.length + 1 .. $].strip.split.front : "";
         if (token.startsWith("OK")) {
             r = ImapStatus.ok;
             break;

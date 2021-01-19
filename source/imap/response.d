@@ -10,6 +10,7 @@ import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;
 import core.time : msecs;
+import std.encoding : Latin1String;
 
 
 /**
@@ -178,7 +179,7 @@ ImapResult responseGeneric(Session session, Tag tag, Duration timeout = 2000.mse
     if (r == ImapStatus.no && (checkTryCreate(result[1]) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf.data);
 
-    return ImapResult(r, buf.data);
+    return ImapResult(r, buf.data.decodeUtf8Header);
 }
 
 
@@ -868,8 +869,8 @@ BodyResponse responseFetchBody(Session session, Tag tag) {
     auto parsed = r.value.extractLiterals;
 
     if (parsed[1].length >= 2)
-        return BodyResponse(r.status, r.value, parsed[1]);
-    auto bodyText = (parsed[1].length == 0) ? r.value : parsed[1][0];
+        return BodyResponse(r.status, r.value.decodeUtf8Header, parsed[1]);
+    auto bodyText = (parsed[1].length == 0) ? r.value.decodeUtf8Header : parsed[1][0].decodeUtf8Header;
     auto bodyLines = bodyText.splitLines;
     if (bodyLines.length > 0 && bodyLines.front.length == 0)
         bodyLines = bodyLines[1 .. $];
@@ -1004,7 +1005,7 @@ auto extractLiterals(string buf) {
     do
     {
         literalInfo = findLiteral(buf);
-        if (literalInfo.length > 0) {
+        if (literalInfo.length > 0 && buf.length > literalInfo.j+1+literalInfo.length) {
             string literal = buf[literalInfo.j + 1 .. literalInfo.j + 1 + literalInfo.length];
             literals.put(literal);
             nonLiterals.put(buf[0 .. literalInfo.i]);
@@ -1022,3 +1023,124 @@ auto extractLiterals(string buf) {
 )
 D1009 OK Completed (0.002 sec)
 +/
+
+private string replaceQuotedBase64(string s)
+{
+        import std.base64;
+        return cast(string) (Base64.decode(s).idup);
+}
+
+private string replaceQuotedPrintableLatin(string s)
+{
+        return replaceQuotedPrintable!Latin1String(cast(Latin1String)s);
+}
+
+private string replaceQuotedPrintable(S = string)(S s)
+{
+        import std.encoding : transcode;
+        import std.traits : Unqual;
+        
+        alias C = Unqual!(typeof(s[0])); // type of the char in S eg Latin1Char or char
+        
+        import std.ascii : isHexDigit;
+        import std.array : Appender;
+        import std.string : replace;
+        import std.conv : to;
+        
+        Appender!S ret;
+        s = s.replace(cast(S)"_",cast(S)" ");
+        
+        enum Mode
+        {
+                base,
+                hasEquals,
+                hasEqualsDigit,
+        }
+        Mode mode = Mode.base;
+        C scratch;
+        foreach(c; s)
+        {
+                final switch(mode)
+                {
+                        case Mode.base:
+                                if (c == '=')
+                                {
+                                        mode = Mode.hasEquals;
+                                        scratch = cast(C)0;
+                                }
+                                else
+                                {
+                                        ret.put(c);
+                                }
+                                break;
+                        
+                        case Mode.hasEquals:
+                                if (c.isHexDigit)
+                                {
+                                        mode = Mode.hasEqualsDigit;
+                                        scratch = c;
+                                }
+                                else
+                                {
+                                        ret.put(c);
+                                        mode = Mode.base;
+                                        scratch = cast(C) 0;
+                                }
+                                break;
+                        
+                        case Mode.hasEqualsDigit:
+                                if (c.isHexDigit)
+                                {
+                                        ret.put(cast(C)(to!ushort(cast(char[])[scratch,c]).idup,16)));
+                                        mode = Mode.base;
+                                        scratch = cast(C)0;
+                                }
+                                else
+                                {
+                                        ret.put(cast(C)'=');
+                                        ret.put(scratch);
+                                        ret.put(c);
+                                        mode = mode.base;
+                                }
+                                break;
+                }
+        }
+        string ns;
+        transcode(ret[],ns);
+        return ns;
+}
+
+auto decodeUtf8Header(immutable(ubyte)[] s)
+{
+        return cast(immutable(ubyte)[]) decodeUtf8Header(cast(immutable)(char)[]) s);
+}
+
+private string handleDecode(alias f)(string buf, string prefix, string suffix)
+{
+        import std.string : toLower, indexof;
+        auto i = buf.toLower().indexOf(prefix.toLower());
+        if (i == -1)
+                return buf;
+        auto preSlice = buf[0 .. i];
+        auto slice = buf[i + prefix.length .. $];
+        auto j = slice.toLower().indexOf(suffix.toLower());
+        if (j == -1)
+                return buf;
+        auto postSlice = slice[j + suffix.length .. $];
+        slice = slice[0 .. j];
+        return handleDecode!f(preSlice ~ f(slice) ~ postSlice, prefix, suffix);
+}
+
+string decodeUtf8(string s)
+{
+        return s.decodeUtf8Header();
+}
+
+string decodeUtf8Header(string s)
+{
+        import std.string : toLower, indexof;
+        s = s.handleDecode!replaceQuotedPrintable("=?utf-8?Q?","?=");
+        s = s.handleDecode!replaceQuotedBase64("=?utf-8?B?","?=");
+        s = s.handleDecode!replaceQuotedPrintableLatin("=?iso-8859-1?Q?","?=");
+        return s;
+}

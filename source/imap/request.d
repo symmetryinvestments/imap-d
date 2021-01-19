@@ -737,6 +737,21 @@ auto unsubscribe(Session session, Mailbox mailbox) {
     return session.responseGeneric(id);
 }
 
+@SILdoc("IMAP ENABLE command.")
+auto enable(Session session, string command) {
+    import std.format : format;
+    auto request = format!`ENABLE %s`(command);
+    auto id = session.sendRequest(request);
+    return session.responseGeneric(id);
+}
+
+@SILdoc("IMAP raw command.")
+auto raw(Session session, string command) {
+    import std.format : format;
+    auto id = session.sendRequest(command);
+    return session.responseGeneric(id);
+}
+
 @SILdoc(`IMAP idle command`)
 auto idle(Session session) {
     import std.stdio;
@@ -761,7 +776,7 @@ auto idle(Session session) {
             r = session.responseGeneric(t);
             version (Trace) stderr.writefln("reponseGenericresult was %s", r);
         }
-    } while (ri.status != ImapStatus.untagged);
+    } while (false); // ri.status != ImapStatus.untagged);
     stderr.writefln("returning %s", ri);
 
     return ri;

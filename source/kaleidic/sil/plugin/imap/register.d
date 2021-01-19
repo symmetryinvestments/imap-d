@@ -50,7 +50,7 @@ void registerImap(ref Handlers handlers) {
                                      fetchFields, fetchFlags, fetchHeader, fetchPart, fetchRFC822,
                                      fetchSize, fetchStructure, fetchText, idle, list, login,
                                      logout, lsub, move, moveUIDs, multiMove, multiSearch, noop,
-                                     openConnection, rename, select, status, store, subscribe,
+                                     openConnection, rename, select, status, store, subscribe,decodeUtf8,
                                      unsubscribe, writeBinaryString,
                                      )) {
             handlers.registerHandler!F;

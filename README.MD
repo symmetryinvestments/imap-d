@@ -58,7 +58,6 @@ Heavily inspired by imapfilter.
 - currently IMAP literals are only parsed for returns of type responseBody
 - only fetchRFC822 works for parsing results (works if you want whole email including
   attachments)
-- mailbox UTF7 conversion code is horrible, may not work and needs improving
 - more abstraction and better design needed for parsing
 - synchronous and single threaded: use processes to start multiple connections for performance
 - JMAP depends on internal Symmetry Variable type and will require changes to work without it

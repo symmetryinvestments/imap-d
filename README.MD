@@ -65,8 +65,8 @@ Heavily inspired by imapfilter.
 
 ### Features to add
 
-[ ] more IMAP extensions
-[ ] more JMAP capabilities
+- [ ] more IMAP extensions
+- [ ] more JMAP capabilities
 
 ## Example use
 

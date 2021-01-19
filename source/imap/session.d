@@ -111,8 +111,6 @@ struct Options {
     string logFile;
     string configFile;
     string oneline;
-    string trustStore = "/etc/ssl/certs";
-    string trustFile = "/etc/ssl/certs/cert.pem";
     Duration timeout = 20.seconds;
 }
 

@@ -10,7 +10,6 @@ import std.typecons : tuple;
 import core.time : Duration;
 import arsd.email : IncomingEmailMessage;
 import core.time : msecs;
-import std.encoding : Latin1String;
 
 
 /**
@@ -179,7 +178,7 @@ ImapResult responseGeneric(Session session, Tag tag, Duration timeout = 2000.mse
     if (r == ImapStatus.no && (checkTryCreate(result[1]) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf.data);
 
-    return ImapResult(r, buf.data.decodeUtf8Header);
+    return ImapResult(r, buf.data.decodeMimeHeader);
 }
 
 
@@ -869,8 +868,8 @@ BodyResponse responseFetchBody(Session session, Tag tag) {
     auto parsed = r.value.extractLiterals;
 
     if (parsed[1].length >= 2)
-        return BodyResponse(r.status, r.value.decodeUtf8Header, parsed[1]);
-    auto bodyText = (parsed[1].length == 0) ? r.value.decodeUtf8Header : parsed[1][0].decodeUtf8Header;
+        return BodyResponse(r.status, r.value.decodeMimeHeader, parsed[1]);
+    auto bodyText = (parsed[1].length == 0) ? r.value.decodeMimeHeader : parsed[1][0].decodeMimeHeader;
     auto bodyLines = bodyText.splitLines;
     if (bodyLines.length > 0 && bodyLines.front.length == 0)
         bodyLines = bodyLines[1 .. $];
@@ -1017,6 +1016,7 @@ auto extractLiterals(string buf) {
     } while (buf.length > 0 && literalInfo.length > 0);
     return tuple(nonLiterals.data, literals.data);
 }
+
 /+
 "* 51045 FETCH (UID 70290 BODY[TEXT] {67265}
 
@@ -1024,123 +1024,115 @@ auto extractLiterals(string buf) {
 D1009 OK Completed (0.002 sec)
 +/
 
-private string replaceQuotedBase64(string s)
-{
-        import std.base64;
-        return cast(string) (Base64.decode(s).idup);
-}
+// See RFC2047 - https://tools.ietf.org/html/rfc2047
+//
+// In summary, message headers may be encoded:
+// - grammar: '=?' CHARSET '?' ENCODING '?' TEXT '?='
+//   - CHARSET and ENCODING are case insensitive.
+//   - CHARSET can be any of the MIME charsets for a "text/plain" body part, or any character set name
+//     for a MIME text/plain content-type.
+//   - ENCODING is either 'Q' or 'B'.
+//     - B is base64.
+//     - Q is (similar to) quoted-printable.
+//
+// NOTE: Assumes strings are well formed after decoded as they're just casted from ubyte[] to either
+// UTF-8 string or Latin1String.
 
-private string replaceQuotedPrintableLatin(string s)
+string decodeMimeHeader(string header)
 {
-        return replaceQuotedPrintable!Latin1String(cast(Latin1String)s);
-}
+        import std.array : split;
+        import std.base64 : Base64;
+        import std.exception : enforce;
+        import std.format : format;
+        import std.string : toUpper;
 
-private string replaceQuotedPrintable(S = string)(S s)
-{
-        import std.encoding : transcode;
-        import std.traits : Unqual;
-        
-        alias C = Unqual!(typeof(s[0])); // type of the char in S eg Latin1Char or char
-        
-        import std.ascii : isHexDigit;
-        import std.array : Appender;
-        import std.string : replace;
-        import std.conv : to;
-        
-        Appender!S ret;
-        s = s.replace(cast(S)"_",cast(S)" ");
-        
-        enum Mode
-        {
-                base,
-                hasEquals,
-                hasEqualsDigit,
+        import arsd.email : decodeQuotedPrintable;
+
+        string[] elements = header.split("?");
+        if (elements.length != 5 || elements[0] != "=" || elements[4] != "=") {
+            return header;
         }
-        Mode mode = Mode.base;
-        C scratch;
-        foreach(c; s)
-        {
-                final switch(mode)
-                {
-                        case Mode.base:
-                                if (c == '=')
-                                {
-                                        mode = Mode.hasEquals;
-                                        scratch = cast(C)0;
-                                }
-                                else
-                                {
-                                        ret.put(c);
-                                }
-                                break;
-                        
-                        case Mode.hasEquals:
-                                if (c.isHexDigit)
-                                {
-                                        mode = Mode.hasEqualsDigit;
-                                        scratch = c;
-                                }
-                                else
-                                {
-                                        ret.put(c);
-                                        mode = Mode.base;
-                                        scratch = cast(C) 0;
-                                }
-                                break;
-                        
-                        case Mode.hasEqualsDigit:
-                                if (c.isHexDigit)
-                                {
-                                        ret.put(cast(C)(to!ushort(cast(char[])[scratch,c]).idup,16)));
-                                        mode = Mode.base;
-                                        scratch = cast(C)0;
-                                }
-                                else
-                                {
-                                        ret.put(cast(C)'=');
-                                        ret.put(scratch);
-                                        ret.put(c);
-                                        mode = mode.base;
-                                }
-                                break;
-                }
+
+        // Utility to decode first (Q or B) and then convert from Latin1 to string.
+        string decodeMimeWithEncodingFromLatin1(alias decoder)() {
+            import std.encoding : Latin1String, transcode;
+
+            string result;
+            transcode(cast(Latin1String) decoder(elements[3]), result);
+            return result;
         }
-        string ns;
-        transcode(ret[],ns);
-        return ns;
+
+        // For the charset we only support UTF-8 and ISO-8859-1 for now.
+        string decodeMimeWithEncoding(alias decoder)() {
+            switch (elements[1].toUpper) {
+                case "UTF-8":
+                return cast(string) decoder(elements[3]);
+
+                case "ISO-8859-1":
+                return decodeMimeWithEncodingFromLatin1!(decoder)();
+
+                default:
+                enforce(false, format!"Unsupported charset in MIME header: '%s'"(elements[1].toUpper));
+            }
+            assert(0);
+        }
+
+        // The encoding is either 'Q' or 'B'.
+        switch (elements[2].toUpper) {
+            case "Q":
+            return decodeMimeWithEncoding!decodeQuotedPrintable();
+
+            case "B":
+            return decodeMimeWithEncoding!(Base64.decode)();
+
+            default:
+            enforce(false, format!"MIME header encoding should be 'Q' or 'B': '%s'"(elements[2].toUpper));
+        }
+
+        assert(0);
 }
 
-auto decodeUtf8Header(immutable(ubyte)[] s)
-{
-        return cast(immutable(ubyte)[]) decodeUtf8Header(cast(immutable)(char)[]) s);
-}
+unittest {
+    // Taken from searches on the net, then converted/confirmed using Python:
+    //
+    // Python 3.9.1 (default, Dec 13 2020, 11:55:53)
+    // [GCC 10.2.0] on linux
+    // Type "help", "copyright", "credits" or "license" for more information.
+    // >>> from email.header import decode_header
+    // >>> decode_header("=?UTF-8?Q?This is a horsey: =F0=9F=90=8E?=")[0][0].decode('utf-8')
+    // 'This is a horsey: 🐎'
+    // >>> decode_header("=?UTF-8?B?VGhpcyBpcyBhIGhvcnNleTog8J+Qjg==?=")[0][0].decode('utf-8')
+    // 'This is a horsey: 🐎'
+    // >>> decode_header("=?iso-8859-1?Q?WG=3A_Mobilit=E4t_verschlechtert_--=3E_174?=")[0][0].decode('iso-8859-1')
+    // 'WG: Mobilität verschlechtert --> 174'
 
-private string handleDecode(alias f)(string buf, string prefix, string suffix)
-{
-        import std.string : toLower, indexof;
-        auto i = buf.toLower().indexOf(prefix.toLower());
-        if (i == -1)
-                return buf;
-        auto preSlice = buf[0 .. i];
-        auto slice = buf[i + prefix.length .. $];
-        auto j = slice.toLower().indexOf(suffix.toLower());
-        if (j == -1)
-                return buf;
-        auto postSlice = slice[j + suffix.length .. $];
-        slice = slice[0 .. j];
-        return handleDecode!f(preSlice ~ f(slice) ~ postSlice, prefix, suffix);
-}
+    void decodeTest(string encoded, string expected) {
+        import std.stdio : writeln;
 
-string decodeUtf8(string s)
-{
-        return s.decodeUtf8Header();
-}
+        auto got = decodeMimeHeader(encoded);
+        if (got != expected) {
+            writeln("FAILED TO DECODE MIME HEADER:");
+            writeln("input: ", encoded);
+            writeln("expecting: ", expected);
+            writeln("got:       ", got);
+        }
+        assert(got == expected);
+    }
 
-string decodeUtf8Header(string s)
-{
-        import std.string : toLower, indexof;
-        s = s.handleDecode!replaceQuotedPrintable("=?utf-8?Q?","?=");
-        s = s.handleDecode!replaceQuotedBase64("=?utf-8?B?","?=");
-        s = s.handleDecode!replaceQuotedPrintableLatin("=?iso-8859-1?Q?","?=");
-        return s;
+    decodeTest("=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?=",
+               "Keld Jørn Simonsen");
+    decodeTest("=?ISO-8859-1?Q?Informaci=F3n_Apartamento_a_la_Venta?=",
+               "Información Apartamento a la Venta");
+    decodeTest("=?iso-8859-1?Q?WG=3A_Mobilit=E4t_verschlechtert_--=3E_174?=",
+               "WG: Mobilität verschlechtert --> 174");
+
+    decodeTest("=?utf-8?Q?Watch_now_=e2=80=93_We_Need_to_Talk_About_New_Zealand?=",
+               "Watch now – We Need to Talk About New Zealand");
+    decodeTest("=?UTF-8?Q?This is a horsey: =F0=9F=90=8E?=",
+               "This is a horsey: 🐎");
+
+    decodeTest("=?UTF-8?B?VGhpcyBpcyBhIGhvcnNleTog8J+Qjg==?=",
+               "This is a horsey: 🐎");
+    decodeTest("=?utf-8?B?2LPZhNin2YU=?=",
+               "سلام");
 }

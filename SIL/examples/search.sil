@@ -44,7 +44,7 @@ session =
   imap.Session(server, creds)
     |> imap.openConnection()
     |> imap.login()
-inbox = imap.Mailbox("support", "", '/')
+inbox = imap.Mailbox(session, "support")
 
 // Select the default inbox.
 inbox |> imap.examine(session, _)

@@ -47,6 +47,7 @@ int main(string[] args) {
         runTest("fetch    ", &testFetch);
         runTest("search   ", &testSearch);
         runTest("uid      ", &testUid);
+        //runTest("idle     ", &testIdle);
     } catch (ImapTestException e) {
         writeln("failure: ", e.test, " => ", e.msg);
         return 1;
@@ -902,4 +903,109 @@ private void testUid(string host) {
                 "uid", "Succeeded fetching flags by stale UID.");
 }
 
+// -------------------------------------------------------------------------------------------------
+/+
+
+Here I've attempted to test IDLE using a couple of separate threads; one for issuing an IDLE command
+and another for making a change which would provide an appropriate event for the IDLE thread.
+
+I can't make it work.  It always just times out, returning an 'OK Still here' response, rather than
+an 'exists' response, or similar.
+
+I've tried using APPEND to modify the mailbox to trigger an 'exists' and I've tried to delete a
+message and EXPUNGE to trigger an 'expunge', neither have worked.
+
+* Does APPEND trigger 'exists'?  Hard to tell, I would've thought so though.
+* Does it not count if the user which creates the change is the same as the one listening with IDLE?
+* Are IDLE events *only* triggered by the server noticing an external change some other way..? Ugh.
+
+
+
+import std.concurrency;
+
+void testIdle(string host) {
+    import std.exception : enforce;
+
+    auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    session = login(session);
+    scope (exit) logout(session);
+
+    auto mbox0 = new Mailbox(session, "mbox0");
+    session.create(mbox0);
+    scope (exit) {
+        session.select(new Mailbox(session, "INBOX"));
+        session.delete_(mbox0);
+    }
+
+    auto resp = session.append(mbox0, exampleMessage0);
+    imapEnforce(resp.status == ImapStatus.ok, "idle", "Append failed.");
+
+    Tid changerTid = spawn(&testIdleChanger, host, thisTid);
+    Tid waiterTid = spawn(&testIdleWaiter, host, thisTid, changerTid);
+
+    for (int count = 0; count < 2; count++) {
+        string result = receiveOnly!string;
+        imapEnforce(result is null, "idle", result);
+    }
+}
+
+// Emits an IDLE and checks the event it returns.
+void testIdleWaiter(string host, Tid parentTid, Tid changerTid) {
+    auto waiterSession = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    waiterSession = login(waiterSession);
+    scope (exit) logout(waiterSession);
+
+    auto mbox = new Mailbox(waiterSession, "mbox0");
+    auto resp = waiterSession.select(mbox);
+    if (resp.status != ImapStatus.ok) {
+        send(parentTid, "Waiter failed to select mbox0.");
+        return;
+    }
+
+    // Tell the changer that we're about to emit the IDLE command.
+    send(changerTid, true);
+
+    auto idleResp = waiterSession.idle();
+
+    //   get a message: exists? (new message) expunge? (deleted message) ??? (read, or other flag
+    import std.stdio;
+    writeln("WAITER IDLE RESPONSE:");
+    writeln(idleResp);
+
+    send(parentTid, "XXX"); //string.init);
+}
+
+// Changes something in INBOX to trigger an event for IDLE.
+void testIdleChanger(string host, Tid parentTid) {
+    import core.thread.osthread : Thread;
+    import core.time : msecs;
+
+    auto changerSession = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
+    changerSession = login(changerSession);
+    scope (exit) logout(changerSession);
+
+    auto mbox = new Mailbox(changerSession, "mbox0");
+    auto resp = changerSession.select(mbox);
+    if (resp.status != ImapStatus.ok) {
+        send(parentTid, "Changer failed to select mbox0.");
+        return;
+    }
+
+    // Wait for the waiter to be ready, then sleep a little bit to be sure they're blocking on
+    // IDLE.  XXX I can't think of a better way to do this -- ideally the waiter would tell the
+    // changer that it has emitted an IDLE and is ready for the event, but since it's a blocking
+    // network function it isn't possible..?
+    receiveOnly!bool();
+    Thread.sleep(msecs(5000));
+
+    changerSession.store("#1", StoreMode.add, `\Deleted`);
+    auto expResp = changerSession.expunge();
+    if (expResp.status != ImapStatus.ok) {
+        send(parentTid, "Expunge failed.");
+        return;
+    }
+
+    send(parentTid, string.init);
+}
++/
 // -------------------------------------------------------------------------------------------------

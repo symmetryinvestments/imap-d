@@ -760,23 +760,20 @@ auto idle(Session session) {
     if (!session.capabilities.has(Capability.idle))
         return ImapResult(ImapStatus.bad, "");
 
-    do
-    {
-        version (Trace) stderr.writefln("inner loop for idle");
-        t = session.sendRequest("IDLE");
+    version (Trace) stderr.writefln("inner loop for idle");
+    t = session.sendRequest("IDLE");
+    ri = session.responseIdle(t);
+    r = session.responseContinuation(t);
+    version (Trace) stderr.writefln("sendRequest - responseContinuation was %s", r);
+    if (r.status == ImapStatus.continue_) {
         ri = session.responseIdle(t);
-        r = session.responseContinuation(t);
-        version (Trace) stderr.writefln("sendRequest - responseContinuation was %s", r);
-        if (r.status == ImapStatus.continue_) {
-            ri = session.responseIdle(t);
-            version (Trace) stderr.writefln("responseIdle result was %s", ri);
-            session.sendContinuation("DONE");
-            version (Trace) stderr.writefln("continuation result was %s", ri);
-            r = session.responseGeneric(t);
-            version (Trace) stderr.writefln("reponseGenericresult was %s", r);
-        }
-    } while (false); // ri.status != ImapStatus.untagged);
-    stderr.writefln("returning %s", ri);
+        version (Trace) stderr.writefln("responseIdle result was %s", ri);
+        session.sendContinuation("DONE");
+        version (Trace) stderr.writefln("continuation result was %s", ri);
+        r = session.responseGeneric(t);
+        version (Trace) stderr.writefln("reponseGenericresult was %s", r);
+    }
+    version (Trace) stderr.writefln("returning %s", ri);
 
     return ri;
 }

@@ -13,7 +13,7 @@ session =
   |> imap.login()
 
 // Get the status for the inbox.
-stat = (imap.Mailbox("INBOX", "", '/') |> imap.status(session, _))
+stat = (imap.Mailbox(session, "INBOX") |> imap.status(session, _))
 
 // Close the session.
 imap.closeConnection(session)

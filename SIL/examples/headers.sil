@@ -41,7 +41,7 @@ session =
   imap.Session(server, creds)
   |> imap.openConnection()
   |> imap.login()
-inbox = imap.Mailbox("INBOX", "", '/')
+inbox = imap.Mailbox(session, "INBOX")
 
 // Get the number of messages in the inbox.
 msgCount = imap.status(session, inbox).messages

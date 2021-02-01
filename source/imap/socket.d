@@ -87,11 +87,29 @@ Session openSecureConnection(Session session) {
     // TODO: The CAs are *usually* found under /etc/ssl on *nix systems, but on Windows they
     // probably need to come from the certificate manager or somewhere?  I don't know yet.  For now
     // we'll make these assumptions, and on Windows not try to verify the server certificate at all.
-    version (linux) session.sslContext = getContext("/etc/ssl/cert.pem", "/etc/ssl", null, null, false);
+    version (linux) {
+        import std.file: exists;
+        // Taken from https://serverfault.com/questions/62496/ssl-certificate-location-on-unix-linux/722646#722646
+        string cacertPath;
+        foreach (path; [
+                 "/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo etc.
+                 "/etc/pki/tls/certs/ca-bundle.crt",                  // Fedora/RHEL 6
+                 "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+                 "/etc/pki/tls/cacert.pem",                           // OpenELEC
+                 "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7
+                 "/etc/ssl/cert.pem",                                 // Alpine Linux
+                 ]) {
+            if (path.exists) {
+                cacertPath = path;
+                break;
+            }
+        }
+        enforce(cacertPath !is null, "Failed to find CA certificate path.");
+        session.sslContext = getContext(cacertPath, "/etc/ssl", null, null, false);
+    }
     version (Windows) session.sslContext = getContext("", "", null, null, false);
 
     enforce(session.sslContext !is null, "unable to create new SSL context");
-    session.sslContext.loadVerifyLocations(session.options.trustStore, session.options.trustFile);
     session.sslConnection = SSL_new(session.sslContext);
     enforce(session.sslConnection !is null, "unable to create new SSL connection");
     enforce(session.socket.isAlive, "trying to secure a disconnected socket");

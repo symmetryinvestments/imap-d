@@ -111,8 +111,6 @@ struct Options {
     string logFile;
     string configFile;
     string oneline;
-    string trustStore = "/etc/ssl/certs";
-    string trustFile = "/etc/ssl/certs/cert.pem";
     Duration timeout = 20.seconds;
 }
 
@@ -192,7 +190,7 @@ final class Session {
         Appender!string ret;
         ret.formattedWrite!"Session to %s:%s as user %s\n"(server, port, imapLogin.username);
         ret.formattedWrite!"- useSSL: %s\n"(useSSL);
-        ret.formattedWrite!"- startTLS: %s\n"(useSSL);
+        ret.formattedWrite!"- startTLS: %s\n"(options.startTLS);
         ret.formattedWrite!"- noCerts: %s\n"(noCerts);
         ret.formattedWrite!"- sslProtocol: %s\n"(sslProtocol);
         ret.formattedWrite!"- imap protocol: %s\n"(imapProtocol);

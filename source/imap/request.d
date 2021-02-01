@@ -657,11 +657,10 @@ auto multiMove(Session session, string mesg, Mailbox mailbox) {
 // e.g., " 5-Nov-2020 14:19:28 +1100"
 
 @SILdoc(`Append supplied message to the specified mailbox.`)
-auto append(Session session, Mailbox mbox, string[] mesgLines, string[] flags = [], string date = string.init)
-{
-    import std.format: format;
-    import std.algorithm: fold;
-    import std.array: join;
+auto append(Session session, Mailbox mbox, string[] mesgLines, string[] flags = [], string date = string.init) {
+    import std.format : format;
+    import std.algorithm : fold;
+    import std.array : join;
 
     string flagsStr = "";
     if (flags.length > 0) {

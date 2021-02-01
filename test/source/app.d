@@ -124,7 +124,7 @@ private void testAuthentication(string host) {
 private void testMailboxOps(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     {
         // By default reference is empty, mailbox is '*'.  We expect just INBOX at this stage.
@@ -163,8 +163,8 @@ private void testMailboxOps(string host) {
     }
 
     {
-        import std.algorithm: canFind;
-        import std.format: format;
+        import std.algorithm : canFind;
+        import std.format : format;
 
         char delim = session.namespaceDelim;
         imapEnforce(delim != '\0', "mailboxOps", "Delimiter is not in session?!");
@@ -303,14 +303,14 @@ private void testMailboxOps(string host) {
 private void testSubscriptions(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
     auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
-    scope(exit) {
+    scope (exit) {
         session.delete_(mbox0);
         session.delete_(mbox1);
     }
@@ -443,12 +443,12 @@ private string[] exampleMessage2 =
 private void testAppend(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
-    scope(exit) session.delete_(mbox0);
+    scope (exit) session.delete_(mbox0);
 
     auto resp = session.append(mbox0, exampleMessage0);
     imapEnforce(resp.status == ImapStatus.ok, "append", "Append failed.");
@@ -469,25 +469,25 @@ private void testAppend(string host) {
 private void testStatus(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
     session.create(mbox0);
-    scope(exit) session.delete_(mbox0);
+    scope (exit) session.delete_(mbox0);
 
     auto resp = status(session, mbox0);
     imapEnforce(resp.status = ImapStatus.ok, "status", "Failed to get status of mbox0.");
-    imapEnforce(resp.messages == 0 &&
-                resp.recent == 0 &&
-                resp.unseen == 0, "status", "Bad status for mbox0.");
+    imapEnforce(resp.messages == 0
+            && resp.recent == 0
+            && resp.unseen == 0, "status", "Bad status for mbox0.");
 
     session.append(mbox0, exampleMessage0);
 
     resp = status(session, mbox0);
     imapEnforce(resp.status = ImapStatus.ok, "status", "Failed to get status of mbox0.");
-    imapEnforce(resp.messages == 1 &&
-                resp.recent == 1 &&
-                resp.unseen == 1, "status", "Bad status for mbox0.");
+    imapEnforce(resp.messages == 1
+            && resp.recent == 1
+            && resp.unseen == 1, "status", "Bad status for mbox0.");
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -501,7 +501,7 @@ private void testStatus(string host) {
 private void testSelect(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto inbox = new Mailbox(session, "INBOX");
     auto resp = session.select(inbox);
@@ -509,7 +509,7 @@ private void testSelect(string host) {
 
     auto mbox0 = new Mailbox(session, "mbox0");
     session.create(mbox0);
-    scope(exit) {
+    scope (exit) {
         session.select(inbox);
         session.delete_(mbox0);
     }
@@ -530,14 +530,14 @@ private void testSelect(string host) {
 private void testCopy(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
     auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);
@@ -553,7 +553,7 @@ private void testCopy(string host) {
 
     resp = session.copy("#1", new Mailbox(session, "mbox2"));
     imapEnforce(resp.status == ImapStatus.ok, "copy", "Copy and create to mbox2 failed.");
-    scope(exit) session.delete_(new Mailbox(session, "mbox2"));
+    scope (exit) session.delete_(new Mailbox(session, "mbox2"));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -566,12 +566,12 @@ private void testCopy(string host) {
 private void testStore(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
@@ -606,7 +606,7 @@ private void testStore(string host) {
 private void testExamine(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto inbox = new Mailbox(session, "INBOX");
     auto mbox0 = new Mailbox(session, "mbox0");
@@ -615,7 +615,7 @@ private void testExamine(string host) {
     imapEnforce(resp.status == ImapStatus.ok, "examine", "Failed to examine INBOX.");
 
     session.create(mbox0);
-    scope(exit) {
+    scope (exit) {
         session.select(inbox);
         session.delete_(mbox0);
     }
@@ -633,14 +633,14 @@ private void testExamine(string host) {
 private void testCloseExpunge(string host) {
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
     auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);
@@ -686,16 +686,16 @@ private void testCloseExpunge(string host) {
 // - (fetchStructure() to parse its response.)
 
 private void testFetch(string host) {
-    import std.algorithm: canFind;
+    import std.algorithm : canFind;
 
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
@@ -774,18 +774,18 @@ private void testFetch(string host) {
 // - Use proper checks against UIDs -- these assume the UIDs for the messages are just 1, 2 and 3.
 
 private void testSearch(string host) {
-    import std.algorithm: canFind;
-    import std.conv: to;
+    import std.algorithm : canFind;
+    import std.conv : to;
     import std.datetime : Date;
 
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
 
     session.create(mbox0);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
     }
@@ -817,8 +817,8 @@ private void testSearch(string host) {
     imapEnforce(resp.ids == [3], "search", "Bad results for search #5.");
 
     resp = session.search(
-        new SearchQuery(SizeTerm(SizeTerm.Relation.Larger, 1000))
-        .or(FieldTerm(FieldTerm.Field.Body, "new phone")).to!string);
+            new SearchQuery(SizeTerm(SizeTerm.Relation.Larger, 1000))
+            .or(FieldTerm(FieldTerm.Field.Body, "new phone")).to!string);
     imapEnforce(resp.status == ImapStatus.ok, "search", "Failed search #6.");
     imapEnforce(resp.ids == [2, 3], "search", "Bad results for search #6.");
 }
@@ -830,19 +830,19 @@ private void testSearch(string host) {
 // - And FETCH UID rather than a SEARCH to get the new UIDs.
 
 private void testUid(string host) {
-    import std.algorithm: canFind;
+    import std.algorithm : canFind;
     import std.conv;
 
     auto session = new Session(ImapServer(host, "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto mbox0 = new Mailbox(session, "mbox0");
     auto mbox1 = new Mailbox(session, "mbox1");
 
     session.create(mbox0);
     session.create(mbox1);
-    scope(exit) {
+    scope (exit) {
         session.select(new Mailbox(session, "INBOX"));
         session.delete_(mbox0);
         session.delete_(mbox1);

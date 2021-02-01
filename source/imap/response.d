@@ -84,7 +84,7 @@ ImapStatus checkTag(Session session, string buf, Tag tag) {
         .array;
 
     foreach (line; relevantLines) {
-        auto token = (line.length > t.length +1) ? line.toUpper[t.length + 1 .. $].strip.split.front : "";
+        auto token = (line.length > t.length + 1) ? line.toUpper[t.length + 1 .. $].strip.split.front : "";
         if (token.startsWith("OK")) {
             r = ImapStatus.ok;
             break;
@@ -203,8 +203,8 @@ ImapResult responseContinuation(Session session, Tag tag) {
         if (checkBye(result[1]))
             return ImapResult(ImapStatus.bye, result[1]);
         resTag = session.checkTag(result[1], tag);
-    } while (resTag != ImapStatus.none && resTag != ImapStatus.no &&
-             !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
+    } while (resTag != ImapStatus.none && resTag != ImapStatus.no
+             && !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
 
     if (resTag == ImapStatus.no && (checkTryCreate(buf) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf);
@@ -635,8 +635,8 @@ ListResponse responseList(Session session, Tag tag) {
         // split it into words and parse the attributes out.
         auto attribsStartIdx = line.indexOf("(");
         auto attribsEndIdx = line.indexOf(")");
-        enforce(attribsStartIdx != -1 && attribsEndIdx != -1 &&
-                attribsEndIdx > attribsStartIdx, "LIST response parse error.");
+        enforce(attribsStartIdx != -1 && attribsEndIdx != -1
+                && attribsEndIdx > attribsStartIdx, "LIST response parse error.");
         auto attribsLine = line[attribsStartIdx + 1 .. attribsEndIdx];
 
         ListEntry listEntry;
@@ -1004,7 +1004,7 @@ auto extractLiterals(string buf) {
     do
     {
         literalInfo = findLiteral(buf);
-        if (literalInfo.length > 0 && buf.length > literalInfo.j+1+literalInfo.length) {
+        if (literalInfo.length > 0 && buf.length > literalInfo.j + 1 + literalInfo.length) {
             string literal = buf[literalInfo.j + 1 .. literalInfo.j + 1 + literalInfo.length];
             literals.put(literal);
             nonLiterals.put(buf[0 .. literalInfo.i]);
@@ -1038,58 +1038,57 @@ D1009 OK Completed (0.002 sec)
 // NOTE: Assumes strings are well formed after decoded as they're just casted from ubyte[] to either
 // UTF-8 string or Latin1String.
 
-string decodeMimeHeader(string header)
-{
-        import std.array : split;
-        import std.base64 : Base64;
-        import std.exception : enforce;
-        import std.format : format;
-        import std.string : toUpper;
+string decodeMimeHeader(string header) {
+    import std.array : split;
+    import std.base64 : Base64;
+    import std.exception : enforce;
+    import std.format : format;
+    import std.string : toUpper;
 
-        import arsd.email : decodeQuotedPrintable;
+    import arsd.email : decodeQuotedPrintable;
 
-        string[] elements = header.split("?");
-        if (elements.length != 5 || elements[0] != "=" || elements[4] != "=") {
-            return header;
-        }
+    string[] elements = header.split("?");
+    if (elements.length != 5 || elements[0] != "=" || elements[4] != "=") {
+        return header;
+    }
 
-        // Utility to decode first (Q or B) and then convert from Latin1 to string.
-        string decodeMimeWithEncodingFromLatin1(alias decoder)() {
-            import std.encoding : Latin1String, transcode;
+    // Utility to decode first (Q or B) and then convert from Latin1 to string.
+    string decodeMimeWithEncodingFromLatin1(alias decoder)() {
+        import std.encoding : Latin1String, transcode;
 
-            string result;
-            transcode(cast(Latin1String) decoder(elements[3]), result);
-            return result;
-        }
+        string result;
+        transcode(cast(Latin1String) decoder(elements[3]), result);
+        return result;
+    }
 
-        // For the charset we only support UTF-8 and ISO-8859-1 for now.
-        string decodeMimeWithEncoding(alias decoder)() {
-            switch (elements[1].toUpper) {
-                case "UTF-8":
+    // For the charset we only support UTF-8 and ISO-8859-1 for now.
+    string decodeMimeWithEncoding(alias decoder)() {
+        switch (elements[1].toUpper) {
+            case "UTF-8":
                 return cast(string) decoder(elements[3]);
 
-                case "ISO-8859-1":
+            case "ISO-8859-1":
                 return decodeMimeWithEncodingFromLatin1!(decoder)();
 
-                default:
+            default:
                 enforce(false, format!"Unsupported charset in MIME header: '%s'"(elements[1].toUpper));
-            }
-            assert(0);
         }
+        assert(0);
+    }
 
-        // The encoding is either 'Q' or 'B'.
-        switch (elements[2].toUpper) {
-            case "Q":
+    // The encoding is either 'Q' or 'B'.
+    switch (elements[2].toUpper) {
+        case "Q":
             return decodeMimeWithEncoding!decodeQuotedPrintable();
 
-            case "B":
+        case "B":
             return decodeMimeWithEncoding!(Base64.decode)();
 
-            default:
+        default:
             enforce(false, format!"MIME header encoding should be 'Q' or 'B': '%s'"(elements[2].toUpper));
-        }
+    }
 
-        assert(0);
+    assert(0);
 }
 
 unittest {

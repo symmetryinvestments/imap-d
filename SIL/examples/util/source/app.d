@@ -14,7 +14,7 @@ int main(string[] args) {
 
     auto session = new Session(ImapServer(args[1], "993"), ImapLogin(TestUser, TestPass));
     session = login(session);
-    scope(exit) logout(session);
+    scope (exit) logout(session);
 
     auto lsResp = session.list();
     char delim = lsResp.entries[0].hierarchyDelimiter[0];

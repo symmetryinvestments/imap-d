@@ -84,7 +84,7 @@ ImapStatus checkTag(Session session, string buf, Tag tag) {
         .array;
 
     foreach (line; relevantLines) {
-        auto token = (line.length > t.length +1) ? line.toUpper[t.length + 1 .. $].strip.split.front : "";
+        auto token = (line.length > t.length + 1) ? line.toUpper[t.length + 1 .. $].strip.split.front : "";
         if (token.startsWith("OK")) {
             r = ImapStatus.ok;
             break;
@@ -178,7 +178,7 @@ ImapResult responseGeneric(Session session, Tag tag, Duration timeout = 2000.mse
     if (r == ImapStatus.no && (checkTryCreate(result[1]) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf.data);
 
-    return ImapResult(r, buf.data);
+    return ImapResult(r, buf.data.decodeMimeHeader);
 }
 
 
@@ -203,8 +203,8 @@ ImapResult responseContinuation(Session session, Tag tag) {
         if (checkBye(result[1]))
             return ImapResult(ImapStatus.bye, result[1]);
         resTag = session.checkTag(result[1], tag);
-    } while (resTag != ImapStatus.none && resTag != ImapStatus.no &&
-             !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
+    } while (resTag != ImapStatus.none && resTag != ImapStatus.no
+             && !result[1].strip.splitLines.any!(line => line.strip.checkContinuation));
 
     if (resTag == ImapStatus.no && (checkTryCreate(buf) || session.options.tryCreate))
         return ImapResult(ImapStatus.tryCreate, buf);
@@ -635,8 +635,8 @@ ListResponse responseList(Session session, Tag tag) {
         // split it into words and parse the attributes out.
         auto attribsStartIdx = line.indexOf("(");
         auto attribsEndIdx = line.indexOf(")");
-        enforce(attribsStartIdx != -1 && attribsEndIdx != -1 &&
-                attribsEndIdx > attribsStartIdx, "LIST response parse error.");
+        enforce(attribsStartIdx != -1 && attribsEndIdx != -1
+                && attribsEndIdx > attribsStartIdx, "LIST response parse error.");
         auto attribsLine = line[attribsStartIdx + 1 .. attribsEndIdx];
 
         ListEntry listEntry;
@@ -868,8 +868,8 @@ BodyResponse responseFetchBody(Session session, Tag tag) {
     auto parsed = r.value.extractLiterals;
 
     if (parsed[1].length >= 2)
-        return BodyResponse(r.status, r.value, parsed[1]);
-    auto bodyText = (parsed[1].length == 0) ? r.value : parsed[1][0];
+        return BodyResponse(r.status, r.value.decodeMimeHeader, parsed[1]);
+    auto bodyText = (parsed[1].length == 0) ? r.value.decodeMimeHeader : parsed[1][0].decodeMimeHeader;
     auto bodyLines = bodyText.splitLines;
     if (bodyLines.length > 0 && bodyLines.front.length == 0)
         bodyLines = bodyLines[1 .. $];
@@ -1004,7 +1004,7 @@ auto extractLiterals(string buf) {
     do
     {
         literalInfo = findLiteral(buf);
-        if (literalInfo.length > 0) {
+        if (literalInfo.length > 0 && buf.length > literalInfo.j + 1 + literalInfo.length) {
             string literal = buf[literalInfo.j + 1 .. literalInfo.j + 1 + literalInfo.length];
             literals.put(literal);
             nonLiterals.put(buf[0 .. literalInfo.i]);
@@ -1016,9 +1016,122 @@ auto extractLiterals(string buf) {
     } while (buf.length > 0 && literalInfo.length > 0);
     return tuple(nonLiterals.data, literals.data);
 }
+
 /+
 "* 51045 FETCH (UID 70290 BODY[TEXT] {67265}
 
 )
 D1009 OK Completed (0.002 sec)
 +/
+
+// See RFC2047 - https://tools.ietf.org/html/rfc2047
+//
+// In summary, message headers may be encoded:
+// - grammar: '=?' CHARSET '?' ENCODING '?' TEXT '?='
+//   - CHARSET and ENCODING are case insensitive.
+//   - CHARSET can be any of the MIME charsets for a "text/plain" body part, or any character set name
+//     for a MIME text/plain content-type.
+//   - ENCODING is either 'Q' or 'B'.
+//     - B is base64.
+//     - Q is (similar to) quoted-printable.
+//
+// NOTE: Assumes strings are well formed after decoded as they're just casted from ubyte[] to either
+// UTF-8 string or Latin1String.
+
+string decodeMimeHeader(string header) {
+    import std.array : split;
+    import std.base64 : Base64;
+    import std.exception : enforce;
+    import std.format : format;
+    import std.string : toUpper;
+
+    import arsd.email : decodeQuotedPrintable;
+
+    string[] elements = header.split("?");
+    if (elements.length != 5 || elements[0] != "=" || elements[4] != "=") {
+        return header;
+    }
+
+    // Utility to decode first (Q or B) and then convert from Latin1 to string.
+    string decodeMimeWithEncodingFromLatin1(alias decoder)() {
+        import std.encoding : Latin1String, transcode;
+
+        string result;
+        transcode(cast(Latin1String) decoder(elements[3]), result);
+        return result;
+    }
+
+    // For the charset we only support UTF-8 and ISO-8859-1 for now.
+    string decodeMimeWithEncoding(alias decoder)() {
+        switch (elements[1].toUpper) {
+            case "UTF-8":
+                return cast(string) decoder(elements[3]);
+
+            case "ISO-8859-1":
+                return decodeMimeWithEncodingFromLatin1!(decoder)();
+
+            default:
+                enforce(false, format!"Unsupported charset in MIME header: '%s'"(elements[1].toUpper));
+        }
+        assert(0);
+    }
+
+    // The encoding is either 'Q' or 'B'.
+    switch (elements[2].toUpper) {
+        case "Q":
+            return decodeMimeWithEncoding!decodeQuotedPrintable();
+
+        case "B":
+            return decodeMimeWithEncoding!(Base64.decode)();
+
+        default:
+            enforce(false, format!"MIME header encoding should be 'Q' or 'B': '%s'"(elements[2].toUpper));
+    }
+
+    assert(0);
+}
+
+unittest {
+    // Taken from searches on the net, then converted/confirmed using Python:
+    //
+    // Python 3.9.1 (default, Dec 13 2020, 11:55:53)
+    // [GCC 10.2.0] on linux
+    // Type "help", "copyright", "credits" or "license" for more information.
+    // >>> from email.header import decode_header
+    // >>> decode_header("=?UTF-8?Q?This is a horsey: =F0=9F=90=8E?=")[0][0].decode('utf-8')
+    // 'This is a horsey: 🐎'
+    // >>> decode_header("=?UTF-8?B?VGhpcyBpcyBhIGhvcnNleTog8J+Qjg==?=")[0][0].decode('utf-8')
+    // 'This is a horsey: 🐎'
+    // >>> decode_header("=?iso-8859-1?Q?WG=3A_Mobilit=E4t_verschlechtert_--=3E_174?=")[0][0].decode('iso-8859-1')
+    // 'WG: Mobilität verschlechtert --> 174'
+
+    void decodeTest(string encoded, string expected) {
+        import std.stdio : writeln;
+
+        auto got = decodeMimeHeader(encoded);
+        if (got != expected) {
+            writeln("FAILED TO DECODE MIME HEADER:");
+            writeln("input: ", encoded);
+            writeln("expecting: ", expected);
+            writeln("got:       ", got);
+        }
+        assert(got == expected);
+    }
+
+    decodeTest("=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?=",
+               "Keld Jørn Simonsen");
+    decodeTest("=?ISO-8859-1?Q?Informaci=F3n_Apartamento_a_la_Venta?=",
+               "Información Apartamento a la Venta");
+    decodeTest("=?iso-8859-1?Q?WG=3A_Mobilit=E4t_verschlechtert_--=3E_174?=",
+               "WG: Mobilität verschlechtert --> 174");
+
+    decodeTest("=?utf-8?Q?Watch_now_=e2=80=93_We_Need_to_Talk_About_New_Zealand?=",
+               "Watch now – We Need to Talk About New Zealand");
+    decodeTest("=?UTF-8?Q?This is a horsey: =F0=9F=90=8E?=",
+               "This is a horsey: 🐎");
+
+    decodeTest("=?UTF-8?B?VGhpcyBpcyBhIGhvcnNleTog8J+Qjg==?=",
+               "This is a horsey: 🐎");
+    decodeTest("=?utf-8?B?2LPZhNin2YU=?=",
+               "سلام");
+}

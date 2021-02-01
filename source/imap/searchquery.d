@@ -1,7 +1,7 @@
 ///
 module imap.searchquery;
 
-import mir.algebraic: Variant, This, match;
+import mir.algebraic : Variant, This, match;
 import std.format : format;
 import std.datetime : Date;
 
@@ -13,7 +13,7 @@ import imap.sildoc : SILdoc;
 // -------------------------------------------------------------------------------------------------
 
 final class SearchQuery {
-    this(const SearchExpr* expr = null) {
+    this(const SearchExpr * expr = null) {
         query = expr;
     }
 
@@ -26,7 +26,7 @@ final class SearchQuery {
         return not(new SearchExpr(value));
     }
 
-    SearchQuery not(const(SearchExpr)* term) {
+    SearchQuery not(const(SearchExpr) * term) {
         assert(query is null, "Cannot apply .not() to existing queries!  Use andNot() or orNot().");
         query = new SearchExpr(SearchOp('!', term, null));
         return this;
@@ -38,16 +38,16 @@ final class SearchQuery {
     alias andNot = applyBinOpImpl!('&', true);
     alias orNot = applyBinOpImpl!('|', true);
 
-    private template applyBinOpImpl(char op, bool not = false)
-    {
+    private template applyBinOpImpl(char op, bool not = false) {
         SearchQuery applyBinOpImpl(T)(T value) {
             return applyBinOpImpl(new SearchExpr(value));
         }
-        SearchQuery applyBinOpImpl(const(SearchExpr)* term) {
-            static if (not)
+        SearchQuery applyBinOpImpl(const(SearchExpr) * term) {
+            static if (not) {
                 return applyBinOp(op, new SearchExpr(SearchOp('!', term, null)));
-            else
+            } else {
                 return applyBinOp(op, term);
+            }
         }
         SearchQuery applyBinOpImpl(const SearchQuery other) {
             return applyBinOpImpl(other.query);
@@ -58,15 +58,16 @@ final class SearchQuery {
         return searchExprToString(query);
     }
 
-    SearchQuery applyBinOp(char op, const(SearchExpr)* newTerm) {
-        if (query is null)
+    SearchQuery applyBinOp(char op, const(SearchExpr) * newTerm) {
+        if (query is null) {
             query = newTerm;
-        else
+        } else {
             query = new SearchExpr(SearchOp(op, query, newTerm));
+        }
         return this;
     }
 
-    const(SearchExpr)* query;
+    const(SearchExpr) *query;
 }
 
 // -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
@@ -107,7 +108,7 @@ string notOpToString(const SearchExpr* expr) {
     return format!"NOT %s"(exprStr);
 }
 
-string orOpToString(const(SearchExpr)* lhs, const(SearchExpr)* rhs) {
+string orOpToString(const(SearchExpr) * lhs, const(SearchExpr) * rhs) {
     string lhsStr = searchExprToString(lhs);
     if (isBinaryOp(lhs)) {
         lhsStr = format!"(%s)"(lhsStr);
@@ -140,10 +141,10 @@ alias SearchExpr = Variant!(
     UidSeqTerm,
 
     // '!' == NOT, '&' == AND, '|' == OR.
-    Tuple!(char, "op", const(This)*, "lhs", const(This)*, "rhs"),
+    Tuple!(char, "op", const(This) *, "lhs", const(This) *, "rhs"),
 );
 
-alias SearchOp = Tuple!(char, "op", const(SearchExpr)*, "lhs", const(SearchExpr)*, "rhs");
+alias SearchOp = Tuple!(char, "op", const(SearchExpr) *, "lhs", const(SearchExpr) *, "rhs");
 
 struct FlagTerm {
     enum Flag : string {
@@ -203,9 +204,9 @@ struct DateTerm {
 
 string rfcDateStr(Date date) {
     return format!"%d-%s-%d"(date.day,
-                             ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.month - 1],
-                             date.year);
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.month - 1],
+        date.year);
 }
 
 struct SizeTerm {
@@ -224,7 +225,7 @@ struct UidSeqTerm {
         // and start+1 (2 values).
         int start, length = 0;
 
-        invariant (start >= 1 && length >= 0);
+        invariant(start >= 1 && length >= 0);
 
         string toString() const {
             if (length == 0)
@@ -340,22 +341,22 @@ unittest {
         .orNot(FieldTerm(FieldTerm.Field.From, "carlos"));
     queryTest(sq24, `OR NOT TO "bob" NOT FROM "carlos"`);
     assertThrown!AssertError(new SearchQuery()
-                 .and(FieldTerm(FieldTerm.Field.To, "bob"))
-                 .not(FieldTerm(FieldTerm.Field.From, "carlos")));
-    version(none) {
+            .and(FieldTerm(FieldTerm.Field.To, "bob"))
+            .not(FieldTerm(FieldTerm.Field.From, "carlos")));
+    version (none) {
         // This would be nice, but special casing FlagTerm in this way would require too much guff.
-    auto sq25 =
-        new SearchQuery()
-        .not(FlagTerm(FlagTerm.Flag.Answered))
-        .andNot(FlagTerm(FlagTerm.Flag.Deleted))
-        .andNot(FlagTerm(FlagTerm.Flag.Draft))
-        .andNot(FlagTerm(FlagTerm.Flag.Flagged))
-        .andNot(FlagTerm(FlagTerm.Flag.New))
-        .andNot(FlagTerm(FlagTerm.Flag.Old))
-        .andNot(FlagTerm(FlagTerm.Flag.Recent))
-        .andNot(FlagTerm(FlagTerm.Flag.Seen))
-        .andNot(KeywordTerm("xyzzy"));
-    queryTest(sq25, `UNANSWERED UNDELETED UNDRAFT UNFLAGGED NOT NEW RECENT OLD UNSEEN UNKEYWORD xyzzy`);
+        auto sq25 =
+            new SearchQuery()
+            .not(FlagTerm(FlagTerm.Flag.Answered))
+            .andNot(FlagTerm(FlagTerm.Flag.Deleted))
+            .andNot(FlagTerm(FlagTerm.Flag.Draft))
+            .andNot(FlagTerm(FlagTerm.Flag.Flagged))
+            .andNot(FlagTerm(FlagTerm.Flag.New))
+            .andNot(FlagTerm(FlagTerm.Flag.Old))
+            .andNot(FlagTerm(FlagTerm.Flag.Recent))
+            .andNot(FlagTerm(FlagTerm.Flag.Seen))
+            .andNot(KeywordTerm("xyzzy"));
+        queryTest(sq25, `UNANSWERED UNDELETED UNDRAFT UNFLAGGED NOT NEW RECENT OLD UNSEEN UNKEYWORD xyzzy`);
     }
 
     // DEEP NESTING.

@@ -42,18 +42,18 @@ void registerImap(ref Handlers handlers) {
                                      MimeContainer_, MimePart, Options, ProtocolSSL, RelayInfo,
                                      Result!string, SearchResult, SearchResultType, Session, Status,
                                      StatusResult, StoreMode, ToType
-                                    )) {
+                        )) {
             handlers.registerType!T;
         }
 
         static foreach (F; AliasSeq!(append, attachments, close, closeConnection, copy, create,
-                                     delete_, esearch, examine, expunge, fetchDate, fetchFast,
-                                     fetchFields, fetchFlags, fetchHeader, fetchPart, fetchRFC822,
-                                     fetchSize, fetchStructure, fetchText, idle, list, login,
-                                     logout, lsub, move, moveUIDs, multiMove, multiSearch, noop,
-                                     openConnection, rename, select, status, store, subscribe,
-                                     unsubscribe, writeBinaryString,
-                                     )) {
+                                     decodeMimeHeader, delete_, esearch, examine, expunge,
+                                     fetchDate, fetchFast, fetchFields, fetchFlags, fetchHeader,
+                                     fetchPart, fetchRFC822, fetchSize, fetchStructure, fetchText,
+                                     idle, list, login, logout, lsub, move, moveUIDs, multiMove,
+                                     multiSearch, noop, openConnection, rename, select, status,
+                                     store, subscribe, unsubscribe, writeBinaryString,
+                        )) {
             handlers.registerHandler!F;
         }
 
@@ -117,20 +117,20 @@ To use these operators and terms as shown above, use:
 
         // Boolean ops.
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, const(SearchExpr)* expr) => this_.and(expr),
+            (SearchQuery this_, const(SearchExpr) *expr) => this_.and(expr),
             (SearchQuery this_, const SearchQuery other) => this_.and(other),
         )("and", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, const(SearchExpr)* expr) => this_.or(expr),
-            (SearchQuery this_, const SearchQuery  other) => this_.or(other),
+            (SearchQuery this_, const(SearchExpr) *expr) => this_.or(expr),
+            (SearchQuery this_, const SearchQuery other) => this_.or(other),
         )("or", opDoc);
-        handlers.registerHandler!((SearchQuery this_, const(SearchExpr)* expr) => this_.not(expr))("not", opDoc);
+        handlers.registerHandler!((SearchQuery this_, const(SearchExpr) *expr) => this_.not(expr))("not", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, const(SearchExpr)* expr) => this_.andNot(expr),
+            (SearchQuery this_, const(SearchExpr) *expr) => this_.andNot(expr),
             (SearchQuery this_, const SearchQuery other) => this_.andNot(other),
         )("andNot", opDoc);
         handlers.registerHandlerOverloads!(
-            (SearchQuery this_, const(SearchExpr)* expr) => this_.orNot(expr),
+            (SearchQuery this_, const(SearchExpr) *expr) => this_.orNot(expr),
             (SearchQuery this_, const SearchQuery other) => this_.orNot(other),
         )("orNot", opDoc);
 

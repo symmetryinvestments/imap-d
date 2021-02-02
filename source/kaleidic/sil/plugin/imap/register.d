@@ -47,12 +47,12 @@ void registerImap(ref Handlers handlers) {
         }
 
         static foreach (F; AliasSeq!(append, attachments, close, closeConnection, copy, create,
-                                     decodeMimeHeader, delete_, esearch, examine, expunge,
+                                     decodeMimeHeader, delete_, enable, esearch, examine, expunge,
                                      fetchDate, fetchFast, fetchFields, fetchFlags, fetchHeader,
                                      fetchPart, fetchRFC822, fetchSize, fetchStructure, fetchText,
                                      idle, list, login, logout, lsub, move, moveUIDs, multiMove,
-                                     multiSearch, noop, openConnection, rename, select, status,
-                                     store, subscribe, unsubscribe, writeBinaryString,
+                                     multiSearch, noop, openConnection, raw, rename, select, status,
+                                     store, subscribe, unsubscribe, writeBinaryString
                         )) {
             handlers.registerHandler!F;
         }

@@ -58,6 +58,11 @@ void registerImap(ref Handlers handlers) {
         }
 
         handlers.registerType!Socket;
+        handlers.registerType!SocketFlags;
+        handlers.registerType!SocketOption;
+        handlers.registerType!SocketOptionLevel;
+        handlers.registerType!SocketShutdown;
+        handlers.registerType!Capability;
         handlers.registerType!(Set!Capability)("Capabilities");
         handlers.registerType!(Set!ulong)("UidSet");
 

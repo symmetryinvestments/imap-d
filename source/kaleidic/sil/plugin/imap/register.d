@@ -1,12 +1,11 @@
 ///
 module kaleidic.sil.plugin.imap.register;
 
-import imap.set;
-import std.meta : AliasSeq;
+version (SIL):
 
-version (SIL) :
+import imap.set;
 import kaleidic.sil.lang.handlers : Handlers;
-import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
+import kaleidic.sil.lang.typing.types : SILdoc;
 import std.meta : AliasSeq;
 
 version (SIL_Plugin) {

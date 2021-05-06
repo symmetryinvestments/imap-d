@@ -4,7 +4,7 @@ license "MIT"
 dependency "arsd-official:email" version=">=8.5.0"
 dependency "openssl" version="~>1.1.6"
 dependency "requests" version="~>2"
-dependency "asdf" version="~>0.6"
+dependency "asdf" version=">=0.6"
 libs "ssl" "crypto" platform="posix"
 versions "SSL" "OPENSSL_NO_SRP"
 configuration "default" {

@@ -66,6 +66,7 @@ struct AccountCapabilities {
     @serdeKeys("urn:ietf:params:jmap:mail")
     AccountParams accountParams;
 
+    @serdeOptional
     @serdeKeys("urn:ietf:params:jmap:submission")
     SubmissionParams submissionParams;
 
@@ -90,10 +91,13 @@ struct Account {
 
     bool isArchiveUser = false;
     AccountCapabilities accountCapabilities;
+    
+    @serdeOptional
     string[string] primaryAccounts;
 }
 
 struct Session {
+    @serdeOptional
     SessionCoreCapabilities coreCapabilities;
 
     Account[string] accounts;

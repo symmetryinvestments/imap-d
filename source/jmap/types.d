@@ -4,8 +4,7 @@ import core.time : seconds;
 import std.typecons : Nullable;
 
 version (SIL) :
-
-import kaleidic.sil.lang.typing.types : Variable, SilStruct, SILdoc;
+    import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
 import kaleidic.sil.lang.typing.json : toVariable, toJsonString;
 import std.datetime : DateTime;
 import asdf;
@@ -66,19 +65,20 @@ struct AccountCapabilities {
     @serdeKeys("urn:ietf:params:jmap:mail")
     AccountParams accountParams;
 
+	@serdeOptional
     @serdeKeys("urn:ietf:params:jmap:submission")
     SubmissionParams submissionParams;
 
     // @serdeIgnoreIn Asdf vacationResponseParams;
 
     version (SIL) {
-        @serdeIgnoreIn SilStruct allAccountCapabilities;
+        @serdeIgnoreIn Variable[string] allAccountCapabilities;
 
         void finalizeDeserialization(Asdf data) {
             import asdf : deserialize, Asdf;
 
             foreach (el; data.byKeyValue)
-                allAccountCapabilities[el.key.idup] = el.value.get!Asdf(Asdf.init).toVariable;
+                allAccountCapabilities[el.key] = el.value.get!Asdf(Asdf.init).toVariable;
         }
     }
 }
@@ -90,10 +90,13 @@ struct Account {
 
     bool isArchiveUser = false;
     AccountCapabilities accountCapabilities;
+
+	@serdeOptional
     string[string] primaryAccounts;
 }
 
 struct Session {
+	@serdeOptional
     SessionCoreCapabilities coreCapabilities;
 
     Account[string] accounts;
@@ -238,11 +241,11 @@ struct Session {
 
 
     version (SIL) {
-        Variable get(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
+        Variable get(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init) {
             return getRaw(type, ids, properties, additionalArguments).toVariable;
         }
 
-        Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
+        Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, Variable[string] additionalArguments = (Variable[string]).init) {
             import std.algorithm : map;
             import std.array : array;
             import std.stdio : stderr, writefln;
@@ -263,11 +266,11 @@ struct Session {
         return deserialize!(Mailbox[])(asdf["methodResponses"].byElement.front.byElement.dropOne.front["list"]);
     }
 
-    Variable getContact(string[] ids, Variable properties = Variable([]), SilStruct additionalArguments = null) {
+    Variable getContact(string[] ids, Variable properties = Variable([]), Variable[string] additionalArguments = (Variable[string]).init) {
         import std.range : front, dropOne;
         return Variable(
                 this.get("Contact", ids, properties, additionalArguments)
-                .get!SilStruct
+                .get!(Variable[string])
                 ["methodResponses"]
                 .get!(Variable[])
                 .front
@@ -283,25 +286,25 @@ struct Session {
         import std.range : front, dropOne;
         return Variable(
                 this.get(
-                        "Email", ids, properties, SilStruct([
+                        "Email", ids, properties, [
                             "bodyProperties" : bodyProperties,
                             "fetchTextBodyValues" : fetchTextBodyValues.Variable,
                             "fetchAllBodyValues" : fetchAllBodyValues.Variable,
                             "fetchHTMLBodyValues" : fetchHTMLBodyValues.Variable,
-                        ]))
-                .get!SilStruct
+                        ])
+                .get!(Variable[string])
                 ["methodResponses"] // ,(Variable[]).init)
                 .get!(Variable[])
                 .front
                 .get!(Variable[])
                 .dropOne
                 .front
-                .get!SilStruct
+                .get!(Variable[string])
                 ["list"]);
     }
 
 
-    Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
+    Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
@@ -310,31 +313,31 @@ struct Session {
         return post(request);
     }
 
-    Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
+    Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, Variable[string] additionalArguments = null) {
         return changesRaw(type, sinceState, maxChanges, additionalArguments).toVariable;
     }
 
-    Asdf setRaw(string type, string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Asdf setRaw(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
         auto createAsdf = parseJson(toJsonString(Variable(create)));
-        auto updateAsdf = parseJson(toJsonString(Variable(SilStruct(update))));
+        auto updateAsdf = parseJson(toJsonString(Variable(update)));
         auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, createAsdf, updateAsdf, destroy_, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    Variable set(string type, string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Variable set(string type, string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
         return setRaw(type, ifInState, create, update, destroy_, additionalArguments).toVariable;
     }
 
-    Variable setEmail(string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Variable setEmail(string ifInState = null, Variable[string] create = null, Variable[string][string] update = null, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
         return set("Email", ifInState, create, update, destroy_, additionalArguments);
     }
 
 
-    Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, SilStruct create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
+    Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
@@ -344,12 +347,12 @@ struct Session {
         return post(request);
     }
 
-    Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, SilStruct create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
+    Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, Variable[string] create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
         return copyRaw(type, fromAccountId, ifFromInState, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState, additionalArguments).toVariable;
     }
 
 
-    Asdf queryRaw(string type, Variable filter, Variable sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    Asdf queryRaw(string type, Variable filter, Variable sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
@@ -360,7 +363,7 @@ struct Session {
         return post(request);
     }
 
-    Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, SilStruct additionalArguments = null) {
+    Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.exception : enforce;
         import std.stdio : stderr, writeln;
         if (collapseThreads)
@@ -374,11 +377,11 @@ struct Session {
         return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
     }
 
-    Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
     }
 
-    Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
@@ -389,7 +392,7 @@ struct Session {
         return post(request);
     }
 
-    Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         return queryChangesRaw(type, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments).toVariable;
     }
 }
@@ -489,7 +492,7 @@ struct Envelope {
 
 struct EmailAddress {
     string email;
-    Nullable!SilStruct parameters;
+    Nullable!(Variable[string])parameters;
 }
 
 struct ThreadEmail {
@@ -780,7 +783,7 @@ struct Invocation {
     }
 
 
-    static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, Asdf properties = Asdf.init, SilStruct additionalArguments = null) {
+    static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, Asdf properties = Asdf.init, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["ids"] = AsdfNode(ids.serializeToAsdf);
@@ -796,7 +799,7 @@ struct Invocation {
         return ret;
     }
 
-    static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, SilStruct additionalArguments = null) {
+    static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["sinceState"] = AsdfNode(sinceState.serializeToAsdf);
@@ -813,7 +816,7 @@ struct Invocation {
     }
 
 
-    static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, Asdf create = Asdf.init, Asdf update = Asdf.init, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, Asdf create = Asdf.init, Asdf update = Asdf.init, string[] destroy_ = null, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
@@ -831,7 +834,7 @@ struct Invocation {
         return ret;
     }
 
-    static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, Asdf create = Asdf.init, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
+    static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, Asdf create = Asdf.init, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["fromAccountId"] = AsdfNode(fromAccountId.serializeToAsdf);
@@ -852,7 +855,7 @@ struct Invocation {
         return ret;
     }
 
-    static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["filter"] = AsdfNode(filter);
@@ -873,7 +876,7 @@ struct Invocation {
         return ret;
     }
 
-    static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
+    static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, Variable[string] additionalArguments = (Variable[string]).init) {
         auto arguments = AsdfNode("{}".parseJson);
         arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
         arguments["filter"] = AsdfNode(filter);
@@ -1300,7 +1303,7 @@ private void serializeAsAsdf(S)(Variable v, ref S serializer) {
 
         case KindEnum.table:
             auto obj = serializer.objectBegin();
-            foreach (ref kv; v.get!SilStruct.byKeyValue) {
+            foreach (ref kv; v.get!(Variable[string]).byKeyValue) {
                 serializer.putKey(kv.key);
                 serializeAsAsdf(kv.value, serializer);
             }

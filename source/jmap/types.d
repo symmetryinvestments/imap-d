@@ -318,22 +318,22 @@ struct Session {
         return changesRaw(type, sinceState, maxChanges, additionalArguments).toVariable;
     }
 
-    Asdf setRaw(string type, string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Asdf setRaw(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
         auto createAsdf = parseJson(toJsonString(Variable(create)));
-        auto updateAsdf = parseJson(toJsonString(Variable(SilStruct(update))));
+        auto updateAsdf = parseJson(toJsonString(Variable(update)));
         auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, createAsdf, updateAsdf, destroy_, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    Variable set(string type, string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Variable set(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
         return setRaw(type, ifInState, create, update, destroy_, additionalArguments).toVariable;
     }
 
-    Variable setEmail(string ifInState = null, SilStruct create = null, Variable[string][string] update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
+    Variable setEmail(string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
         return set("Email", ifInState, create, update, destroy_, additionalArguments);
     }
 

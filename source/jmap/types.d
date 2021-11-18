@@ -6,7 +6,8 @@ import std.typecons : Nullable;
 version (SIL) :
 
 import kaleidic.sil.lang.typing.types : Variable, SilStruct, SILdoc;
-import kaleidic.sil.lang.typing.json : toVariable, toJsonString;
+import mir.ion.ser.json : serializeJson;
+import mir.ion.deser.json : deserializeJson;
 import std.datetime : DateTime;
 import asdf;
 
@@ -79,7 +80,7 @@ struct AccountCapabilities {
             import asdf : deserialize, Asdf;
 
             foreach (el; data.byKeyValue)
-                allAccountCapabilities[el.key.idup] = el.value.get!Asdf(Asdf.init).toVariable;
+                allAccountCapabilities[el.key.idup] = el.value.get!Asdf(Asdf.init).deserialize!Variable;
         }
     }
 }
@@ -204,7 +205,7 @@ struct Session {
             auto req = Request();
             req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
             auto result = cast(string) req.post(uploadUrl, data, type).responseBody.data.idup;
-            return parseJson(result).toVariable;
+            return result.deserializeJson!Variable;
         }
     } else {
         Asdf uploadBinary(string data, string type = "application/binary") {
@@ -243,7 +244,7 @@ struct Session {
 
     version (SIL) {
         Variable get(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
-            return getRaw(type, ids, properties, additionalArguments).toVariable;
+            return getRaw(type, ids, properties, additionalArguments).deserialize!Variable;
         }
 
         Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
@@ -252,8 +253,8 @@ struct Session {
             import std.stdio : stderr, writefln;
             auto invocationId = "12345678";
             if (debugMode)
-                stderr.writefln("props: %s", toJsonString(properties));
-            auto props =  parseJson(toJsonString(properties));
+                stderr.writefln("props: %s", serializeJson(properties));
+            auto props =  parseJson(serializeJson(properties));
             auto invocation = Invocation.get(type, activeAccountId(), invocationId, ids, props, additionalArguments);
             auto request = JmapRequest(listCapabilities(), [invocation], null);
             return post(request);
@@ -315,22 +316,22 @@ struct Session {
     }
 
     Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
-        return changesRaw(type, sinceState, maxChanges, additionalArguments).toVariable;
+        return changesRaw(type, sinceState, maxChanges, additionalArguments).deserialize!Variable;
     }
 
     Asdf setRaw(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
-        auto createAsdf = parseJson(toJsonString(Variable(create)));
-        auto updateAsdf = parseJson(toJsonString(Variable(update)));
+        auto createAsdf = parseJson(serializeJson(Variable(create)));
+        auto updateAsdf = parseJson(serializeJson(Variable(update)));
         auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, createAsdf, updateAsdf, destroy_, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
     Variable set(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
-        return setRaw(type, ifInState, create, update, destroy_, additionalArguments).toVariable;
+        return setRaw(type, ifInState, create, update, destroy_, additionalArguments).deserialize!Variable;
     }
 
     Variable setEmail(string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
@@ -342,14 +343,14 @@ struct Session {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
-        auto createAsdf = parseJson(toJsonString(Variable(create)));
+        auto createAsdf = parseJson(serializeJson(Variable(create)));
         auto invocation = Invocation.copy(type, fromAccountId, invocationId, ifFromInState, activeAccountId, ifInState, createAsdf, onSuccessDestroyOriginal, destroyFromIfInState);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
     Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, SilStruct create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
-        return copyRaw(type, fromAccountId, ifFromInState, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState, additionalArguments).toVariable;
+        return copyRaw(type, fromAccountId, ifFromInState, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState, additionalArguments).deserialize!Variable;
     }
 
 
@@ -357,8 +358,8 @@ struct Session {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
-        auto filterAsdf = parseJson(toJsonString(filter));
-        auto sortAsdf = parseJson(toJsonString(sort));
+        auto filterAsdf = parseJson(serializeJson(filter));
+        auto sortAsdf = parseJson(serializeJson(sort));
         auto invocation = Invocation.query(type, activeAccountId, invocationId, filterAsdf, sortAsdf, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
@@ -374,27 +375,27 @@ struct Session {
         enforce(o !is null || c !is null, "filter must be either an operator or a condition");
         if (debugMode)
             stderr.writeln((o !is null) ? serializeToJsonPretty(o) : serializeToJsonPretty(c));
-        Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).toVariable : parseJson(serializeToJson(c)).toVariable;
-        return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
+        Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).deserialize!Variable : parseJson(serializeToJson(c)).deserialize!Variable;
+        return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).deserialize!Variable;
     }
 
     Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).toVariable;
+        return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).deserialize!Variable;
     }
 
     Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
         import std.algorithm : map;
         import std.array : array;
         auto invocationId = "12345678";
-        auto filterAsdf = parseJson(toJsonString(filter));
-        auto sortAsdf = parseJson(toJsonString(sort));
+        auto filterAsdf = parseJson(serializeJson(filter));
+        auto sortAsdf = parseJson(serializeJson(sort));
         auto invocation = Invocation.queryChanges(type, activeAccountId, invocationId, filterAsdf, sortAsdf, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
     Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        return queryChangesRaw(type, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments).toVariable;
+        return queryChangesRaw(type, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments).deserialize!Variable;
     }
 }
 

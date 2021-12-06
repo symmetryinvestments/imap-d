@@ -525,6 +525,12 @@ struct MailboxRights {
     bool maySetSeen;
 }
 
+struct IdentityRef
+{
+    string accountId;
+    string identityId;
+}
+
 struct Mailbox {
     string id;
     string name;
@@ -538,7 +544,7 @@ struct Mailbox {
     MailboxRights myRights;
     bool autoPurge;
     int hidden;
-    string identityRef;
+    Nullable!IdentityRef identityRef;
     bool learnAsSpam;
     int purgeOlderThanDays;
     bool isCollapsed;

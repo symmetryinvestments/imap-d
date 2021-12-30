@@ -544,7 +544,10 @@ struct Mailbox {
     MailboxRights myRights;
     bool autoPurge;
     int hidden;
-    Nullable!IdentityRef identityRef;
+    
+    @serdeOptional
+    IdentityRef identityRef;
+    
     bool learnAsSpam;
     int purgeOlderThanDays;
     bool isCollapsed;

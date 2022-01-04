@@ -5,14 +5,13 @@ static import jmap.types;
 version (SIL) {
     import kaleidic.sil.lang.handlers : Handlers;
     import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
-    import kaleidic.sil.lang.typing.builtins : Maybe;
 
     void registerHandlersJmap(ref Handlers handlers) {
         import std.meta : AliasSeq;
         handlers.openModule("jmap");
         scope (exit) handlers.closeModule();
 
-        static foreach (T; AliasSeq!(Credentials, JmapSessionParams, Session, Mailbox, MailboxRights, MailboxSortProperty, Filter, FilterOperator, FilterOperatorKind, FilterCondition, Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError, EmailProperty, EmailBodyProperty, Maybe))
+        static foreach (T; AliasSeq!(Credentials, JmapSessionParams, Session, Mailbox, MailboxRights, MailboxSortProperty, Filter, FilterOperator, FilterOperatorKind, FilterCondition, Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError, EmailProperty, EmailBodyProperty))
             handlers.registerType!T;
 
         static foreach (F; AliasSeq!(getSession, getSessionJson, wellKnownJmap, operatorAsFilter, filterCondition, addQuotes, uniqBy, mailboxPath, allMailboxPaths,

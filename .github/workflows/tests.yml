@@ -34,7 +34,7 @@ jobs:
         run: dub test --build=unittest-cov --compiler=${DC}
 
       - name: Upload coverage to codecov
-      - uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v2
         with:
           #Write a report just in case
           path_to_write_report: codecov_report.txt

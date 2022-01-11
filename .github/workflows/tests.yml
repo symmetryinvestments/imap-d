@@ -1,0 +1,37 @@
+name: Run imap-d tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: imap-d D tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-20.04]
+        dc: [dmd-latest, ldc-latest] #, dmd-2.085.0, ldc-1.17.0
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install D compiler
+        #https://github.com/dlang-community/setup-dlang
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.dc }}
+
+      - name: dub build
+        run: dub build --compiler=${DC}
+
+      - name: Build example with dub
+        run: dub build --compiler=${DC} --root=example
+
+      - name: Build test with dub
+        run: dub build --compiler=${DC} --root=test
+
+      - name: Run all unittests with coverage
+        run: dub test --build=unittest-cov --compiler=${DC}
+
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          verbose: true

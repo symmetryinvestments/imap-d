@@ -6,7 +6,7 @@ jobs:
     name: imap-d D tests
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04]
+        os: [ubuntu-latest, ubuntu-20.04, windows-latest]
         dc: [dmd-latest, ldc-latest] #, dmd-2.085.0, ldc-1.17.0
 
     runs-on: ${{ matrix.os }}

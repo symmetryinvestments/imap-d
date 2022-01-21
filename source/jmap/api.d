@@ -3,38 +3,33 @@ import jmap.types;
 static import jmap.types;
 
 version (SIL) {
-    import kaleidic.sil.lang.handlers : Handlers;
-    import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
-
-    void registerHandlersJmap(ref Handlers handlers) {
+    void registerHandlersJmap(Handlers)(ref Handlers handlers) {
+        import kaleidic.sil.lang.typing.types : Variable, Function;
         import std.meta : AliasSeq;
         handlers.openModule("jmap");
         scope (exit) handlers.closeModule();
 
-        static foreach (T; AliasSeq!(Credentials, JmapSessionParams, Session, Mailbox, MailboxRights, MailboxSortProperty, Filter, FilterOperator, FilterOperatorKind, FilterCondition, Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError, EmailProperty, EmailBodyProperty))
+        // TODO: The function should be a part of SIL standard library instead.s
+        static Variable[] uniqBy(Variable[] input, Function f) {
+            import std.algorithm : uniq;
+            import std.array : array;
+            return input.uniq!((a, b) => f(a, b).get!bool).array;
+        }
+
+        static foreach (T; AliasSeq!(Credentials, JmapSessionParams, Session, Mailbox, MailboxRights, MailboxSortProperty, FilterHolder, FilterOperator, FilterOperatorKind, FilterCondition, Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError, EmailProperty, EmailBodyProperty))
             handlers.registerType!T;
 
-        static foreach (F; AliasSeq!(getSession, getSessionJson, wellKnownJmap, operatorAsFilter, filterCondition, addQuotes, uniqBy, mailboxPath, allMailboxPaths,
+        static foreach (F; AliasSeq!(getSession, getSessionJson, wellKnownJmap, operatorAsFilter, addQuotes, uniqBy, mailboxPath, allMailboxPaths,
                                      findMailboxPath))
             handlers.registerHandler!F;
     }
 }
-
-version (SIL) :
-
-
-    Variable[] uniqBy(Variable[] input, Function f) {
-        import std.algorithm : uniq;
-        import std.array : array;
-        return input.uniq!((a, b) => f(a, b).get!bool).array;
-    }
 
 string addQuotes(string s) {
     if (s.length < 2 || s[0] == '"' || s[$ - 1] == '"')
         return s;
     return '"' ~ s ~ '"';
 }
-
 
 struct JmapSessionParams {
     Credentials credentials;
@@ -60,7 +55,7 @@ private string getSessionJson(string uri, Credentials credentials) {
 }
 
 Session getSession(JmapSessionParams params) {
-    import asdf;
+    import mir.ion.deser.json : deserializeJson;
     import std.string : strip;
     import std.exception : enforce;
     import std.algorithm : startsWith;
@@ -69,7 +64,7 @@ Session getSession(JmapSessionParams params) {
     auto json = getSessionJson(params).strip;
     writeln(json);
     enforce(json.startsWith("{") || json.startsWith("["), "invalid json response: \n" ~ json);
-    auto ret = deserialize!Session(json);
+    auto ret = json.deserializeJson!Session;
     ret.credentials = params.credentials;
     return ret;
 }

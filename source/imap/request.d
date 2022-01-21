@@ -828,6 +828,6 @@ enum SearchField {
 
 struct SearchParameter {
     string fieldName;
-    // Variable value;
+    // JsonAlgebraic value;
 }
 

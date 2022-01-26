@@ -5,8 +5,9 @@ jobs:
   test:
     name: imap-d D tests
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04]
+        os: [ubuntu-latest, ubuntu-20.04, windows-2019]
         dc: [dmd-latest, ldc-latest] #, dmd-2.085.0, ldc-1.17.0
 
     runs-on: ${{ matrix.os }}
@@ -18,6 +19,16 @@ jobs:
         uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
+
+      - name: "Windows: install full OpenSSL package, copy & rename import libs, then add to LIB env var"
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          choco install openssl --no-progress || exit /b
+          mkdir extern_deps || exit /b
+          copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libssl64MT.lib" extern_deps\libssl.lib || exit /b
+          copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libcrypto64MT.lib" extern_deps\libcrypto.lib || exit /b
+          echo LIB=%CD%\extern_deps>> %GITHUB_ENV%
 
       - name: dub build
         run: dub build --compiler=${DC}

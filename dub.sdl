@@ -6,6 +6,12 @@ dependency "openssl" version="~>1.1.6"
 dependency "requests" version="~>2"
 dependency "asdf" version=">=0.6.0"
 libs "ssl" "crypto" platform="posix"
+# Windows: get OpenSSL libs via e.g. `choco install openssl`, then copy e.g.
+# `C:\Program Files\OpenSSL-Win64\lib\VC\lib{ssl,crypto}64MT.lib` to some
+# folder and rename to `lib{ssl,crypto}.lib`. Then tell the linker about
+# this folder, either via LIB environment variable or via /LIBPATH lflag in
+# your dub.sdl.
+libs "libssl" "libcrypto" platform="windows"
 versions "SSL" "OPENSSL_NO_SRP"
 configuration "default" {
 	targetType "library"

@@ -27,7 +27,14 @@ jobs:
           mkdir extern_deps || exit /b
           copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libssl64MT.lib" extern_deps\libssl.lib || exit /b
           copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libcrypto64MT.lib" extern_deps\libcrypto.lib || exit /b
-          echo LIB=%CD%\extern_deps>> %GITHUB_ENV%
+          if "%DC%" == "ldc2" (
+            echo LIB=%CD%\extern_deps>> %GITHUB_ENV%
+          ) else (
+            :: https://issues.dlang.org/show_bug.cgi?id=22707
+            echo DFLAGS=-L/LIBPATH:%CD%\extern_deps>> %GITHUB_ENV%
+            :: DFLAGS ignored when building unittests with `--build=unittest-cov` => copy to root
+            xcopy extern_deps . || exit /b
+          )
 
       - name: dub build
         run: dub build

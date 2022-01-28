@@ -27,5 +27,6 @@ configuration "plugin" {
 	dependency "sil-lang" version=">=0.0.0" optional=true
 	dependency "pegged" version=">=0.0.0" optional=true
 	targetType "dynamicLibrary"
+	targetPath "plugin"
 	versions "SIL_Plugin" "SIL" "MoveSanity"
 }

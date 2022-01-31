@@ -8,7 +8,7 @@ import std.datetime : Date;
 import imap.defines;
 import imap.socket;
 import imap.session : Session;
-import imap.sildoc : SILdoc;
+import imap.sil : SILdoc;
 
 // -------------------------------------------------------------------------------------------------
 

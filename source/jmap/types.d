@@ -334,17 +334,13 @@ version(SIL):
         return post(request);
     }
 
-    Variable queryEmails(Filter filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, SilStruct additionalArguments = null) {
+    Variable queryEmails(FilterAlgebraic filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, SilStruct additionalArguments = null) {
         import std.exception : enforce;
         import std.stdio : stderr, writeln;
         if (collapseThreads)
             additionalArguments["collapseThreads"] = Variable(true);
-        auto o = cast(FilterOperator) filter;
-        auto c = cast(FilterCondition) filter;
-        enforce(o !is null || c !is null, "filter must be either an operator or a condition");
-        if (debugMode)
-            stderr.writeln((o !is null) ? serializeToJsonPretty(o) : serializeToJsonPretty(c));
-        Variable filterVariable = (o !is null) ? parseJson(serializeToJson(o)).deserialize!Variable : parseJson(serializeToJson(c)).deserialize!Variable;
+        import mir.ion.conv: serde;
+        Variable filterVariable = filter.serde!Variable;
         return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).deserialize!Variable;
     }
 
@@ -441,7 +437,7 @@ enum EmailBodyProperty {
     preview,
 }
 
-version(SIL):
+version(SIL){
 
 struct EmailSubmission {
     string id;
@@ -877,65 +873,38 @@ struct Invocation {
         };
         return ret;
     }
-}
+}} //SIL
 
 enum FilterOperatorKind {
-    and,
-    or,
-    not,
+    @serdeKeys("AND") and,
+    @serdeKeys("OR") or,
+    @serdeKeys("NOT") not,
 }
 
-interface Filter {
-}
+alias FilterAlgebraic = Nullable!(FilterOperator, FilterCondition);
 
-class FilterOperator : Filter {
-    FilterOperatorKind operator;
-
-    Filter[] conditions;
-
-    this(FilterOperatorKind operator, Filter[] conditions) {
-        this.operator = operator;
-        this.conditions = conditions;
+// Holder is required to workaround compliler circular bug
+@serdeProxy!FilterAlgebraic 
+struct Filter {
+    FilterAlgebraic filter;
+    alias filter this;
+@safe pure nothrow @nogc:
+    this(FilterOperator operator) {
+        filter = operator;
     }
 
-    void serialize(S)(ref S serializer) {
-        import std.exception : enforce;
-        import std.format : format;
-        import std.conv : to;
-        import std.string : toUpper;
-
-        auto o = serializer.objectBegin();
-        serializer.putKey("operator");
-        serializer.putValue(operator.to!string.toUpper());
-        serializer.putKey("conditions");
-        auto o2 = serializer.arrayBegin();
-        foreach (i, condition; conditions) {
-            serializer.elemBegin();
-            auto f = cast(FilterOperator) condition;
-            auto c = cast(FilterCondition) condition;
-            enforce(f !is null || c !is null, format!"condition #%s must be FilterOperator or FilterCondition!"(i));
-            if (f !is null) {
-                serializer.serializeValue(f);
-            } else if (c !is null) {
-                serializer.serializeValue(c);
-            }
-        }
-        serializer.arrayEnd(o2);
-        serializer.objectEnd(o);
+    this(FilterCondition condition) {
+        filter = condition;
     }
 }
 
-
-package enum nullArray = (Nullable!(string[])).init;
-package enum NullUint = (Nullable!uint).init;
-package enum NullDateTime = (Nullable!DateTime).init;
-
+deprecated("use FilterCondition instead")
 FilterCondition filterCondition(string inMailbox = null,
-        Nullable!(string[])inMailboxOtherThan = nullArray,
+        Nullable!(string[])inMailboxOtherThan = null,
         string before = null,
         string after = null,
-        Nullable!uint minSize = NullUint,
-        Nullable!uint maxSize = NullUint,
+        Nullable!uint minSize = null,
+        Nullable!uint maxSize = null,
         string allInThreadHaveKeyword = null,
         string someInThreadHaveKeyword = null,
         string noneInThreadHaveKeyword = null,
@@ -948,146 +917,52 @@ FilterCondition filterCondition(string inMailbox = null,
         string bcc = null,
         string subject = null,
         string body_ = null,
-        Nullable!(string[])header = nullArray, ) {
-    return new FilterCondition(inMailbox, inMailboxOtherThan, before, after, minSize,
+        Nullable!(string[])header = null, ) {
+    import std.stdio : stderr;
+    static warned = false;
+    if (!warned) {
+        stderr.writefln("filterCondition() will be removed in the future, switch your code to use FilterCondition()");
+        warned = true;
+    }
+    return FilterCondition(inMailbox, inMailboxOtherThan, before, after, minSize,
             maxSize, allInThreadHaveKeyword, someInThreadHaveKeyword, noneInThreadHaveKeyword,
             hasKeyword, notKeyword, text, from, to, cc, bcc, subject, body_, header);
 }
 
-private void doSerialize(S, T)(ref S serializer, T t) {
-    import std.traits : hasUDA, getUDAs, isCallable, isInstanceOf;
-    auto o = serializer.objectBegin;
-    static foreach (i, M; T.tupleof) {
-        {
-            static if (!isCallable!M) {
-                static if (hasUDA!(M, "serdeKeys")) {
-                    enum name = getUDAs!(M, "serdeKeys")[0].value;
-                } else {
-                    enum name = __traits(identifier, M);
-                }
-                mixin("auto value = t." ~ __traits(identifier, M) ~ ";");
-                static if (isInstanceOf!(Nullable, typeof(value))) {
-                    if (!value.isNull) {
-                        // static if (is(typeof(value.get.result) == typeof(Variable)))
-                        //      serializeAsAsdf(value.get.result);
-                        // else static if is(Unqual!
-                        //      doSerialize(serializer,value.get.result);
-                        serializer.serializeAsdf(serializeToAsdf(value.get));
-                    } else {
-                        serializer.putValue(null);
-                    }
-                } else {
-                    serializer.serializeAsdf(serializeToAsdf(result));
-                }
-            }
-        }
-    }
+struct FilterOperator {
+    FilterOperatorKind operator;
+    Filter[] conditions;
 }
 
-string toUTCDate(Nullable!DateTime dt) {
-    import std.exception : enforce;
-    enforce(!dt.isNull, "datetime must not be null");
-    return toUTCDate(dt.get);
-}
-
-// "2014-10-30T06:12:00Z"
-string toUTCDate(DateTime dt) {
-    import std.string : format;
-    return format!"%04d-%02d-%02dT%02d:%02d:%02dZ"(
-        dt.date.year,
-        dt.date.month,
-        dt.date.day,
-        dt.timeOfDay.hour,
-        dt.timeOfDay.minute,
-        dt.timeOfDay.second,
-    );
-}
-
-class FilterCondition : Filter {
-    @serdeIgnoreOutIf!`a.length == 0`
+struct FilterCondition {
+@serdeIgnoreDefault:
     string inMailbox;
-
-    @serdeIgnoreOutIf!`a.isNull`
     Nullable!(string[])inMailboxOtherThan;
-
-    @serdeIgnoreOutIf!`a.isNull`
-    @serdeTransformOut!toUTCDate
     Nullable!DateTime before;
-
-    @serdeIgnoreOutIf!`a.isNull`
-    @serdeTransformOut!toUTCDate
     Nullable!DateTime after;
-
-    @serdeIgnoreOutIf!`a.isNull`
     Nullable!uint minSize;
-
-    @serdeIgnoreOutIf!`a.isNull`
     Nullable!uint maxSize;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string allInThreadHaveKeyword;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string someInThreadHaveKeyword;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string noneInThreadHaveKeyword;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string hasKeyword;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string notKeyword;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string text;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string from;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string to;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string cc;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string bcc;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     string subject;
-
-    @serdeIgnoreOutIf!`a.length == 0`
     @serdeKeys("body")
     string body_;
-
-    @serdeIgnoreOutIf!`a.isNull`
     Nullable!(string[])header;
 
-    override string toString() const {
-        import asdf : jsonSerializer;
-        import std.array : appender;
-        return serializeToJson(this);
-        /+
-        auto app = appender!(char[]);
-        auto ser = jsonSerializer!("\t")((const(char)[] chars) => app.put(chars));
-        serialize(ser);
-        ser.flush;
-        return cast(string)(app.data); +/
-    }
-/+
-    void serialize(S)(ref S serializer)
-    {
-        doSerialize(serializer,this);
-    }
-+/
-
-    this(string inMailbox = null,
-            Nullable!(string[])inMailboxOtherThan = nullArray,
+    this(string inMailbox,
+            Nullable!(string[])inMailboxOtherThan = null,
             string before = null,
             string after = null,
-            Nullable!uint minSize = NullUint,
-            Nullable!uint maxSize = NullUint,
+            Nullable!uint minSize = null,
+            Nullable!uint maxSize = null,
             string allInThreadHaveKeyword = null,
             string someInThreadHaveKeyword = null,
             string noneInThreadHaveKeyword = null,
@@ -1100,7 +975,7 @@ class FilterCondition : Filter {
             string bcc = null,
             string subject = null,
             string body_ = null,
-            Nullable!(string[])header = nullArray, ) {
+            Nullable!(string[])header = null, ) {
         this.inMailbox = inMailbox;
         this.inMailboxOtherThan = inMailboxOtherThan;
         if (before.length > 0)
@@ -1124,14 +999,16 @@ class FilterCondition : Filter {
     }
 }
 
+deprecated("use filter constructor instead")
 Filter operatorAsFilter(FilterOperator filterOperator) {
+    import std.stdio : stderr;
+    static warned = false;
+    if (!warned) {
+        stderr.writefln("filterCondition() will be removed in the future, switch your code to use FilterCondition()");
+        warned = true;
+    }
     return cast(Filter) filterOperator;
 }
-
-Filter conditionAsFilter(FilterCondition filterCondition) {
-    return cast(Filter) filterCondition;
-}
-
 
 struct Comparator {
     string property;
@@ -1139,6 +1016,7 @@ struct Comparator {
     string collation = null;
 }
 
+version(SIL):
 
 struct JmapRequest {
     string[] using;

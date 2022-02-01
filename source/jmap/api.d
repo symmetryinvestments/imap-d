@@ -16,9 +16,6 @@ version (SIL) {
                                      findMailboxPath))
             handlers.registerHandler!F;
     }
-}
-
-version (SIL) :
 
     Variable[] uniqBy(Variable[] input, Function f) {
         import std.algorithm : uniq;
@@ -26,10 +23,6 @@ version (SIL) :
         return input.uniq!((a, b) => f(a, b).get!bool).array;
     }
 
-string addQuotes(string s) {
-    if (s.length < 2 || s[0] == '"' || s[$ - 1] == '"')
-        return s;
-    return '"' ~ s ~ '"';
 }
 
 struct JmapSessionParams {
@@ -54,6 +47,8 @@ private string getSessionJson(string uri, Credentials credentials) {
     auto result = cast(string) req.get(uri.wellKnownJmap).responseBody.data.idup;
     return result;
 }
+
+version (SIL) :
 
 Session getSession(JmapSessionParams params) {
     import mir.ion.deser.json : deserializeJson;

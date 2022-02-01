@@ -1,13 +1,17 @@
 module jmap.types;
 import std.datetime : SysTime;
 import core.time : seconds;
-import std.typecons : Nullable;
-
-version (SIL) :
-
-import kaleidic.sil.lang.typing.types : Variable, SilStruct, SILdoc;
-import mir.ion.ser.json : serializeJson;
+import imap.sil : SILdoc;
+import mir.algebraic : Nullable, visit;
+import mir.algebraic_alias.json;
+import mir.array.allocation : array;
+import mir.ion.conv : serde;
 import mir.ion.deser.json : deserializeJson;
+import mir.ion.ser.json : serializeJson, serializeJsonPretty;
+import mir.ndslice.topology : as, member, map;
+import mir.serde;
+import mir.exception : MirException, enforce;
+import mir.format : text;
 import std.datetime : DateTime;
 import asdf;
 
@@ -34,7 +38,6 @@ struct SessionCoreCapabilities {
     uint maxObjectsInSet;
     string[] collationAlgorithms;
 }
-
 
 @("urn:ietf:params:jmap:mail")
 enum EmailQuerySortOption {
@@ -63,6 +66,7 @@ struct SubmissionParams {
     string[] submissionExtensions;
 }
 
+@serdeIgnoreUnexpectedKeys
 struct AccountCapabilities {
     @serdeKeys("urn:ietf:params:jmap:mail")
     AccountParams accountParams;
@@ -72,17 +76,6 @@ struct AccountCapabilities {
     SubmissionParams submissionParams;
 
     // @serdeIgnoreIn Asdf vacationResponseParams;
-
-    version (SIL) {
-        @serdeIgnoreIn SilStruct allAccountCapabilities;
-
-        void finalizeDeserialization(Asdf data) {
-            import asdf : deserialize, Asdf;
-
-            foreach (el; data.byKeyValue)
-                allAccountCapabilities[el.key.idup] = el.value.get!Asdf(Asdf.init).deserialize!Variable;
-        }
-    }
 }
 
 struct Account {
@@ -94,22 +87,22 @@ struct Account {
     AccountCapabilities accountCapabilities;
     
     @serdeOptional
-    string[string] primaryAccounts;
+    StringMap!string primaryAccounts;
 }
 
 struct Session {
     @serdeOptional
     SessionCoreCapabilities coreCapabilities;
 
-    Account[string] accounts;
-    string[string] primaryAccounts;
+    StringMap!Account accounts;
+    StringMap!string primaryAccounts;
     string username;
     Url apiUrl;
     Url downloadUrl;
     Url uploadUrl;
     Url eventSourceUrl;
     string state;
-    @serdeIgnoreIn Asdf[string] capabilities;
+    @serdeIgnoreIn StringMap!JsonAlgebraic capabilities;
     package Credentials credentials;
     private string activeAccountId_;
     private bool debugMode = false;
@@ -119,66 +112,46 @@ struct Session {
     }
 
     private string activeAccountId() {
-        import std.format : format;
-        import std.exception : enforce;
-        import std.string : join;
-        import std.range : front;
         import std.algorithm : canFind;
 
         if (activeAccountId_.length == 0) {
-            enforce(accounts.keys.length == 1,
-                    format!"multiple accounts - [%s] - and you must call setActiveAccount to pick one"
-                    (accounts.keys.join(",")));
-            this.activeAccountId_ = accounts.keys.front;
+            if (accounts.keys.length != 1)
+                throw new MirException("multiple accounts - ", accounts.keys, " - and you must call setActiveAccount to pick one");
+            this.activeAccountId_ = accounts.keys[0];
         }
-
-        enforce(accounts.keys.canFind(activeAccountId_,
-                format!"active account ID is set to %s but it is not found amongst account IDs: [%s]"
-                (activeAccountId_, accounts.keys.join(","))));
+        else if (!accounts.keys.canFind(activeAccountId_))
+            throw new MirException("active account ID is set to ", activeAccountId_, " but it is not found amongst account IDs: ", activeAccountId_);
         return activeAccountId_;
     }
 
-    string[] listCapabilities() {
+    const(string)[] listCapabilities() const {
         return capabilities.keys;
     }
 
-    string[] listAccounts() {
-        import std.algorithm : map;
-        import std.array : array;
-        return accounts.keys.map!(key => accounts[key].name).array;
+    string[] listAccounts() const {
+        return accounts.values.member!"name".as!string.array;
     }
 
     Account getActiveAccountInfo() {
-        import std.exception : enforce;
-        auto p = activeAccountId() in accounts;
-        enforce(p !is null, "no currently active account");
-        return *p;
+        return *enforce!"no currently active account"(activeAccountId() in accounts);
     }
 
     @SILdoc("set active account - name is the account name, not the id")
     Session setActiveAccount(string name) {
-        import std.format : format;
-        import std.exception : enforce;
-        import std.format : format;
 
-        foreach (kv; accounts.byKeyValue) {
-            if (kv.value.name == name) {
-                this.activeAccountId_ = kv.key;
+        foreach (i, ref value; accounts.values) {
+            if (value.name == name) {
+                this.activeAccountId_ = accounts.keys[i];
                 return this;
             }
         }
-        throw new Exception(format!"account %s not found"(name));
+        throw new MirException("account ", name, " not found");
     }
 
-
-    void finalizeDeserialization(Asdf data) {
-        import asdf : deserialize, Asdf;
-
-        foreach (el; data["capabilities"].byKeyValue)
-            capabilities[el.key] = el.value.get!Asdf(Asdf.init);
-        this.coreCapabilities = deserialize!SessionCoreCapabilities(capabilities["urn:ietf:params:jmap:core"]);
+    void serdeFinalize() {
+        this.coreCapabilities = capabilities["urn:ietf:params:jmap:core"].serde!SessionCoreCapabilities;
     }
-
+version(SIL):
     private Asdf post(JmapRequest request) {
         import asdf;
         import requests : Request, BasicAuthentication;
@@ -220,10 +193,8 @@ struct Session {
         }
     }
 
-
     string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl = null) {
         import std.string : replace;
-        import asdf;
         import requests : Request, BasicAuthentication;
         import std.algorithm : canFind;
 
@@ -237,10 +208,8 @@ struct Session {
         downloadUrl = downloadUrl ~  "&accept=" ~ type.uriEncode;
         auto req = Request();
         req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
-        auto result = cast(string) req.get(downloadUrl).responseBody.data.idup;
-        return result;
+        return req.get(downloadUrl).responseBody.data!string;
     }
-
 
     version (SIL) {
         Variable get(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
@@ -471,6 +440,8 @@ enum EmailBodyProperty {
     hasAttachment,
     preview,
 }
+
+version(SIL):
 
 struct EmailSubmission {
     string id;

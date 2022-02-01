@@ -3,10 +3,8 @@ import jmap.types;
 static import jmap.types;
 
 version (SIL) {
-    import kaleidic.sil.lang.handlers : Handlers;
-    import kaleidic.sil.lang.typing.types : Variable, Function, SILdoc;
-
-    void registerHandlersJmap(ref Handlers handlers) {
+    void registerHandlersJmap(Handlers)(ref Handlers handlers) {
+        import kaleidic.sil.lang.typing.types : Variable, Function;
         import std.meta : AliasSeq;
         handlers.openModule("jmap");
         scope (exit) handlers.closeModule();
@@ -22,7 +20,6 @@ version (SIL) {
 
 version (SIL) :
 
-
     Variable[] uniqBy(Variable[] input, Function f) {
         import std.algorithm : uniq;
         import std.array : array;
@@ -34,7 +31,6 @@ string addQuotes(string s) {
         return s;
     return '"' ~ s ~ '"';
 }
-
 
 struct JmapSessionParams {
     Credentials credentials;
@@ -60,7 +56,7 @@ private string getSessionJson(string uri, Credentials credentials) {
 }
 
 Session getSession(JmapSessionParams params) {
-    import asdf;
+    import mir.ion.deser.json : deserializeJson;
     import std.string : strip;
     import std.exception : enforce;
     import std.algorithm : startsWith;
@@ -69,8 +65,7 @@ Session getSession(JmapSessionParams params) {
     auto json = getSessionJson(params).strip;
     writeln(json);
     enforce(json.startsWith("{") || json.startsWith("["), "invalid json response: \n" ~ json);
-    auto ret = deserialize!Session(json);
+    auto ret = json.deserializeJson!Session;
     ret.credentials = params.credentials;
     return ret;
 }
-

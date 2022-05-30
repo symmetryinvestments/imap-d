@@ -2,7 +2,7 @@ name "symmetry-imap"
 description "IMAP client library"
 license "MIT"
 dependency "arsd-official:email" version=">=8.5.0"
-dependency "openssl" version="~>1.1.6"
+dependency "openssl" version=">=1.1.6"
 dependency "requests" version="~>2"
 dependency "asdf" version=">=0.6.0"
 dependency "mir-ion" version=">=1.0.26"
@@ -13,7 +13,6 @@ libs "ssl" "crypto" platform="posix"
 # this folder, either via LIB environment variable or via /LIBPATH lflag in
 # your dub.sdl.
 libs "libssl" "libcrypto" platform="windows"
-versions "OPENSSL_NO_SRP"
 configuration "default" {
 	targetType "library"
 	versions "MoveSanity"

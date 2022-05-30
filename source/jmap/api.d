@@ -3,8 +3,11 @@ import jmap.types;
 static import jmap.types;
 
 version (SIL) {
+    import kaleidic.sil.lang.typing.types : Variable, Function;
+}
+
+version (SIL) {
     void registerHandlersJmap(Handlers)(ref Handlers handlers) {
-        import kaleidic.sil.lang.typing.types : Variable, Function;
         import std.meta : AliasSeq;
         handlers.openModule("jmap");
         scope (exit) handlers.closeModule();

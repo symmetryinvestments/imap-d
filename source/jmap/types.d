@@ -15,6 +15,10 @@ import mir.format : text;
 import std.datetime : DateTime;
 import asdf;
 
+version (SIL) {
+    import kaleidic.sil.lang.typing.types : Variable, SilStruct;
+}
+
 struct Credentials {
     string user;
     string pass;

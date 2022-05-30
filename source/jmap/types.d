@@ -1023,7 +1023,7 @@ struct Comparator {
 version(SIL):
 
 struct JmapRequest {
-    string[] using;
+    const(string)[] using;
     Invocation[] methodCalls;
     string[string] createdIds = null;
 }

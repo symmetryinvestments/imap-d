@@ -13,7 +13,7 @@ libs "ssl" "crypto" platform="posix"
 # this folder, either via LIB environment variable or via /LIBPATH lflag in
 # your dub.sdl.
 libs "libssl" "libcrypto" platform="windows"
-versions "SSL" "OPENSSL_NO_SRP"
+versions "OPENSSL_NO_SRP"
 configuration "default" {
 	targetType "library"
 	versions "MoveSanity"

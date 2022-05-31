@@ -906,10 +906,10 @@ struct Filter {
 // checks de/serialization compiles
 unittest
 {
-    import mir.ser.text;
-    import mir.deser.text;
-    assert(Filter.init.serializeText == `null`);
-    assert(`null`.deserializeText!Filter == Filter.init);
+    import mir.ser.json;
+    import mir.deser.json;
+    assert(Filter.init.serializeJson == `null`);
+    assert(`null`.deserializeJson!Filter == Filter.init);
 }
 
 deprecated("use FilterCondition instead")

@@ -889,6 +889,11 @@ struct Filter {
     FilterAlgebraic filter;
     alias filter this;
 @safe pure nothrow @nogc:
+
+    this(FilterAlgebraic filter) {
+        this.filter = filter;
+    }
+
     this(FilterOperator operator) {
         filter = operator;
     }
@@ -896,6 +901,15 @@ struct Filter {
     this(FilterCondition condition) {
         filter = condition;
     }
+}
+
+// checks de/serialization compiles
+unittest
+{
+    import mir.ser.text;
+    import mir.deser.text;
+    assert(Filter.init.serializeText == `null`);
+    assert(`null`.deserializeText!Filter == Filter.init);
 }
 
 deprecated("use FilterCondition instead")

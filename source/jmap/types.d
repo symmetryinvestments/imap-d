@@ -908,7 +908,7 @@ unittest
 {
     import mir.ser.json;
     import mir.deser.json;
-    assert(Filter.init.serializeJson == `null`);
+    assert(Filter.init.serializeJson);
     assert(`null`.deserializeJson!Filter == Filter.init);
 }
 

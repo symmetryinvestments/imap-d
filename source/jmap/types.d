@@ -6,14 +6,18 @@ import mir.algebraic : Nullable, visit;
 import mir.algebraic_alias.json;
 import mir.array.allocation : array;
 import mir.ion.conv : serde;
-import mir.ion.deser.json : deserializeJson;
-import mir.ion.ser.json : serializeJson, serializeJsonPretty;
+import mir.deser.json : deserializeJson;
+import mir.ser.json : serializeJson, serializeJsonPretty;
 import mir.ndslice.topology : as, member, map;
 import mir.serde;
 import mir.exception : MirException, enforce;
 import mir.format : text;
 import std.datetime : DateTime;
 import asdf;
+
+version (SIL) {
+    import kaleidic.sil.lang.typing.types : Variable, SilStruct;
+}
 
 struct Credentials {
     string user;
@@ -1019,7 +1023,7 @@ struct Comparator {
 version(SIL):
 
 struct JmapRequest {
-    string[] using;
+    const(string)[] using;
     Invocation[] methodCalls;
     string[string] createdIds = null;
 }

@@ -3,8 +3,11 @@ import jmap.types;
 static import jmap.types;
 
 version (SIL) {
+    import kaleidic.sil.lang.typing.types : Variable, Function;
+}
+
+version (SIL) {
     void registerHandlersJmap(Handlers)(ref Handlers handlers) {
-        import kaleidic.sil.lang.typing.types : Variable, Function;
         import std.meta : AliasSeq;
         handlers.openModule("jmap");
         scope (exit) handlers.closeModule();
@@ -56,7 +59,7 @@ private string getSessionJson(string uri, Credentials credentials) {
 }
 
 Session getSession(JmapSessionParams params) {
-    import mir.ion.deser.json : deserializeJson;
+    import mir.deser.json : deserializeJson;
     import std.string : strip;
     import std.exception : enforce;
     import std.algorithm : startsWith;

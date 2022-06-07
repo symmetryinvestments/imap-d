@@ -190,7 +190,7 @@ private string sslConnectionSysCallError(int socketStatus) {
 
 /// Disconnect from mail server.
 void closeConnection(Session session) {
-    version (SSL) closeSecureConnection(session);
+    closeSecureConnection(session);
     if (session.socket !is null && session.socket.isAlive) {
         session.socket.close();
     }

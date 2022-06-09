@@ -56,7 +56,7 @@ private string getSessionJson(string uri, Credentials credentials) {
 }
 
 Session getSession(JmapSessionParams params) {
-    import mir.ion.deser.json : deserializeJson;
+    import mir.ion.json : deserializeJson;
     import std.string : strip;
     import std.exception : enforce;
     import std.algorithm : startsWith;

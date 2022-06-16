@@ -31,4 +31,5 @@ configuration "plugin" {
 	targetType "dynamicLibrary"
 	targetPath "plugin"
 	versions "SIL_Plugin" "SIL" "MoveSanity"
+	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
 }

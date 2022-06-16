@@ -8,5 +8,8 @@
 	},
 	"description": "Functional test application for IMAP.",
 	"license": "MIT",
-	"name": "imap-d-test"
+	"name": "imap-d-test",
+	"lflags-windows-x86_64": [
+		"/LIBPATH:$KAL_EXT_LIB_WIN64"
+	]
 }

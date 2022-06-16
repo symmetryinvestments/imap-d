@@ -19,7 +19,7 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
 
-      - name: "Windows: install full OpenSSL package, copy & rename import libs, then add to LIB env var"
+      - name: "Windows: install full OpenSSL package, copy & rename import libs, then set KAL_EXT_LIB_WIN64 env var"
         if: runner.os == 'Windows'
         shell: cmd
         run: |
@@ -27,14 +27,7 @@ jobs:
           mkdir extern_deps || exit /b
           copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libssl64MT.lib" extern_deps\libssl.lib || exit /b
           copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libcrypto64MT.lib" extern_deps\libcrypto.lib || exit /b
-          if "%DC%" == "ldc2" (
-            echo LIB=%CD%\extern_deps>> %GITHUB_ENV%
-          ) else (
-            :: https://issues.dlang.org/show_bug.cgi?id=22707
-            echo DFLAGS=-L/LIBPATH:%CD%\extern_deps>> %GITHUB_ENV%
-            :: DFLAGS ignored when building unittests with `--build=unittest-cov` => copy to root
-            xcopy extern_deps . || exit /b
-          )
+          echo KAL_EXT_LIB_WIN64=%CD%\extern_deps>> %GITHUB_ENV%
 
       - name: dub build
         run: dub build

@@ -1,5 +1,6 @@
 .dub
 dub.selections.json
+/extra.selections.json
 
 libsymmetry-imap.*
 symmetry-imap-test-default
@@ -12,3 +13,6 @@ replrc
 SIL.log
 SIL_user.log
 history.txt
+
+# coverage files
+*.lst

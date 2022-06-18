@@ -7,3 +7,6 @@ dependency "symmetry-imap" path="../"
 subConfiguration "symmetry-imap" "default"
 targetType "executable"
 dependency "arsd-official:email" version="~>8.5"
+
+# Windows: set KAL_EXT_LIB_WIN64 env var to dir containing `lib{ssl,crypto}.lib`
+lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"

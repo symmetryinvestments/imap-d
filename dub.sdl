@@ -30,5 +30,11 @@ configuration "plugin" {
 	dependency "pegged" version=">=0.0.0" optional=true
 	targetType "dynamicLibrary"
 	targetPath "plugin"
+	targetName "sil-plugin-imap"
 	versions "SIL_Plugin" "SIL" "MoveSanity"
+	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
+}
+configuration "unittest" {
+	# Windows: set KAL_EXT_LIB_WIN64 env var to dir containing `lib{ssl,crypto}.lib`
+	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
 }

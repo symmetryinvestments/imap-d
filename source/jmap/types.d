@@ -94,6 +94,7 @@ struct Account {
     StringMap!string primaryAccounts;
 }
 
+@serdeIgnoreUnexpectedKeys
 struct Session {
     @serdeOptional
     SessionCoreCapabilities coreCapabilities;

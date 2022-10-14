@@ -1,4 +1,4 @@
-module imap.sil;
+module symmetry.imap.sil;
 
 import mir.reflection : ReflectDoc;
 

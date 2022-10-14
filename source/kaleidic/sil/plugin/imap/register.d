@@ -3,7 +3,7 @@ module kaleidic.sil.plugin.imap.register;
 
 version (SIL):
 
-import imap.set;
+import symmetry.imap.set;
 import kaleidic.sil.lang.handlers : Handlers;
 import kaleidic.sil.lang.typing.types : SILdoc;
 import std.meta : AliasSeq;
@@ -15,19 +15,19 @@ version (SIL_Plugin) {
 
 import std.socket;
 
-import imap.defines;
-import imap.socket;
+import symmetry.imap.defines;
+import symmetry.imap.socket;
 
 import arsd.email : MimeContainer;
 
 ///
 void registerImap(ref Handlers handlers) {
     import std.conv;
-    import imap.session;
-    import imap.request;
-    import imap.response;
-    import imap.namespace;
-    import imap.searchquery;
+    import symmetry.imap.session;
+    import symmetry.imap.request;
+    import symmetry.imap.response;
+    import symmetry.imap.namespace;
+    import symmetry.imap.searchquery;
     import arsd.email : IncomingEmailMessage, RelayInfo, ToType, EmailMessage, MimePart;
 
     // Register for imap.*.

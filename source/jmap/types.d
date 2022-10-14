@@ -1,7 +1,7 @@
 module jmap.types;
 import std.datetime : SysTime;
 import core.time : seconds;
-import imap.sil : SILdoc;
+import symmetry.imap.sil : SILdoc;
 import mir.algebraic : Nullable, visit;
 import mir.algebraic_alias.json;
 import mir.array.allocation : array;
@@ -89,7 +89,7 @@ struct Account {
 
     bool isArchiveUser = false;
     AccountCapabilities accountCapabilities;
-    
+
     @serdeOptional
     StringMap!string primaryAccounts;
 }
@@ -516,10 +516,10 @@ struct Mailbox {
     MailboxRights myRights;
     bool autoPurge;
     int hidden;
-    
+
     @serdeOptional
     IdentityRef identityRef;
-    
+
     bool learnAsSpam;
     int purgeOlderThanDays;
     bool isCollapsed;
@@ -889,7 +889,7 @@ enum FilterOperatorKind {
 alias FilterAlgebraic = Nullable!(FilterOperator, FilterCondition);
 
 // Holder is required to workaround compliler circular bug
-@serdeProxy!FilterAlgebraic 
+@serdeProxy!FilterAlgebraic
 struct Filter {
     FilterAlgebraic filter;
     alias filter this;

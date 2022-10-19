@@ -1,4 +1,4 @@
-module imap.set;
+module symmetry.imap.set;
 
 ///
 struct Set(T) {

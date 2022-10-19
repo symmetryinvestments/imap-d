@@ -1,5 +1,5 @@
 ///
-module imap.grammar;
+module symmetry.imap.grammar;
 
 /++
     This code is not currently used or required.  An experiment with replacing custom parsing code by
@@ -180,7 +180,7 @@ Imap:
 	RespCondBye		<-	"BYE" space RespText
 	RespCondState	<-	( "OK" / "NO" / "BAD" ) / RespText
 	RespText		<-	( "[" RespTextCode "]" space )? Text
-	RespTextCode	<-	"ALERT" / 
+	RespTextCode	<-	"ALERT" /
 						"BADCHARSET" (space LParens Astring (space Astring)* RParens )? /
 						CapabilityData /
 					    "PARSE" /

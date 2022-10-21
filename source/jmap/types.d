@@ -165,7 +165,7 @@ struct Session {
     void serdeFinalize() scope @safe pure {
         import mir.ndslice.topology: member;
         import std.conv: to;
-        auto object = capabilities["urn:ietf:params:jmap:core"].object;
+        auto object = capabilities["urn:ietf:params:jmap:core"].get!`object`;
         with (this.coreCapabilities)
         {
             maxSizeUpload = object["maxSizeUpload"].integer.to!uint;
@@ -236,7 +236,7 @@ struct Session {
     Mailbox[] getMailboxes() {
         import std.range : front, dropOne;
         auto json = get("Mailbox", null);
-        return json.object["methodResponses"].array.front.array.dropOne.front.object["list"].serde!(typeof(return));
+        return json.get!`object`["methodResponses"].get!`array`.front.get!`array`.dropOne.front.get!`object`["list"].serde!(typeof(return));
     }
 
     JsonAlgebraic getContact(string[] ids, string[] properties = null, StringMap!JsonAlgebraic additionalArguments = null) {

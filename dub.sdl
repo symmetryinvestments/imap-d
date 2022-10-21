@@ -4,7 +4,6 @@ license "MIT"
 dependency "arsd-official:email" version=">=8.5.0"
 dependency "openssl" version=">=3.1.0"
 dependency "requests" version="~>2"
-dependency "asdf" version=">=0.6.0"
 dependency "mir-ion" version=">=1.0.26"
 libs "ssl" "crypto" platform="posix"
 # Windows: get OpenSSL libs via e.g. `choco install openssl`, then copy e.g.
@@ -14,6 +13,8 @@ libs "ssl" "crypto" platform="posix"
 # your dub.sdl.
 libs "libssl" "libcrypto" platform="windows"
 versions "DeimosOpenSSL_1_1_1" platform="windows"
+
+lflags "-L/opt/homebrew/opt/openssl@3/lib" platform="osx"
 
 configuration "default" {
 	targetType "library"

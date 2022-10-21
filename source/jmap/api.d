@@ -19,9 +19,6 @@ version (SIL) {
                                      findMailboxPath))
             handlers.registerHandler!F;
     }
-}
-
-version (SIL) :
 
     Variable[] uniqBy(Variable[] input, Function f) {
         import std.algorithm : uniq;
@@ -34,6 +31,14 @@ string addQuotes(string s) {
         return s;
     return '"' ~ s ~ '"';
 }
+}
+
+version (Posix)
+    version = Compile;
+version (SIL)
+    version = Compile;
+
+version (Compile):
 
 struct JmapSessionParams {
     Credentials credentials;

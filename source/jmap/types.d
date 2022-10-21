@@ -168,14 +168,14 @@ struct Session {
         auto object = capabilities["urn:ietf:params:jmap:core"].get!`object`;
         with (this.coreCapabilities)
         {
-            maxSizeUpload = object["maxSizeUpload"].integer.to!uint;
-            maxConcurrentUpload = object["maxConcurrentUpload"].integer.to!uint;
-            maxSizeRequest = object["maxSizeRequest"].integer.to!uint;
-            maxConcurrentRequests = object["maxConcurrentRequests"].integer.to!uint;
-            maxCallsInRequest = object["maxCallsInRequest"].integer.to!uint;
-            maxObjectsInGet = object["maxObjectsInGet"].integer.to!uint;
-            maxObjectsInSet = object["maxObjectsInSet"].integer.to!uint;
-            collationAlgorithms = object["collationAlgorithms"].array.member!"string".array;
+            maxSizeUpload = object["maxSizeUpload"].get!long.to!uint;
+            maxConcurrentUpload = object["maxConcurrentUpload"].get!long.to!uint;
+            maxSizeRequest = object["maxSizeRequest"].get!long.to!uint;
+            maxConcurrentRequests = object["maxConcurrentRequests"].get!long.to!uint;
+            maxCallsInRequest = object["maxCallsInRequest"].get!long.to!uint;
+            maxObjectsInGet = object["maxObjectsInGet"].get!long.to!uint;
+            maxObjectsInSet = object["maxObjectsInSet"].get!long.to!uint;
+            collationAlgorithms = object["collationAlgorithms"].get!`array`.member!"string".array;
         }
     }
 

@@ -163,7 +163,6 @@ struct Session {
     }
 
     void serdeFinalize() scope @safe pure {
-        import mir.ndslice.topology: member;
         import std.conv: to;
         auto object = capabilities["urn:ietf:params:jmap:core"].get!`object`;
         with (this.coreCapabilities)
@@ -175,7 +174,7 @@ struct Session {
             maxCallsInRequest = object["maxCallsInRequest"].get!long.to!uint;
             maxObjectsInGet = object["maxObjectsInGet"].get!long.to!uint;
             maxObjectsInSet = object["maxObjectsInSet"].get!long.to!uint;
-            collationAlgorithms = object["collationAlgorithms"].get!`array`.member!"string".array;
+            collationAlgorithms = object["collationAlgorithms"].get!`array`.map!"a.get!string".array;
         }
     }
 

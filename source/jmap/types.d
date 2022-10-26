@@ -293,14 +293,14 @@ struct Session {
         return post(request);
     }
 
-    JsonAlgebraic query(string type, JsonAlgebraic filter, StringMap!JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+    JsonAlgebraic query(string type, JsonAlgebraic filter, JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
         auto invocation = Invocation.query(type, activeAccountId, invocationId, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    JsonAlgebraic queryEmails(FilterAlgebraic filter, StringMap!JsonAlgebraic sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, bool collapseThreads = false, StringMap!JsonAlgebraic additionalArguments = null) {
+    JsonAlgebraic queryEmails(FilterAlgebraic filter, JsonAlgebraic sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, bool collapseThreads = false, StringMap!JsonAlgebraic additionalArguments = null) {
         import std.stdio : stderr, writeln;
         if (collapseThreads)
             additionalArguments["collapseThreads"] = Variable(true);
@@ -308,7 +308,7 @@ struct Session {
         return query("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
     }
 
-    JsonAlgebraic queryChanges(string type, JsonAlgebraic filter, StringMap!JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+    JsonAlgebraic queryChanges(string type, JsonAlgebraic filter, JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
         auto invocation = Invocation.queryChanges(type, activeAccountId, invocationId, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
@@ -678,7 +678,7 @@ struct Invocation {
         return Invocation(type ~ "/copy", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation query(string type, string accountId, string invocationId, JsonAlgebraic filter, StringMap!JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+    static Invocation query(string type, string accountId, string invocationId, JsonAlgebraic filter, JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
         arguments["accountId"] = accountId;
         arguments["filter"] = filter;
@@ -691,7 +691,7 @@ struct Invocation {
         return Invocation(type ~ "/query", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation queryChanges(string type, string accountId, string invocationId, JsonAlgebraic filter, StringMap!JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+    static Invocation queryChanges(string type, string accountId, string invocationId, JsonAlgebraic filter, JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
         arguments["accountId"] = accountId;
         arguments["filter"] = filter;

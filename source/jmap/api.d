@@ -33,13 +33,6 @@ string addQuotes(string s) {
 }
 }
 
-version (Posix)
-    version = Compile;
-version (SIL)
-    version = Compile;
-
-version (Compile):
-
 struct JmapSessionParams {
     Credentials credentials;
     string uri;

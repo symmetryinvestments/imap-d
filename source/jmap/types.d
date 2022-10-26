@@ -1,12 +1,5 @@
 module jmap.types;
 
-version (Posix)
-    version = Compile;
-version (SIL)
-    version = Compile;
-
-version (Compile):
-
 import std.datetime : SysTime;
 import core.time : seconds;
 import symmetry.imap.sil : SILdoc;

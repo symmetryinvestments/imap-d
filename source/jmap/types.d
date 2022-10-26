@@ -1,4 +1,5 @@
 module jmap.types;
+
 import std.datetime : SysTime;
 import core.time : seconds;
 import symmetry.imap.sil : SILdoc;
@@ -13,11 +14,12 @@ import mir.serde;
 import mir.exception : MirException, enforce;
 import mir.format : text;
 import std.datetime : DateTime;
-import asdf;
 
-version (SIL) {
-    import kaleidic.sil.lang.typing.types : Variable, SilStruct;
-}
+private alias Asdf = JsonAlgebraic;
+private alias Variable = JsonAlgebraic;
+private alias parseJson = deserializeJson!JsonAlgebraic;
+private alias serializeToJsonPretty = serializeJsonPretty;
+private alias SilStruct = StringMap!JsonAlgebraic;
 
 struct Credentials {
     string user;
@@ -153,12 +155,23 @@ struct Session {
         throw new MirException("account ", name, " not found");
     }
 
-    void serdeFinalize() {
-        this.coreCapabilities = capabilities["urn:ietf:params:jmap:core"].serde!SessionCoreCapabilities;
+    void serdeFinalize() scope @safe pure {
+        import std.conv: to;
+        auto object = capabilities["urn:ietf:params:jmap:core"].get!`object`;
+        with (this.coreCapabilities)
+        {
+            maxSizeUpload = object["maxSizeUpload"].get!long.to!uint;
+            maxConcurrentUpload = object["maxConcurrentUpload"].get!long.to!uint;
+            maxSizeRequest = object["maxSizeRequest"].get!long.to!uint;
+            maxConcurrentRequests = object["maxConcurrentRequests"].get!long.to!uint;
+            maxCallsInRequest = object["maxCallsInRequest"].get!long.to!uint;
+            maxObjectsInGet = object["maxObjectsInGet"].get!long.to!uint;
+            maxObjectsInSet = object["maxObjectsInSet"].get!long.to!uint;
+            collationAlgorithms = object["collationAlgorithms"].get!`array`.map!"a.get!string".array;
+        }
     }
-version(SIL):
+
     private Asdf post(JmapRequest request) {
-        import asdf;
         import requests : Request, BasicAuthentication;
         import std.string : strip;
         import std.stdio : writefln, stderr;
@@ -174,10 +187,8 @@ version(SIL):
         return (result.length == 0) ? Asdf.init : parseJson(result);
     }
 
-    version (SIL) {
         Variable uploadBinary(string data, string type = "application/binary") {
             import std.string : replace;
-            import asdf;
             import requests : Request, BasicAuthentication;
             auto uri = this.uploadUrl.replace("{accountId}", this.activeAccountId());
             auto req = Request();
@@ -185,18 +196,6 @@ version(SIL):
             auto result = cast(string) req.post(uploadUrl, data, type).responseBody.data.idup;
             return result.deserializeJson!Variable;
         }
-    } else {
-        Asdf uploadBinary(string data, string type = "application/binary") {
-            import std.string : replace;
-            import asdf;
-            import requests : Request, BasicAuthentication;
-            auto uri = this.uploadUrl.replace("{accountId}", this.activeAccountId());
-            auto req = Request();
-            req.authenticator = new BasicAuthentication(credentials.user, credentials.pass);
-            auto result = cast(string) req.post(uploadUrl, data, type).responseBody.data.idup;
-            return parseJson(result);
-        }
-    }
 
     string downloadBinary(string blobId, string type = "application/binary", string name = "default.bin", string downloadUrl = null) {
         import std.string : replace;
@@ -216,33 +215,23 @@ version(SIL):
         return req.get(downloadUrl).responseBody.data!string;
     }
 
-    version (SIL) {
-        Variable get(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
-            return getRaw(type, ids, properties, additionalArguments).deserialize!Variable;
-        }
-
-        Asdf getRaw(string type, string[] ids, Variable properties = Variable.init, SilStruct additionalArguments = null) {
-            import std.algorithm : map;
-            import std.array : array;
+        JsonAlgebraic get(string type, string[] ids, string[] properties = null, StringMap!JsonAlgebraic additionalArguments = null) {
             import std.stdio : stderr, writefln;
             auto invocationId = "12345678";
             if (debugMode)
                 stderr.writefln("props: %s", serializeJson(properties));
-            auto props =  parseJson(serializeJson(properties));
-            auto invocation = Invocation.get(type, activeAccountId(), invocationId, ids, props, additionalArguments);
+            auto invocation = Invocation.get(type, activeAccountId(), invocationId, ids, properties, additionalArguments);
             auto request = JmapRequest(listCapabilities(), [invocation], null);
             return post(request);
         }
-    }
-
 
     Mailbox[] getMailboxes() {
         import std.range : front, dropOne;
-        auto asdf = getRaw("Mailbox", null);
-        return deserialize!(Mailbox[])(asdf["methodResponses"].byElement.front.byElement.dropOne.front["list"]);
+        auto json = get("Mailbox", null);
+        return json.get!`object`["methodResponses"].get!`array`.front.get!`array`.dropOne.front.get!`object`["list"].serde!(typeof(return));
     }
 
-    Variable getContact(string[] ids, Variable properties = Variable([]), SilStruct additionalArguments = null) {
+    JsonAlgebraic getContact(string[] ids, string[] properties = null, StringMap!JsonAlgebraic additionalArguments = null) {
         import std.range : front, dropOne;
         return Variable(
                 this.get("Contact", ids, properties, additionalArguments)
@@ -257,13 +246,13 @@ version(SIL):
                 .front);
     }
 
-    Variable getEmails(string[] ids, Variable properties = Variable(["id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments"]), Variable bodyProperties = Variable(["all"]),
+    JsonAlgebraic getEmails(string[] ids, string[] properties = [ "id", "blobId", "threadId", "mailboxIds", "keywords", "size", "receivedAt", "messageId", "inReplyTo", "references", "sender", "from", "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment", "preview", "bodyValues", "textBody", "htmlBody", "attachments", ], string[] bodyProperties = ["all"],
             bool fetchTextBodyValues = true, bool fetchHTMLBodyValues = true, bool fetchAllBodyValues = true) {
         import std.range : front, dropOne;
         return Variable(
                 this.get(
                         "Email", ids, properties, SilStruct([
-                            "bodyProperties" : bodyProperties,
+                            "bodyProperties" : bodyProperties.map!JsonAlgebraic.array.JsonAlgebraic,
                             "fetchTextBodyValues" : fetchTextBodyValues.Variable,
                             "fetchAllBodyValues" : fetchAllBodyValues.Variable,
                             "fetchHTMLBodyValues" : fetchHTMLBodyValues.Variable,
@@ -279,93 +268,51 @@ version(SIL):
                 ["list"]);
     }
 
-
-    Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
-        import std.algorithm : map;
-        import std.array : array;
+    Asdf changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
         auto invocationId = "12345678";
         auto invocation = Invocation.changes(type, activeAccountId(), invocationId, sinceState, maxChanges, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    Variable changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
-        return changesRaw(type, sinceState, maxChanges, additionalArguments).deserialize!Variable;
-    }
-
-    Asdf setRaw(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
-        import std.algorithm : map;
-        import std.array : array;
+    JsonAlgebraic set(string type, string ifInState = null, StringMap!JsonAlgebraic create = null, StringMap!JsonAlgebraic update = null, string[] destroy_ = null, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
-        auto createAsdf = parseJson(serializeJson(Variable(create)));
-        auto updateAsdf = parseJson(serializeJson(Variable(update)));
-        auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, createAsdf, updateAsdf, destroy_, additionalArguments);
+        auto invocation = Invocation.set(type, activeAccountId(), invocationId, ifInState, create, update, destroy_, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
-    }
-
-    Variable set(string type, string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
-        return setRaw(type, ifInState, create, update, destroy_, additionalArguments).deserialize!Variable;
     }
 
     Variable setEmail(string ifInState = null, SilStruct create = null, SilStruct update = null, string[] destroy_ = null, SilStruct additionalArguments = null) {
         return set("Email", ifInState, create, update, destroy_, additionalArguments);
     }
 
-
-    Asdf copyRaw(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, SilStruct create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
-        import std.algorithm : map;
-        import std.array : array;
+    JsonAlgebraic copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, StringMap!JsonAlgebraic create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
-        auto createAsdf = parseJson(serializeJson(Variable(create)));
-        auto invocation = Invocation.copy(type, fromAccountId, invocationId, ifFromInState, activeAccountId, ifInState, createAsdf, onSuccessDestroyOriginal, destroyFromIfInState);
+        auto invocation = Invocation.copy(type, fromAccountId, invocationId, ifFromInState, activeAccountId, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    Variable copy(string type, string fromAccountId, string ifFromInState = null, string ifInState = null, SilStruct create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
-        return copyRaw(type, fromAccountId, ifFromInState, ifInState, create, onSuccessDestroyOriginal, destroyFromIfInState, additionalArguments).deserialize!Variable;
-    }
-
-
-    Asdf queryRaw(string type, Variable filter, Variable sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        import std.algorithm : map;
-        import std.array : array;
+    JsonAlgebraic query(string type, JsonAlgebraic filter, JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
-        auto filterAsdf = parseJson(serializeJson(filter));
-        auto sortAsdf = parseJson(serializeJson(sort));
-        auto invocation = Invocation.query(type, activeAccountId, invocationId, filterAsdf, sortAsdf, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
+        auto invocation = Invocation.query(type, activeAccountId, invocationId, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
     }
 
-    Variable queryEmails(FilterAlgebraic filter, Variable sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, bool collapseThreads = false, SilStruct additionalArguments = null) {
-        import std.exception : enforce;
+    JsonAlgebraic queryEmails(FilterAlgebraic filter, JsonAlgebraic sort, int position = 0, string anchor = "", int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, bool collapseThreads = false, StringMap!JsonAlgebraic additionalArguments = null) {
         import std.stdio : stderr, writeln;
         if (collapseThreads)
             additionalArguments["collapseThreads"] = Variable(true);
-        import mir.ion.conv: serde;
         Variable filterVariable = filter.serde!Variable;
-        return queryRaw("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).deserialize!Variable;
+        return query("Email", filterVariable, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments);
     }
 
-    Variable query(string type, Variable filter, Variable sort, int position, string anchor, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        return queryRaw(type, filter, sort, position, anchor, anchorOffset, limit, calculateTotal, additionalArguments).deserialize!Variable;
-    }
-
-    Asdf queryChangesRaw(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        import std.algorithm : map;
-        import std.array : array;
+    JsonAlgebraic queryChanges(string type, JsonAlgebraic filter, JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
         auto invocationId = "12345678";
-        auto filterAsdf = parseJson(serializeJson(filter));
-        auto sortAsdf = parseJson(serializeJson(sort));
-        auto invocation = Invocation.queryChanges(type, activeAccountId, invocationId, filterAsdf, sortAsdf, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments);
+        auto invocation = Invocation.queryChanges(type, activeAccountId, invocationId, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);
         return post(request);
-    }
-
-    Variable queryChanges(string type, Variable filter, Variable sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        return queryChangesRaw(type, filter, sort, sinceQueryState, maxChanges, upToId, calculateTotal, additionalArguments).deserialize!Variable;
     }
 }
 
@@ -442,8 +389,6 @@ enum EmailBodyProperty {
     preview,
 }
 
-version(SIL){
-
 struct EmailSubmission {
     string id;
     string identityId;
@@ -456,7 +401,6 @@ struct EmailSubmission {
     string[] dsnBlobIds;
     string[] mdnBlobIds;
 }
-
 
 struct Envelope {
     EmailAddress mailFrom;
@@ -530,15 +474,12 @@ struct Mailbox {
 }
 
 string[] allMailboxPaths(Mailbox[] mailboxes) {
-    import std.algorithm : map;
-    import std.array : array;
     return mailboxes.map!(mb => mailboxPath(mailboxes, mb.id)).array;
 }
 
 string mailboxPath(Mailbox[] mailboxes, string id, string path = null) {
     import std.algorithm : countUntil;
     import std.format : format;
-    import std.exception : enforce;
     import std.string : endsWith;
     if (path.endsWith("/"))
         path = path[0 .. $ - 1];
@@ -552,8 +493,6 @@ string mailboxPath(Mailbox[] mailboxes, string id, string path = null) {
 Nullable!Mailbox findMailboxPath(Mailbox[] mailboxes, string path) {
     import std.algorithm : filter;
     import std.string : split, join, endsWith;
-    import std.range : back;
-    import std.exception : enforce;
 
     Nullable!Mailbox ret;
     if (path.endsWith("/"))
@@ -584,7 +523,6 @@ struct MailboxSortProperty {
     string property;
     bool isAscending;
 }
-
 
 struct MailboxEmailList {
     string id;
@@ -689,196 +627,82 @@ struct HighLowModSeqCache {
 }
 +/
 
-void serializeAsdf(S)(ref S ser, AsdfNode node) pure {
-    if (node.isLeaf())
-        serializeAsdf(ser, node.data);
-
-    auto objState = ser.objectBegin();
-    foreach (kv; node.children.byKeyValue) {
-        ser.putKey(kv.key);
-        serializeAsdf(ser, kv.value);
-    }
-    ser.objectEnd(objState);
-}
-
-void serializeAsdf(S)(ref S ser, Asdf el) pure {
-    final switch (el.kind) {
-        case Asdf.Kind.null_:
-            ser.putValue(null);
-            break;
-
-        case Asdf.Kind.true_:
-            ser.putValue(true);
-            break;
-
-        case Asdf.Kind.false_:
-            ser.putValue(false);
-            break;
-
-        case Asdf.Kind.number:
-            ser.putValue(el.get!double (double.nan));
-            break;
-
-        case Asdf.Kind.string:
-            ser.putValue(el.get!string(null));
-            break;
-
-        case Asdf.Kind.array:
-            auto arrayState = ser.arrayBegin();
-            foreach (arrEl; el.byElement) {
-                ser.elemBegin();
-                serializeAsdf(ser, arrEl);
-            }
-            ser.arrayEnd(arrayState);
-            break;
-
-        case Asdf.Kind.object:
-            auto objState = ser.objectBegin();
-            foreach (kv; el.byKeyValue) {
-                ser.putKey(kv.key);
-                serializeAsdf(ser, kv.value);
-            }
-            ser.objectEnd(objState);
-            break;
-    }
-}
-
-
+@serdeProxy!(const(JsonAlgebraic)[])
 struct Invocation {
     string name;
     Asdf arguments;
     string id;
 
-    void serialize(S)(ref S ser) pure {
-        auto outerState = ser.arrayBegin();
-        ser.elemBegin();
-        ser.putValue(name);
-        ser.elemBegin();
-        auto state = ser.objectBegin();
-        foreach (el; arguments.byKeyValue) {
-            ser.putKey(el.key);
-            serializeAsdf(ser, el.value);
-        }
-        ser.objectEnd(state);
-        ser.elemBegin();
-        ser.putValue(id);
-        ser.arrayEnd(outerState);
+    const(JsonAlgebraic)[] toArray() const pure nothrow {
+        return [name.JsonAlgebraic, arguments.JsonAlgebraic, id.JsonAlgebraic];
     }
 
+    alias opCast(T : const(JsonAlgebraic)[]) = toArray;
 
-    static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, Asdf properties = Asdf.init, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["ids"] = AsdfNode(ids.serializeToAsdf);
-        arguments["properties"] = AsdfNode(properties);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/get",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation get(string type, string accountId, string invocationId = null, string[] ids = null, string[] properties = null, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["ids"] = ids.map!JsonAlgebraic.array;
+        arguments["properties"] = properties.map!JsonAlgebraic.array;
+        return Invocation(type ~ "/get", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["sinceState"] = AsdfNode(sinceState.serializeToAsdf);
-        arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/changes",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation changes(string type, string accountId, string invocationId, string sinceState, Nullable!uint maxChanges, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["sinceState"] = sinceState;
+        arguments["maxChanges"] = maxChanges.visit!JsonAlgebraic;
+        return Invocation(type ~ "/changes", arguments.JsonAlgebraic, invocationId);
     }
 
-
-    static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, Asdf create = Asdf.init, Asdf update = Asdf.init, string[] destroy_ = null, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
-        arguments["create"] = AsdfNode(create);
-        arguments["update"] = AsdfNode(update);
-        arguments["destroy"] = AsdfNode(destroy_.serializeToAsdf);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/set",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation set(string type, string accountId, string invocationId = null, string ifInState = null, StringMap!JsonAlgebraic create = null, StringMap!JsonAlgebraic update = null, string[] destroy_ = null, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["ifInState"] = ifInState;
+        arguments["create"] = create;
+        arguments["update"] = update;
+        arguments["destroy"] = destroy_.map!JsonAlgebraic.array;
+        return Invocation(type ~ "/set", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, Asdf create = Asdf.init, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["fromAccountId"] = AsdfNode(fromAccountId.serializeToAsdf);
-        arguments["ifFromInState"] = AsdfNode(ifFromInState.serializeToAsdf);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["ifInState"] = AsdfNode(ifInState.serializeToAsdf);
-        arguments["create"] = AsdfNode(create);
-        arguments["onSuccessDestroyOriginal"] = AsdfNode(onSuccessDestroyOriginal.serializeToAsdf);
-        arguments["destroyFromIfInState"] = AsdfNode(destroyFromIfInState.serializeToAsdf);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/copy",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation copy(string type, string fromAccountId, string invocationId = null, string ifFromInState = null, string accountId = null, string ifInState = null, StringMap!JsonAlgebraic create = null, bool onSuccessDestroyOriginal = false, string destroyFromIfInState = null, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["fromAccountId"] = fromAccountId;
+        arguments["ifFromInState"] = ifFromInState;
+        arguments["accountId"] = accountId;
+        arguments["ifInState"] = ifInState;
+        arguments["create"] = create;
+        arguments["onSuccessDestroyOriginal"] = onSuccessDestroyOriginal;
+        arguments["destroyFromIfInState"] = destroyFromIfInState;
+        return Invocation(type ~ "/copy", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation query(string type, string accountId, string invocationId, Asdf filter, Asdf sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = (Nullable!uint).init, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["filter"] = AsdfNode(filter);
-        arguments["sort"] = AsdfNode(sort);
-        arguments["position"] = AsdfNode(position.serializeToAsdf);
-        arguments["anchor"] = AsdfNode(anchor.serializeToAsdf);
-        arguments["anchorOffset"] = AsdfNode(anchorOffset.serializeToAsdf);
-        arguments["limit"] = AsdfNode(limit.serializeToAsdf);
-        arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/query",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation query(string type, string accountId, string invocationId, JsonAlgebraic filter, JsonAlgebraic sort, int position, string anchor = null, int anchorOffset = 0, Nullable!uint limit = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["filter"] = filter;
+        arguments["sort"] = sort;
+        arguments["position"] = position;
+        arguments["anchor"] = anchor;
+        arguments["anchorOffset"] = anchorOffset;
+        arguments["limit"] = limit.visit!JsonAlgebraic;
+        arguments["calculateTotal"] = calculateTotal;
+        return Invocation(type ~ "/query", arguments.JsonAlgebraic, invocationId);
     }
 
-    static Invocation queryChanges(string type, string accountId, string invocationId, Asdf filter, Asdf sort, string sinceQueryState, Nullable!uint maxChanges = (Nullable!uint).init, string upToId = null, bool calculateTotal = false, SilStruct additionalArguments = null) {
-        auto arguments = AsdfNode("{}".parseJson);
-        arguments["accountId"] = AsdfNode(accountId.serializeToAsdf);
-        arguments["filter"] = AsdfNode(filter);
-        arguments["sort"] = AsdfNode(sort);
-        arguments["sinceQueryState"] = AsdfNode(sinceQueryState.serializeToAsdf);
-        arguments["maxChanges"] = AsdfNode(maxChanges.serializeToAsdf);
-        arguments["upToId"] = AsdfNode(upToId.serializeToAsdf);
-        arguments["calculateTotal"] = AsdfNode(calculateTotal.serializeToAsdf);
-        foreach (kv; additionalArguments.byKeyValue)
-            arguments[kv.key] = AsdfNode(kv.value.serializeToAsdf);
-
-        Invocation ret = {
-            name : type ~ "/queryChanges",
-            arguments : cast(Asdf) arguments,
-            id : invocationId,
-        };
-        return ret;
+    static Invocation queryChanges(string type, string accountId, string invocationId, JsonAlgebraic filter, JsonAlgebraic sort, string sinceQueryState, Nullable!uint maxChanges = null, string upToId = null, bool calculateTotal = false, StringMap!JsonAlgebraic additionalArguments = null) {
+        auto arguments = StringMap!JsonAlgebraic(additionalArguments.keys.dup.assumeSafeAppend, additionalArguments.values);
+        arguments["accountId"] = accountId;
+        arguments["filter"] = filter;
+        arguments["sort"] = sort;
+        arguments["sinceQueryState"] = sinceQueryState;
+        arguments["maxChanges"] = maxChanges.visit!JsonAlgebraic;
+        arguments["upToId"] = upToId;
+        arguments["calculateTotal"] = calculateTotal;
+        return Invocation(type ~ "/queryChanges", arguments.JsonAlgebraic, invocationId);
     }
-}} //SIL
+}
 
 enum FilterOperatorKind {
     @serdeKeys("AND") and,
@@ -1035,8 +859,6 @@ struct Comparator {
     string collation = null;
 }
 
-version(SIL):
-
 struct JmapRequest {
     const(string)[] using;
     Invocation[] methodCalls;
@@ -1086,7 +908,6 @@ struct ContactInformation {
     bool isDefault;
 }
 
-
 struct Contact {
     string id;
     bool isFlagged;
@@ -1122,97 +943,4 @@ string uriEncode(const(char)[] s) {
            .replace("-", "%2D").replace(".", "%2E").replace("/", "%2F").replace(":", "%3A").replace(";", "%3B")
            .replace("=", "%3D").replace("?", "%3F").replace("@", "%40").replace("[", "%5B").replace("]", "%5D")
            .idup;
-}
-
-private void serializeAsAsdf(S)(Variable v, ref S serializer) {
-    import std.range : iota;
-    import kaleidic.sil.lang.types : SilVariant, KindEnum;
-    import kaleidic.sil.lang.builtins : fnArray;
-
-    final switch (v.kind) {
-        case KindEnum.void_:
-            serializer.putValue(null);
-            return;
-
-        case KindEnum.object:
-            auto var = v.get!SilVariant;
-            auto acc = var.type.objAccessor;
-            if (acc is null) {
-                serializer.putValue("object");
-                return;
-            }
-            auto obj = serializer.objectBegin();
-            foreach (member; acc.listMembers) {
-                serializer.putKey(member);
-                serializeAsAsdf(acc.readProperty(member, var), serializer);
-            }
-            serializer.objectEnd(obj);
-            return;
-
-        case KindEnum.variable:
-            serializeAsAsdf(v.get!Variable, serializer);
-            return;
-
-        case KindEnum.function_:
-            serializer.putValue("function"); // FIXME
-            return;
-
-        case KindEnum.boolean:
-            serializer.putValue(v.get!bool);
-            return;
-
-        case KindEnum.char_:
-            serializer.putValue([(v.get!char)].idup);
-            return;
-
-        case KindEnum.integer:
-            serializer.putValue(v.get!long);
-            return;
-
-        case KindEnum.number:
-            import std.format : singleSpec;
-            import kaleidic.sil.lang.util : fullPrecisionFormatSpec;
-            enum spec = singleSpec(fullPrecisionFormatSpec!double);
-            serializer.putNumberValue(v.get!double, spec);
-            return;
-
-        case KindEnum.string_:
-            serializer.putValue(v.get!string);
-            return;
-
-        case KindEnum.table:
-            auto obj = serializer.objectBegin();
-            foreach (ref kv; v.get!SilStruct.byKeyValue) {
-                serializer.putKey(kv.key);
-                serializeAsAsdf(kv.value, serializer);
-            }
-            serializer.objectEnd(obj);
-            return;
-
-        case KindEnum.array:
-            auto v2 = v.getAssume!(Variable[]);
-            auto arr = serializer.arrayBegin();
-            foreach (elem; v2) {
-                serializer.elemBegin;
-                serializeAsAsdf(elem, serializer);
-            }
-            serializer.arrayEnd(arr);
-            return;
-
-        case KindEnum.arrayOf:
-            auto v2 = v.getAssume!(KindEnum.arrayOf);
-            auto arr = serializer.arrayBegin();
-            foreach (i; v2.getLength().iota) {
-                serializer.elemBegin;
-                Variable elem = v2.getElement(i);
-                serializeAsAsdf(elem, serializer);
-            }
-            serializer.arrayEnd(arr);
-            return;
-
-        case KindEnum.rangeOf:
-            serializeAsAsdf(fnArray(v), serializer);
-            return;
-    }
-    assert(0);
 }

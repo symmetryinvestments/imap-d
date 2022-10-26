@@ -19,9 +19,6 @@ version (SIL) {
                                      findMailboxPath))
             handlers.registerHandler!F;
     }
-}
-
-version (SIL) :
 
     Variable[] uniqBy(Variable[] input, Function f) {
         import std.algorithm : uniq;
@@ -33,6 +30,7 @@ string addQuotes(string s) {
     if (s.length < 2 || s[0] == '"' || s[$ - 1] == '"')
         return s;
     return '"' ~ s ~ '"';
+}
 }
 
 struct JmapSessionParams {

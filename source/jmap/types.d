@@ -268,7 +268,7 @@ struct Session {
                 ["list"]);
     }
 
-    Asdf changesRaw(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
+    Asdf changes(string type, string sinceState, Nullable!uint maxChanges = (Nullable!uint).init, SilStruct additionalArguments = null) {
         auto invocationId = "12345678";
         auto invocation = Invocation.changes(type, activeAccountId(), invocationId, sinceState, maxChanges, additionalArguments);
         auto request = JmapRequest(listCapabilities(), [invocation], null);

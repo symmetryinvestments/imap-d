@@ -2,8 +2,8 @@
 dub.selections.json
 /extra.selections.json
 
+/bin
 libsymmetry-imap.*
-/symmetry-imap-test-unittest*
 example/imap-example
 
 tags

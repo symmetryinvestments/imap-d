@@ -21,14 +21,15 @@ configuration "default" {
 	versions "MoveSanity"
 }
 configuration "sil-library" {
-	dependency "sil-lang" version=">=0.0.0" optional=true
-	dependency "pegged" version=">=0.0.0" optional=true
+	dependency "sil-lang" path="../../../lang" optional=true
+	dependency "pegged" version="*" optional=true
 	targetType "library"
+	targetPath "bin"
 	versions "MoveSanity" "SIL"
 }
 configuration "plugin" {
-	dependency "sil-lang" version=">=0.0.0" optional=true
-	dependency "pegged" version=">=0.0.0" optional=true
+	dependency "sil-lang" path="../../../lang" optional=true
+	dependency "pegged" version="*" optional=true
 	targetType "dynamicLibrary"
 	targetPath "plugin"
 	targetName "sil-plugin-imap"
@@ -38,6 +39,8 @@ configuration "plugin" {
 	dflags "-allinst" platform="windows"
 }
 configuration "unittest" {
+	targetPath "bin"
+	targetName "ut"
 	# Windows: set KAL_EXT_LIB_WIN64 env var to dir containing `lib{ssl,crypto}.lib`
 	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
 }

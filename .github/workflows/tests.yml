@@ -23,10 +23,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          choco install openssl --no-progress || exit /b
+          choco install openssl.light --version=1.1.1 --no-progress || exit /b
           mkdir extern_deps || exit /b
-          copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libssl64MT.lib" extern_deps\libssl.lib || exit /b
-          copy "%PROGRAMFILES%\OpenSSL-Win64\lib\VC\libcrypto64MT.lib" extern_deps\libcrypto.lib || exit /b
+          copy "%PROGRAMFILES%\OpenSSL\lib\VC\libssl64MT.lib" extern_deps\libssl.lib || exit /b
+          copy "%PROGRAMFILES%\OpenSSL\lib\VC\libcrypto64MT.lib" extern_deps\libcrypto.lib || exit /b
           echo KAL_EXT_LIB_WIN64=%CD%\extern_deps>> %GITHUB_ENV%
 
       - name: dub build

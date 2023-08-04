@@ -6,8 +6,8 @@ dependency "openssl" version=">=3.1.0"
 dependency "requests" version="~>2"
 dependency "mir-ion" version=">=1.0.26"
 libs "ssl" "crypto" platform="posix"
-# Windows: get OpenSSL libs via e.g. `choco install openssl`, then copy e.g.
-# `C:\Program Files\OpenSSL-Win64\lib\VC\lib{ssl,crypto}64MT.lib` to some
+# Windows: get OpenSSL libs via e.g. `choco install openssl.light --version=1.1.1`,
+# then copy e.g. `C:\Program Files\OpenSSL\lib\VC\lib{ssl,crypto}64MT.lib` to some
 # folder and rename to `lib{ssl,crypto}.lib`. Then tell the linker about
 # this folder, either via LIB environment variable or via /LIBPATH lflag in
 # your dub.sdl.

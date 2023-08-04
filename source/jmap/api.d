@@ -2,37 +2,6 @@ module jmap.api;
 import jmap.types;
 static import jmap.types;
 
-version (SIL) {
-    import kaleidic.sil.lang.typing.types : Variable, Function;
-}
-
-version (SIL) {
-    void registerHandlersJmap(Handlers)(ref Handlers handlers) {
-        import std.meta : AliasSeq;
-        handlers.openModule("jmap");
-        scope (exit) handlers.closeModule();
-
-        static foreach (T; AliasSeq!(Credentials, JmapSessionParams, Session, Mailbox, MailboxRights, MailboxSortProperty, Filter, FilterOperator, FilterOperatorKind, FilterCondition, Comparator, Account, AccountParams, AccountCapabilities, SessionCoreCapabilities, Contact, ContactGroup, ContactInformation, JmapFile, EmailAddress, Envelope, ContactAddress, ResultReference, JmapResponseError, EmailProperty, EmailBodyProperty))
-            handlers.registerType!T;
-
-        static foreach (F; AliasSeq!(getSession, getSessionJson, wellKnownJmap, operatorAsFilter, filterCondition, addQuotes, uniqBy, mailboxPath, allMailboxPaths,
-                                     findMailboxPath))
-            handlers.registerHandler!F;
-    }
-
-    Variable[] uniqBy(Variable[] input, Function f) {
-        import std.algorithm : uniq;
-        import std.array : array;
-        return input.uniq!((a, b) => f(a, b).get!bool).array;
-    }
-
-string addQuotes(string s) {
-    if (s.length < 2 || s[0] == '"' || s[$ - 1] == '"')
-        return s;
-    return '"' ~ s ~ '"';
-}
-}
-
 struct JmapSessionParams {
     Credentials credentials;
     string uri;

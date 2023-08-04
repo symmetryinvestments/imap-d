@@ -20,23 +20,12 @@ configuration "default" {
 	targetType "library"
 	versions "MoveSanity"
 }
-configuration "sil-library" {
-	dependency "sil-lang" path="../../../lang" optional=true
-	dependency "pegged" version="*" optional=true
+# this config enables module symmetry.imap.grammar
+configuration "with-grammar" {
+	dependency "pegged" version="*"
 	targetType "library"
 	targetPath "bin"
-	versions "MoveSanity" "SIL"
-}
-configuration "plugin" {
-	dependency "sil-lang" path="../../../lang" optional=true
-	dependency "pegged" version="*" optional=true
-	targetType "dynamicLibrary"
-	targetPath "plugin"
-	targetName "sil-plugin-imap"
-	versions "SIL_Plugin" "SIL" "MoveSanity"
-	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
-	# FIXME: work around missing symbol on Windows starting with SIL v2.47
-	dflags "-allinst" platform="windows"
+	versions "MoveSanity"
 }
 configuration "unittest" {
 	targetPath "bin"

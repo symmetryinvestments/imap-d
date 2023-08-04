@@ -18,14 +18,12 @@ lflags "-L/opt/homebrew/opt/openssl@3/lib" platform="osx"
 
 configuration "default" {
 	targetType "library"
-	versions "MoveSanity"
 }
 # this config enables module symmetry.imap.grammar
 configuration "with-grammar" {
 	dependency "pegged" version="*"
 	targetType "library"
 	targetPath "bin"
-	versions "MoveSanity"
 }
 configuration "unittest" {
 	targetPath "bin"

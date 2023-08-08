@@ -619,29 +619,21 @@ auto multiMove(Session session, string mesg, Mailbox mailbox) {
     import std.exception : enforce;
     import std.format : format;
     import std.conv : to;
-    version (MoveSanity) {
-        auto t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg, mailbox.toString));
-        auto r = session.imapTry!responseMove(t);
-        if (r.status == ImapStatus.tryCreate) {
-            t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
+
+    auto t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg, mailbox.toString));
+    auto r = session.imapTry!responseMove(t);
+    if (r.status == ImapStatus.tryCreate) {
+        t = session.imapTry!sendRequest(format!`CREATE "%s"`(mailbox.toString));
+        session.imapTry!responseGeneric(t);
+        if (session.options.subscribe) {
+            t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
             session.imapTry!responseGeneric(t);
-            if (session.options.subscribe) {
-                t = session.imapTry!sendRequest(format!`SUBSCRIBE "%s"`(mailbox.toString));
-                session.imapTry!responseGeneric(t);
-            }
-            t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg, mailbox.toString));
-            r = session.imapTry!responseMove(t);
         }
-        enforce(r.status == ImapStatus.ok, "imap error when moving : " ~ r.to!string);
-        return r;
-    } else {
-        auto result = copy(session, mesg, mailbox);
-        enforce(result.status == ImapStatus.ok, format!"unable to copy message %s to %s as first stage of move:%s"(mesg, mailbox, result));
-        result = store(session, mesg, StoreMode.add, `\Deleted`);
-        // enforce(result.status == ImapStatus.ok, format!"unable to set deleted flags for message %s as second stage of move:%s"(mesg,result));
-        return result;
+        t = session.imapTry!sendRequest(format!`UID MOVE %s %s`(mesg, mailbox.toString));
+        r = session.imapTry!responseMove(t);
     }
-    assert(0);
+    enforce(r.status == ImapStatus.ok, "imap error when moving : " ~ r.to!string);
+    return r;
 }
 
 // NOTE: the date string must follow the standard grammar taken from the RFC, without the

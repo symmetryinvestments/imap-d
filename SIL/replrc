@@ -1,3 +1,0 @@
-loadPlugin("imap","./libsymmetry-imap.so")
-exec("plug2.sil")
-

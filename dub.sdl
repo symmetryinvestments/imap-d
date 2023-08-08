@@ -6,8 +6,8 @@ dependency "openssl" version=">=3.1.0"
 dependency "requests" version="~>2"
 dependency "mir-ion" version=">=1.0.26"
 libs "ssl" "crypto" platform="posix"
-# Windows: get OpenSSL libs via e.g. `choco install openssl`, then copy e.g.
-# `C:\Program Files\OpenSSL-Win64\lib\VC\lib{ssl,crypto}64MT.lib` to some
+# Windows: get OpenSSL libs via e.g. `choco install openssl.light --version=1.1.1`,
+# then copy e.g. `C:\Program Files\OpenSSL\lib\VC\lib{ssl,crypto}64MT.lib` to some
 # folder and rename to `lib{ssl,crypto}.lib`. Then tell the linker about
 # this folder, either via LIB environment variable or via /LIBPATH lflag in
 # your dub.sdl.
@@ -18,25 +18,12 @@ lflags "-L/opt/homebrew/opt/openssl@3/lib" platform="osx"
 
 configuration "default" {
 	targetType "library"
-	versions "MoveSanity"
 }
-configuration "sil-library" {
-	dependency "sil-lang" path="../../../lang" optional=true
-	dependency "pegged" version="*" optional=true
+# this config enables module symmetry.imap.grammar
+configuration "with-grammar" {
+	dependency "pegged" version="*"
 	targetType "library"
 	targetPath "bin"
-	versions "MoveSanity" "SIL"
-}
-configuration "plugin" {
-	dependency "sil-lang" path="../../../lang" optional=true
-	dependency "pegged" version="*" optional=true
-	targetType "dynamicLibrary"
-	targetPath "plugin"
-	targetName "sil-plugin-imap"
-	versions "SIL_Plugin" "SIL" "MoveSanity"
-	lflags "/LIBPATH:$KAL_EXT_LIB_WIN64" platform="windows-x86_64"
-	# FIXME: work around missing symbol on Windows starting with SIL v2.47
-	dflags "-allinst" platform="windows"
 }
 configuration "unittest" {
 	targetPath "bin"

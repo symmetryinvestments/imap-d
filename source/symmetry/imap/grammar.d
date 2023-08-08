@@ -6,8 +6,9 @@ module symmetry.imap.grammar;
     a PEG grammer.
 +/
 
-version (SIL) :
-    import pegged.grammar;
+version (Have_pegged):
+
+import pegged.grammar;
 
 
 ///

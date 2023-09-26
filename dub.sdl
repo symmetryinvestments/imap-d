@@ -1,5 +1,6 @@
 name "symmetry-imap"
 description "IMAP client library"
+authors "Laeeth Isharc" "Sebastiaan Koppe" "John Colvin" "Ilya Yaroshenko" "Martin Kinke" "Max Haughton" "Francesco Mecca" "Toby Hutton"
 license "MIT"
 dependency "arsd-official:email" version=">=8.5.0"
 dependency "openssl" version=">=3.1.0"

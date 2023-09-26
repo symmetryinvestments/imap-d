@@ -212,7 +212,7 @@ enum __RES  = 19991006;
 /*
  * Resolver configuration file.
  * Normally not present, but may contain the address of the
- * inital name server(s) to query and the domain search list.
+ * initial name server(s) to query and the domain search list.
  */
 
 enum _PATH_RESCONF = "/etc/resolv.conf";

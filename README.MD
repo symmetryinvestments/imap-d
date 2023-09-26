@@ -70,6 +70,8 @@ Heavily inspired by imapfilter.
 
 ## Example use
 
+See also the tests, which can be found [here](https://github.com/symmetryinvestments/imap-d/blob/master/test/source/app.d).
+
 ```d
 import imap;
 

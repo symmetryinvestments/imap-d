@@ -191,7 +191,13 @@ Session login(Session session) {
     if (rg.status == ImapStatus.preAuth) {
         rl = ImapStatus.preAuth;
     } else {
-        if (session.capabilities.has(Capability.cramMD5) && session.options.cramMD5) {
+        if (session.capabilities.has(Capability.oauth2) && login.oauthToken.strip.length) {
+            version (Trace) stderr.writefln("cram");
+            t = session.check!sendRequest(format!"AUTHENTICATE XOAUTH2 %s"(login.oauthToken.strip));
+            res = session.check!responseGeneric(t);
+            version (Trace) stderr.writefln("response: %s", res);
+            rl = res.status;
+        } else if (session.capabilities.has(Capability.cramMD5) && session.options.cramMD5) {
             version (Trace) stderr.writefln("cram");
             t = session.check!sendRequest("AUTHENTICATE CRAM-MD5");
             res = session.check!responseAuthenticate(t);

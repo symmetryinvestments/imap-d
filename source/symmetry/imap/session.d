@@ -74,6 +74,9 @@ struct ImapLogin {
     @SILdoc("User's secret keyword. If a password wasn't supplied the user will be asked to enter one interactively the first time it will be needed. It takes a string as a value.")
     string password;
 
+    @SILdoc("OAuth2 token, if present, it will try this before the username and password.")
+    string oauthToken;
+
     string toString() const {
         import std.format : format;
         return format!"%s:[hidden]"(username);

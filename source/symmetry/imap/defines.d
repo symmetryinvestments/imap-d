@@ -39,6 +39,9 @@ enum Capability {
     @("IDLE")
     idle = 0x10,
 
+    @("AUTH=XOAUTH2")
+    oauth2,
+
     @("IMAP4rev1")
     imap4Rev1,
 

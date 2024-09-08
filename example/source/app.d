@@ -1,4 +1,4 @@
-import imap;
+import symmetry.imap;
 
 int main(string[] args) {
     import std.conv : to;

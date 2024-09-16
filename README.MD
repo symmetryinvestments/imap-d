@@ -4,8 +4,14 @@
 
 # IMAP for D / SIL and JMAP for SIL
 
-## Status - usable alpha
-I am starting to use this daily, but there are probably many bugs - please file issues.  PRs welcomed.
+## IMAP Status - usable alpha
+Used daily in a commercial production environment, but there may be bugs or rough edges in features that are not exercised in production or the tests.
+
+## JMAP Status - usable alpha but depends on proprietary, non-open source code
+I have used this personally for months at a time with the FastMail JMAP API, but it is not used in production commercially and there are no tests for it.
+
+The code depends on the internal Symmetry SIL Variable algebraic type and the code will require modification to be used without Variable.
+
 
 ### IMAP Features that should work (ones without a check may work but be more awkward to use)
 
